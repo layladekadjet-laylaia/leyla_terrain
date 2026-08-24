@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pyttsx3
 import threading
 import os
@@ -144,6 +145,77 @@ def chercher_lieu_excel(centre_gps, chemin="base_ivoire.xlsx"):
         return f"Localité estimée ({e})"
 
 # =========================================================================
+# --- COMPOSANT TRACKER GPS AUTOMATIQUE (STYLE GARMIN) ---
+# =========================================================================
+def composant_tracker_garmin():
+    html_code = """
+    <div style="background-color: #1e1e1e; padding: 12px; border-radius: 8px; text-align: center; color: white;">
+        <p style="margin:0; font-size: 14px;">🛰️ <b>Relevé GPS automatique en temps réel</b></p>
+        <p id="status_text" style="color: #2ecc71; margin: 4px 0; font-size: 12px;">Recherche du signal GPS...</p>
+        <p id="coords_display" style="font-family: monospace; font-size: 12px; margin: 0; color: #bdc3c7;">--</p>
+    </div>
+
+    <script>
+    let lastLat = null;
+    let lastLon = null;
+    const minDistanceMeters = 3; // Enregistre un point tous les 3 mètres
+
+    function haversineDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371000;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                  Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                  Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+
+    if ("geolocation" in navigator) {
+        navigator.geolocation.watchPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lon = position.coords.longitude;
+                const alt = position.coords.altitude || 120.0;
+
+                document.getElementById("coords_display").innerText = 
+                    "Lat: " + lat.toFixed(6) + " | Lon: " + lon.toFixed(6) + " | Alt: " + alt.toFixed(1) + "m";
+                document.getElementById("status_text").innerText = "🟢 Signal GPS actif - Enregistrement automatique";
+
+                let addPoint = false;
+                if (lastLat === null || lastLon === null) {
+                    addPoint = true;
+                } else {
+                    const dist = haversineDistance(lastLat, lastLon, lat, lon);
+                    if (dist >= minDistanceMeters) {
+                        addPoint = true;
+                    }
+                }
+
+                if (addPoint) {
+                    lastLat = lat;
+                    lastLon = lon;
+                    const pointData = { lat: lat, lon: lon, alt: alt };
+                    window.parent.postMessage({ type: 'streamlit:setComponentValue', value: pointData }, '*');
+                }
+            },
+            (error) => {
+                document.getElementById("status_text").innerText = "🔴 Erreur GPS : " + error.message;
+            },
+            {
+                enableHighAccuracy: true,
+                maximumAge: 1000,
+                timeout: 10000
+            }
+        );
+    } else {
+        document.getElementById("status_text").innerText = "🔴 La géolocalisation n'est pas supportée par votre navigateur.";
+    }
+    </script>
+    """
+    return components.html(html_code, height=100)
+
+# =========================================================================
 # --- 3. MODULE PRINCIPAL STREAMLIT ---
 # =========================================================================
 def afficher():
@@ -194,16 +266,16 @@ def afficher():
                 "✏️ Saisie Manuelle des Bornes"
             ])
 
-            # --- ONGLET 1: TRACKING GPS CONTINU EN DIRECT ---
+            # --- ONGLET 1: TRACKING GPS CONTINU EN DIRECT (MODE GARMIN AUTOMATIQUE) ---
             with tab_gps:
-                st.markdown("#### 🚶 Mode Marche Terrain (Relevé Continu)")
-                st.info("💡 **Instructions :** Placez-vous sur la première borne, démarrez le suivi, parcourez le périmètre, puis validez la fermeture de la parcelle.")
+                st.markdown("#### 🚶 Mode Marche Terrain (Relevé Continu Automatique)")
+                st.info("💡 **Instructions :** Activez le tracé et marchez autour de la parcelle. Les points sont enregistrés automatiquement au fur et à mesure de vos pas. Cliquez sur **Boucler la parcelle** lorsque vous êtes revenu au point de départ.")
 
-                c_start, c_add, c_stop = st.columns(3)
+                c_start, c_stop = st.columns(2)
                 with c_start:
                     if st.button("▶️ Démarrer le tracé GPS", use_container_width=True, type="primary"):
                         st.session_state.is_tracking = True
-                        parler("Suivi GPS activé. Vous pouvez commencer à marcher le long des limites.")
+                        parler("Suivi automatique activé. Avancez le long des limites de la parcelle.")
                         st.rerun()
 
                 with c_stop:
@@ -212,23 +284,27 @@ def afficher():
                         st.rerun()
 
                 if st.session_state.is_tracking:
-                    st.success("🟢 **Acquisition GPS active :** Enregistrement du parcours...")
+                    st.success("🟢 **Acquisition GPS active :** Enregistrement de la trace en cours...")
                     
-                    c_lat, c_lon, c_alt = st.columns(3)
-                    with c_lat:
-                        g_lat = st.number_input("Lat actuelle", value=5.942100, format="%.6f", key="g_lat_input")
-                    with c_lon:
-                        g_lon = st.number_input("Lon actuelle", value=-4.215400, format="%.6f", key="g_lon_input")
-                    with c_alt:
-                        g_alt = st.number_input("Alt actuelle (m)", value=120.0, key="g_alt_input")
+                    # Composant JS d'écoute GPS continu
+                    point_recu = composant_tracker_garmin()
+                    
+                    if point_recu:
+                        lat_r = round(point_recu['lat'], 6)
+                        lon_r = round(point_recu['lon'], 6)
+                        alt_r = round(point_recu['alt'], 1)
 
-                    if st.button("➕ Capturer la borne actuelle", use_container_width=True):
-                        st.session_state.points_gps.append({'lat': g_lat, 'lon': g_lon, 'alt': g_alt})
-                        parler(f"Point numéro {len(st.session_state.points_gps)} enregistré")
-                        st.rerun()
+                        # Évite d'ajouter le même point si la position n'a pas varié
+                        if not st.session_state.points_gps or (
+                            st.session_state.points_gps[-1]['lat'] != lat_r or 
+                            st.session_state.points_gps[-1]['lon'] != lon_r
+                        ):
+                            st.session_state.points_gps.append({'lat': lat_r, 'lon': lon_r, 'alt': alt_r})
+                            parler(f"Point {len(st.session_state.points_gps)} capturé")
+                            st.rerun()
 
                 if st.session_state.points_gps:
-                    st.write(f"🚩 **Bornes capturées ({len(st.session_state.points_gps)}) :**")
+                    st.write(f"🚩 **Points de trace capturés ({len(st.session_state.points_gps)}) :**")
                     df_pts = pd.DataFrame(st.session_state.points_gps)
                     st.dataframe(df_pts, use_container_width=True)
 
