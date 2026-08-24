@@ -13,4 +13,6 @@ pyttsx3
 SpeechRecognition
 pandas
 streamlit-geolocation
+shapely
+
 
