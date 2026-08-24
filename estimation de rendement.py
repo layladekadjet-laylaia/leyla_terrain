@@ -2,7 +2,11 @@ import streamlit as st
 import time
 import os
 import json
-from streamlit_geolocation import streamlit_geolocation
+try:
+    from streamlit_geolocation import streamlit_geolocation
+except ImportError:
+    streamlit_geolocation = None
+
 
 # --- INITIALISATIONS GLOBALES EN TOUT PREMIER ---
 if 'etape_courante' not in st.session_state:
