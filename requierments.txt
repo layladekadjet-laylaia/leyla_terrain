@@ -1,3 +1,11 @@
 streamlit
 supabase
 requests
+customtkinter
+geopy
+folium
+matplotlib
+numpy
+pillow
+pynmea2
+pyserial
