@@ -5,7 +5,7 @@ from datetime import datetime
 import requests
 
 import diagnostique
-import estimation_de_rendement 
+import estimation de rendement 
 import geolocalisation
 
 # --- CONFIGURATION DE LA TABLETTE ---
