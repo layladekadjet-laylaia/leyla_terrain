@@ -351,4 +351,197 @@ def ecouter_micro():
         st.warning("Temps d'écoute dépassé. Réessaie.")
     except sr.UnknownValueError:
         st.warning("Je n'ai pas bien compris ce que tu as dit.")
-    excep
+    except Exception as e:
+        st.error("Erreur de connexion au microphone.")
+    return None
+
+def moteur_cognitif_leila(liste_symptomes_bruts, texte_integral=""):
+    """Moteur d'analyse croisée des symptômes."""
+    historique_nettoye = nettoyer_texte(texte_integral)
+    pistes_identifiees = []
+
+    for nom_cle, data in DIAGNOSTIQUE.items():
+        tous_symptomes_maladie = []
+        if "diagnostics" in data:
+            for diag in data["diagnostics"]:
+                if isinstance(diag, dict) and "symptomes" in diag:
+                    tous_symptomes_maladie.extend(diag["symptomes"])
+                elif isinstance(diag, list):
+                    tous_symptomes_maladie.extend(diag)
+        elif "symptomes" in data:
+            tous_symptomes_maladie.extend(data["symptomes"])
+
+        preuves_reelles = []
+        for s in tous_symptomes_maladie:
+            s_clean = nettoyer_texte(s)
+            if s_clean in historique_nettoye:
+                if s not in preuves_reelles:
+                    preuves_reelles.append(s)
+
+        if preuves_reelles:
+            score = len(preuves_reelles) * 30
+            pistes_identifiees.append({
+                "cle": nom_cle,
+                "nom": data.get("nom", nom_cle),
+                "classe": data.get("classe", "Inconnue"),
+                "score": score,
+                "preuves": preuves_reelles,
+                "remede": data.get("remede", "Aucun remède spécifié.")
+            })
+
+    pistes_identifiees = sorted(pistes_identifiees, key=lambda x: x["score"], reverse=True)
+
+    if not pistes_identifiees:
+        return "Dis donc, je n'ai repéré aucun symptôme clair dans ce que tu m'as partagé. On reprend calmement ?", []
+
+    rapport = "--- 🧬 RAPPORT D'EXPERTISE INTER-FAMILLE DE LEILA ---\n\n"
+    classes_presentes = set(p['classe'] for p in pistes_identifiees)
+    
+    if len(classes_presentes) > 1:
+        rapport += "⚠️ **Attention l'ami : J'ai détecté une synergie pathologique ou des attaques multiples croisées sur ta parcelle !**\n\n"
+    else:
+        rapport += "✅ **Analyse monopathologique ciblée.**\n\n"
+
+    maladies_retenues = []
+    for p in pistes_identifiees:
+        taux_confiance = min(99, 70 + (p['score'] * 5))
+        rapport += f"• **Maladie détectée : {p['nom']}**\n"
+        rapport += f"  - *Classe :* {p['classe']}\n"
+        rapport += f"  - *Indice de certitude :* {taux_confiance}%\n"
+        rapport += f"  - *Symptômes retenus :* `{', '.join(p['preuves'])}`\n"
+        rapport += f"\n  - *Mon conseil d'ingénieur / Protocole :*\n{p['remede']}\n\n"
+        maladies_retenues.append(p['nom'])
+
+    return rapport, maladies_retenues
+
+# --- INTERFACE UTILISATEUR (STREAMLIT) ---
+
+def afficher():
+    if st.button("⬅️ Retour à l'accueil Layla"):
+        st.session_state.module_actif = "accueil"
+        st.rerun()
+
+    st.title("🩺 Leila - Ingénieur Agronome")
+    st.write("Salut ! C'est Leila. Discute avec moi de ce qui se passe sur tes cacaoyers. Quand tu as terminé, tape ou dis **« c'est terminé »**.")
+
+    # Session states
+    if "messages_diag_leila" not in st.session_state:
+        msg_accueil = "Salut à toi l'ami ! Dis-moi, qu'est-ce que tu observes d'anormal sur tes cacaoyers ?"
+        st.session_state.messages_diag_leila = [{"role": "assistant", "content": msg_accueil}]
+
+    if "symptomes_detectes_leila" not in st.session_state:
+        st.session_state.symptomes_detectes_leila = []
+    if "diagnostic_final_cache_leila" not in st.session_state:
+        st.session_state.diagnostic_final_cache_leila = None
+    if "derniere_question_leila" not in st.session_state:
+        st.session_state.derniere_question_leila = ""
+
+    # Historique
+    for msg in st.session_state.messages_diag_leila:
+        with st.chat_message(msg["role"]):
+            st.write(msg["content"])
+
+    # Entrée Vocale
+    if st.button("🎙️ Parler à Leila", key="btn_parler_leila_unique"):
+        res = ecouter_micro()
+        if res:
+            st.session_state.derniere_question_leila = res
+            st.rerun()
+
+    # Zone de Saisie Utilisateur
+    saisie_utilisateur = st.text_input(
+        "Saisissez votre demande ou vos symptômes :",
+        value=st.session_state.derniere_question_leila,
+        key="input_leila_unique"
+    )
+
+    # Déclenchement au bouton Envoyer ou entrée clavier
+    btn_envoyer = st.button("Envoyer 💬", key="btn_send_diag")
+
+    if (saisie_utilisateur and btn_envoyer) or (saisie_utilisateur and saisie_utilisateur != st.session_state.get("dernier_texte_traite", "")):
+        st.session_state["dernier_texte_traite"] = saisie_utilisateur
+        texte_traitement = saisie_utilisateur
+        st.session_state.derniere_question_leila = "" # Vider l'entrée vocale
+
+        st.session_state.messages_diag_leila.append({"role": "user", "content": texte_traitement})
+
+        texte_lower = texte_traitement.lower()
+
+        if any(mot in texte_lower for mot in ["c'est terminé", "c'est fini", "fini", "terminé"]):
+            texte_complet_discussion = " ".join([m["content"] for m in st.session_state.messages_diag_leila if m["role"] == "user"])
+            
+            resultat_diag, noms_maladies = moteur_cognitif_leila(st.session_state.symptomes_detectes_leila, texte_complet_discussion)
+            
+            st.session_state.diagnostic_final_cache_leila = {
+                "diagnostic": resultat_diag,
+                "maladies": noms_maladies,
+                "symptomes": st.session_state.symptomes_detectes_leila.copy()
+            }
+            reponse_leila = f"🔍 **Entretien clos, chef !** J'ai bouclé l'analyse. Voici mon rapport complet :\n\n{resultat_diag}"
+        else:
+            mots_trouves = []
+            texte_compare = nettoyer_texte(texte_lower)
+
+            for nom_cle, data in DIAGNOSTIQUE.items():
+                tous_symptomes = []
+                if "diagnostics" in data:
+                    for diag in data["diagnostics"]:
+                        if isinstance(diag, dict) and "symptomes" in diag:
+                            tous_symptomes.extend(diag["symptomes"])
+                        elif isinstance(diag, list):
+                            tous_symptomes.extend(diag)
+                elif "symptomes" in data:
+                    tous_symptomes.extend(data["symptomes"])
+
+                for s in tous_symptomes:
+                    s_clean = nettoyer_texte(s)
+                    if s_clean in texte_compare:
+                        if s not in st.session_state.symptomes_detectes_leila:
+                            st.session_state.symptomes_detectes_leila.append(s)
+                        if s not in mots_trouves:
+                            mots_trouves.append(s)
+
+            if mots_trouves:
+                reponse_leila = f"J'ai bien noté ça l'ami : `{', '.join(mots_trouves)}`. Tu vois autre chose d'anormal ? (Sinon, dis ou tape **« c'est terminé »**)."
+            else:
+                reponse_leila = "Hmm, je ne retrouve pas ce symptôme précis. Peux-tu préciser un peu plus (ex: cabosses noires, fleurs déformées, feuilles jaunies...) ?"
+
+        st.session_state.messages_diag_leila.append({"role": "assistant", "content": reponse_leila})
+        parler(reponse_leila)
+        st.rerun()
+
+    # --- ENREGISTREMENT ET ENVOI ---
+    if st.session_state.diagnostic_final_cache_leila:
+        st.markdown("---")
+        st.success("✅ Diagnostic clinique prêt à être transmis au tableau de bord central.")
+        
+        col_n, col_z = st.columns(2)
+        nom_prod = col_n.text_input("Nom du Producteur", value="Producteur Local", key="input_nom_prod_diag")
+        zone_prod = col_z.text_input("Zone / Localité", value="Zone Centre", key="input_zone_prod_diag")
+
+        if st.button("📤 Enregistrer et envoyer chez le Chef", type="primary", key="btn_envoi_chef_diag"):
+            nouveau_rapport = {
+                "nom": nom_prod,
+                "zone": zone_prod,
+                "horodatage": str(pd.Timestamp.now()),
+                "diagnostic": st.session_state.diagnostic_final_cache_leila["diagnostic"],
+                "symptomes_observes": st.session_state.diagnostic_final_cache_leila["symptomes"],
+                "statut_eudr": "Conforme / Diagnostiqué par Leila"
+            }
+
+            sauvegarder_donnee("Diagnostic_Phytosanitaire", nouveau_rapport)
+
+            msg_succes = "Rapport phytosanitaire envoyé avec succès au tableau de bord central !"
+            st.success(f"🚀 {msg_succes}")
+            parler(msg_succes)
+            
+            # Reset
+            st.session_state.diagnostic_final_cache_leila = None
+            st.session_state.symptomes_detectes_leila = []
+            st.session_state.messages_diag_leila = [
+                {"role": "assistant", "content": "Nouveau diagnostic initialisé. Qu'est-ce qui cloche sur la parcelle ?"}
+            ]
+            st.rerun()
+
+if __name__ == "__main__":
+    afficher()
