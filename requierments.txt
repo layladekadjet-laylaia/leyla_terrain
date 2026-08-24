@@ -9,3 +9,6 @@ numpy
 pillow
 pynmea2
 pyserial
+pyttsx3
+SpeechRecognition
+pandas
