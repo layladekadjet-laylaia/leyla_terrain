@@ -1,52 +1,39 @@
 import streamlit as st
 import pandas as pd
-import pyttsx3
-import threading
-import speech_recognition as sr
-import os
-import re
 import sqlite3
 import json
+import time
 
-# --- GESTION DE LA BASE DE DONNÉES LOCALE (SQLITE) ---
-DB_LOCAL_PATH = "donnees_locales.db"
-
-def init_db_locale():
-    """Initialise la table SQLite locale si elle n'existe pas."""
-    conn = sqlite3.connect(DB_LOCAL_PATH)
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS diagnostics_locaux (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            nom_producteur TEXT,
-            zone TEXT,
-            horodatage TEXT,
-            rapport_diagnostic TEXT,
-            symptomes_observes TEXT,
-            statut_eudr TEXT,
-            statut_synchro TEXT DEFAULT 'En attente'
-        )
-    """)
-    conn.commit()
-    conn.close()
+# --- GESTION DE LA BASE DE DONNÉES LOCALE (SQLITE TERRAIN) ---
+DB_LOCAL_PATH = "leyla_terrain.db"
 
 def sauvegarder_en_local_sqlite(donnees):
-    """Insère le rapport directement dans SQLite avec le statut 'En attente'."""
-    init_db_locale()
+    """Insère le rapport directement dans la base leyla_terrain.db de la tablette avec le statut 'En attente'."""
     conn = sqlite3.connect(DB_LOCAL_PATH)
     cursor = conn.cursor()
+    
+    # Récupération des infos producteur stockées dans la session principale
+    info_p = st.session_state.get("info_producteur", {})
+    nom_prod = donnees.get("nom") or info_p.get("nom") or "Inconnu"
+    code_prod = info_p.get("code", "")
+    sup_prod = info_p.get("superficie", 1.0)
+    age_prod = info_p.get("age", "")
+
     cursor.execute("""
-        INSERT INTO diagnostics_locaux 
-        (nom_producteur, zone, horodatage, rapport_diagnostic, symptomes_observes, statut_eudr, statut_synchro)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO rapports_locaux 
+        (cooperative, section, technicien, producteur, code_producteur, superficie, age_parcelle, module_type, donnees_module, date_saisie, statut)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'En attente')
     """, (
-        donnees["nom"],
-        donnees["zone"],
-        donnees["horodatage"],
+        st.session_state.get("cooperative", "N/A"),
+        st.session_state.get("section", "N/A"),
+        st.session_state.get("technicien", "N/A"),
+        nom_prod,
+        code_prod,
+        float(sup_prod),
+        str(age_prod),
+        "Diagnostic Phytosanitaire",
         donnees["diagnostic"],
-        json.dumps(donnees["symptomes_observes"]),
-        donnees["statut_eudr"],
-        "En attente"
+        time.strftime("%Y-%m-%d %H:%M:%S")
     ))
     conn.commit()
     conn.close()
@@ -356,7 +343,7 @@ DIAGNOSTIQUE = {
     }
 }
 
-# --- OUTILS DE TRAITEMENT TEXTE ET AUDIO ---
+# --- OUTILS DE TRAITEMENT TEXTE ---
 
 def nettoyer_texte(txt):
     """Nettoie le texte, retire les mots vides et normalise les pluriels."""
@@ -364,42 +351,7 @@ def nettoyer_texte(txt):
     mots_filtres = [m for m in str(txt).lower().split() if m not in mots_ig]
     return " ".join([m[:-1] if m.endswith('s') and len(m) > 3 else m for m in mots_filtres])
 
-def parler(texte):
-    """Synthèse vocale sécurisée pour éviter de bloquer Streamlit."""
-    def run_engine():
-        try:
-            texte_pur = re.sub(r'[---🧬🔍⚠️✅•*`]', '', texte)
-            texte_pur = re.sub(r'\s+', ' ', texte_pur).strip()
-            
-            engine = pyttsx3.init()
-            engine.setProperty('rate', 170)
-            engine.setProperty('volume', 1.0)
-            engine.say(texte_pur)
-            engine.runAndWait()
-        except Exception:
-            pass # Évite de faire planter le flux GUI
-            
-    threading.Thread(target=run_engine, daemon=True).start()
-
-def ecouter_micro():
-    """Capture audio via microphone avec gestion d'erreurs propre."""
-    recognizer = sr.Recognizer()
-    try:
-        with sr.Microphone() as source:
-            st.toast("🎙️ Leila t'écoute... Parle maintenant !", icon="🎙️")
-            recognizer.adjust_for_ambient_noise(source, duration=0.5)
-            audio = recognizer.listen(source, timeout=5, phrase_time_limit=8)
-            texte_recu = recognizer.recognize_google(audio, language="fr-FR")
-            return texte_recu
-    except sr.WaitTimeoutError:
-        st.warning("Temps d'écoute dépassé. Réessaie.")
-    except sr.UnknownValueError:
-        st.warning("Je n'ai pas bien compris ce que tu as dit.")
-    except Exception as e:
-        st.error("Erreur de connexion au microphone.")
-    return None
-
-def moteur_cognitif_leila(liste_symptomes_bruts, texte_integral=""):
+def moteur_cognitif_leyla(liste_symptomes_bruts, texte_integral=""):
     """Moteur d'analyse croisée des symptômes."""
     historique_nettoye = nettoyer_texte(texte_integral)
     pistes_identifiees = []
@@ -438,7 +390,7 @@ def moteur_cognitif_leila(liste_symptomes_bruts, texte_integral=""):
     if not pistes_identifiees:
         return "Dis donc, je n'ai repéré aucun symptôme clair dans ce que tu m'as partagé. On reprend calmement ?", []
 
-    rapport = "--- 🧬 RAPPORT D'EXPERTISE INTER-FAMILLE DE LEILA ---\n\n"
+    rapport = "--- 🧬 RAPPORT D'EXPERTISE INTER-FAMILLE DE LEYLA ---\n\n"
     classes_presentes = set(p['classe'] for p in pistes_identifiees)
     
     if len(classes_presentes) > 1:
@@ -461,67 +413,53 @@ def moteur_cognitif_leila(liste_symptomes_bruts, texte_integral=""):
 # --- INTERFACE UTILISATEUR (STREAMLIT) ---
 
 def afficher():
-    if st.button("⬅️ Retour à l'accueil Layla"):
+    if st.button("⬅️ Retour à l'accueil Leyla"):
         st.session_state.module_actif = "accueil"
         st.rerun()
 
-    st.title("🩺 Leila - Ingénieur Agronome")
-    st.write("Salut ! C'est Leila. Discute avec moi de ce qui se passe sur tes cacaoyers. Quand tu as terminé, tape ou dis **« c'est terminé »**.")
+    st.title("🩺 Leyla - Ingénieur Agronome")
+    st.write("Salut ! C'est Leyla. Écris-moi ce que tu observes sur tes cacaoyers. Quand tu as terminé, tape **« c'est terminé »**.")
 
     # Session states
-    if "messages_diag_leila" not in st.session_state:
+    if "messages_diag_leyla" not in st.session_state:
         msg_accueil = "Salut à toi l'ami ! Dis-moi, qu'est-ce que tu observes d'anormal sur tes cacaoyers ?"
-        st.session_state.messages_diag_leila = [{"role": "assistant", "content": msg_accueil}]
+        st.session_state.messages_diag_leyla = [{"role": "assistant", "content": msg_accueil}]
 
-    if "symptomes_detectes_leila" not in st.session_state:
+    if "symptomes_detectes_leyla" not in st.session_state:
         st.session_state.symptomes_detectes_leila = []
-    if "diagnostic_final_cache_leila" not in st.session_state:
-        st.session_state.diagnostic_final_cache_leila = None
-    if "derniere_question_leila" not in st.session_state:
-        st.session_state.derniere_question_leila = ""
+    if "diagnostic_final_cache_leyla" not in st.session_state:
+        st.session_state.diagnostic_final_cache_leyla = None
 
-    # Historique
-    for msg in st.session_state.messages_diag_leila:
+    # Historique de discussion
+    for msg in st.session_state.messages_diag_leyla:
         with st.chat_message(msg["role"]):
             st.write(msg["content"])
 
-    # Entrée Vocale
-    if st.button("🎙️ Parler à Leila", key="btn_parler_leila_unique"):
-        res = ecouter_micro()
-        if res:
-            st.session_state.derniere_question_leila = res
-            st.rerun()
-
-    # Zone de Saisie Utilisateur
+    # Zone de Saisie Utilisateur par texte
     saisie_utilisateur = st.text_input(
-        "Saisissez votre demande ou vos symptômes :",
-        value=st.session_state.derniere_question_leila,
-        key="input_leila_unique"
+        "Saisissez vos symptômes ou vos observations :",
+        key="input_leyla_unique"
     )
 
-    # Déclenchement au bouton Envoyer ou entrée clavier
     btn_envoyer = st.button("Envoyer 💬", key="btn_send_diag")
 
-    if (saisie_utilisateur and btn_envoyer) or (saisie_utilisateur and saisie_utilisateur != st.session_state.get("dernier_texte_traite", "")):
-        st.session_state["dernier_texte_traite"] = saisie_utilisateur
+    if btn_envoyer and saisie_utilisateur:
         texte_traitement = saisie_utilisateur
-        st.session_state.derniere_question_leila = "" # Vider l'entrée vocale
-
-        st.session_state.messages_diag_leila.append({"role": "user", "content": texte_traitement})
+        st.session_state.messages_diag_leyla.append({"role": "user", "content": texte_traitement})
 
         texte_lower = texte_traitement.lower()
 
         if any(mot in texte_lower for mot in ["c'est terminé", "c'est fini", "fini", "terminé"]):
-            texte_complet_discussion = " ".join([m["content"] for m in st.session_state.messages_diag_leila if m["role"] == "user"])
+            texte_complet_discussion = " ".join([m["content"] for m in st.session_state.messages_diag_leyla if m["role"] == "user"])
             
-            resultat_diag, noms_maladies = moteur_cognitif_leila(st.session_state.symptomes_detectes_leila, texte_complet_discussion)
+            resultat_diag, noms_maladies = moteur_cognitif_leyla(st.session_state.symptomes_detectes_leila, texte_complet_discussion)
             
-            st.session_state.diagnostic_final_cache_leila = {
+            st.session_state.diagnostic_final_cache_leyla = {
                 "diagnostic": resultat_diag,
                 "maladies": noms_maladies,
                 "symptomes": st.session_state.symptomes_detectes_leila.copy()
             }
-            reponse_leila = f"🔍 **Entretien clos, chef !** J'ai bouclé l'analyse. Voici mon rapport complet :\n\n{resultat_diag}"
+            reponse_leyla = f"🔍 **Entretien clos, chef !** J'ai bouclé l'analyse. Voici mon rapport complet :\n\n{resultat_diag}"
         else:
             mots_trouves = []
             texte_compare = nettoyer_texte(texte_lower)
@@ -546,46 +484,44 @@ def afficher():
                             mots_trouves.append(s)
 
             if mots_trouves:
-                reponse_leila = f"J'ai bien noté ça l'ami : `{', '.join(mots_trouves)}`. Tu vois autre chose d'anormal ? (Sinon, dis ou tape **« c'est terminé »**)."
+                reponse_leyla = f"J'ai bien noté ça l'ami : `{', '.join(mots_trouves)}`. Tu vois autre chose d'anormal ? (Sinon, tape **« c'est terminé »**)."
             else:
-                reponse_leila = "Hmm, je ne retrouve pas ce symptôme précis. Peux-tu préciser un peu plus (ex: cabosses noires, fleurs déformées, feuilles jaunies...) ?"
+                reponse_leyla = "Hmm, je ne retrouve pas ce symptôme précis. Peux-tu préciser un peu plus (ex: cabosses noires, fleurs déformées, feuilles jaunies...) ?"
 
-        st.session_state.messages_diag_leila.append({"role": "assistant", "content": reponse_leila})
-        parler(reponse_leila)
+        st.session_state.messages_diag_leyla.append({"role": "assistant", "content": reponse_leyla})
         st.rerun()
 
     # --- ENREGISTREMENT EN BASE LOCALE (SQLITE) ---
-    if st.session_state.diagnostic_final_cache_leila:
+    if st.session_state.diagnostic_final_cache_leyla:
         st.markdown("---")
         st.info("📌 **Enregistrement local** (Le rapport sera stocké sur la tablette en attente de synchronisation).")
         
+        info_prod = st.session_state.get("info_producteur", {})
         col_n, col_z = st.columns(2)
-        nom_prod = col_n.text_input("Nom du Producteur", value="Producteur Local", key="input_nom_prod_diag")
-        zone_prod = col_z.text_input("Zone / Localité", value="Zone Centre", key="input_zone_prod_diag")
+        nom_prod = col_n.text_input("Nom du Producteur", value=info_prod.get("nom", "Producteur Local"), key="input_nom_prod_diag")
+        zone_prod = col_z.text_input("Zone / Localité", value=st.session_state.get("section", "Zone Centre"), key="input_zone_prod_diag")
 
         if st.button("💾 Sauvegarder localement (En attente de synchro)", type="primary", key="btn_envoi_chef_diag"):
             nouveau_rapport = {
                 "nom": nom_prod,
                 "zone": zone_prod,
-                "horodatage": str(pd.Timestamp.now()),
-                "diagnostic": st.session_state.diagnostic_final_cache_leila["diagnostic"],
-                "symptomes_observes": st.session_state.diagnostic_final_cache_leila["symptomes"],
-                "statut_eudr": "Conforme / Diagnostiqué par Leila"
+                "diagnostic": st.session_state.diagnostic_final_cache_leyla["diagnostic"],
+                "symptomes_observes": st.session_state.diagnostic_final_cache_leyla["symptomes"],
+                "statut_eudr": "Conforme / Diagnostiqué par Leyla"
             }
 
-            # Sauvegarde uniquement en locale SQLite
+            # Sauvegarde dans leyla_terrain.db pour la synchronisation
             sauvegarder_en_local_sqlite(nouveau_rapport)
 
-            msg_succes = "Rapport phytosanitaire sauvegardé dans la base locale (Statut: En attente de synchronisation)."
-            st.success(f"💾 {msg_succes}")
-            parler("Diagnostic enregistré localement en attente de réseau.")
+            st.success("💾 Rapport phytosanitaire sauvegardé dans la tablette ! Prêt pour la synchronisation.")
             
-            # Reset
-            st.session_state.diagnostic_final_cache_leila = None
+            # Réinitialisation
+            st.session_state.diagnostic_final_cache_leyla = None
             st.session_state.symptomes_detectes_leila = []
-            st.session_state.messages_diag_leila = [
+            st.session_state.messages_diag_leyla = [
                 {"role": "assistant", "content": "Nouveau diagnostic initialisé. Qu'est-ce qui cloche sur la parcelle ?"}
             ]
+            time.sleep(1.5)
             st.rerun()
 
 if __name__ == "__main__":
