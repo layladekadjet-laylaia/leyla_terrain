@@ -4,6 +4,11 @@ import os
 from datetime import datetime
 import requests
 
+import customtkinter as ctk
+import diagnostique
+import estimation_de_rendement 
+import geolocalisation
+
 # --- CONFIGURATION DE LA TABLETTE ---
 st.set_page_config(page_title="Leyla Agri - Tablette Terrain", page_icon="📱", layout="centered")
 
