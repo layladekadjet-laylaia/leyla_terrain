@@ -150,18 +150,20 @@ def chercher_lieu_excel(centre_gps, chemin="base_ivoire.xlsx"):
 def composant_tracker_garmin():
     html_code = """
     <div style="background-color: #1e1e1e; padding: 12px; border-radius: 8px; text-align: center; color: white;">
-        <p style="margin:0; font-size: 14px;">🛰️ <b>Relevé GPS automatique en temps réel</b></p>
-        <p id="status_text" style="color: #2ecc71; margin: 4px 0; font-size: 12px;">Recherche du signal GPS...</p>
-        <p id="coords_display" style="font-family: monospace; font-size: 12px; margin: 0; color: #bdc3c7;">--</p>
+        <p style="margin:0; font-size: 14px;">🛰️ <b>Relevé GPS automatique (Pas : 1 Mètre)</b></p>
+        <p id="status_text" style="color: #f1c40f; margin: 4px 0; font-size: 12px;">Initialisation du composant...</p>
+        <p id="coords_display" style="font-family: monospace; font-size: 12px; margin: 0; color: #bdc3c7;">Lat: -- | Lon: -- | Alt: --</p>
+        <p id="count_display" style="font-size: 11px; color: #2ecc71; margin-top: 4px;">Points capturés : 0</p>
     </div>
 
     <script>
     let lastLat = null;
     let lastLon = null;
-    const minDistanceMeters = 3; // Enregistre un point tous les 3 mètres
+    let pointCount = 0;
+    const minDistanceMeters = 1.0; // Capturation fixée à 1 mètre
 
     function haversineDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371000;
+        const R = 6371000; // Rayon de la Terre en mètres
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
         const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -176,17 +178,19 @@ def composant_tracker_garmin():
             (position) => {
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
-                const alt = position.coords.altitude || 120.0;
+                const alt = position.coords.altitude !== null ? position.coords.altitude : 120.0;
+                const accuracy = position.coords.accuracy;
 
                 document.getElementById("coords_display").innerText = 
-                    "Lat: " + lat.toFixed(6) + " | Lon: " + lon.toFixed(6) + " | Alt: " + alt.toFixed(1) + "m";
-                document.getElementById("status_text").innerText = "🟢 Signal GPS actif - Enregistrement automatique";
+                    "Lat: " + lat.toFixed(6) + " | Lon: " + lon.toFixed(6) + " (±" + Math.round(accuracy) + "m)";
 
                 let addPoint = false;
+                let dist = 0;
+
                 if (lastLat === null || lastLon === null) {
                     addPoint = true;
                 } else {
-                    const dist = haversineDistance(lastLat, lastLon, lat, lon);
+                    dist = haversineDistance(lastLat, lastLon, lat, lon);
                     if (dist >= minDistanceMeters) {
                         addPoint = true;
                     }
@@ -195,25 +199,34 @@ def composant_tracker_garmin():
                 if (addPoint) {
                     lastLat = lat;
                     lastLon = lon;
+                    pointCount++;
+                    document.getElementById("count_display").innerText = "Points capturés localement : " + pointCount + " (Dernier déplacement: " + dist.toFixed(1) + "m)";
+                    document.getElementById("status_text").innerText = "🟢 GPS Actif - Point enregistré à 1m";
+                    document.getElementById("status_text").style.color = "#2ecc71";
+
                     const pointData = { lat: lat, lon: lon, alt: alt };
                     window.parent.postMessage({ type: 'streamlit:setComponentValue', value: pointData }, '*');
+                } else {
+                    document.getElementById("status_text").innerText = "🟡 En attente d'un déplacement de 1m (Actuel: " + dist.toFixed(1) + "m)";
+                    document.getElementById("status_text").style.color = "#f1c40f";
                 }
             },
             (error) => {
-                document.getElementById("status_text").innerText = "🔴 Erreur GPS : " + error.message;
+                document.getElementById("status_text").innerText = "🔴 Erreur GPS (" + error.code + ") : " + error.message;
+                document.getElementById("status_text").style.color = "#e74c3c";
             },
             {
                 enableHighAccuracy: true,
-                maximumAge: 1000,
-                timeout: 10000
+                maximumAge: 0,         // Force la lecture en temps réel sans utiliser le cache
+                timeout: 5000
             }
         );
     } else {
-        document.getElementById("status_text").innerText = "🔴 La géolocalisation n'est pas supportée par votre navigateur.";
+        document.getElementById("status_text").innerText = "🔴 La géolocalisation n'est pas supportée par ce navigateur.";
     }
     </script>
     """
-    return components.html(html_code, height=100)
+    return components.html(html_code, height=120)
 
 # =========================================================================
 # --- 3. MODULE PRINCIPAL STREAMLIT ---
