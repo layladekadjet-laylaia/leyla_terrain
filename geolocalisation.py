@@ -11,9 +11,14 @@ import matplotlib.pyplot as plt
 import pydeck as pdk
 from shapely.geometry import Polygon, Point
 
+# Initialisation COM pour éviter les crashs pyttsx3 sous Windows/EXE
 def parler(texte):
     def run_engine():
         try:
+            import platform
+            if platform.system() == "Windows":
+                import pythoncom
+                pythoncom.CoInitialize()
             engine = pyttsx3.init()
             engine.setProperty('rate', 175)
             engine.setProperty('volume', 1.0)
@@ -116,13 +121,22 @@ def analyser_domaines_etat(coords_lat_lon):
 
     return "Situé hors des domaines protégés (Conforme aux directives EUDR)", True
 
-def chercher_lieu_excel(centre_gps, chemin="base_ivoire.xlsx"):
-    lat_cible, lon_cible = centre_gps
+@st.cache_data(show_spinner=False)
+def charger_base_localites(chemin="base_ivoire.xlsx"):
     if not os.path.exists(chemin):
-        return "Localité non référencée (Fichier Excel absent)"
+        return None
     try:
         df = pd.read_excel(chemin, usecols=[28, 29, 30], skiprows=1, names=["nom", "lat", "lon"])
-        df = df.dropna(subset=["nom", "lat", "lon"])
+        return df.dropna(subset=["nom", "lat", "lon"])
+    except Exception:
+        return None
+
+def chercher_lieu_excel(centre_gps, chemin="base_ivoire.xlsx"):
+    lat_cible, lon_cible = centre_gps
+    df = charger_base_localites(chemin)
+    if df is None:
+        return "Localité non référencée (Base locale indisponible)"
+    try:
         distances = np.sqrt((df["lat"].astype(float) - lat_cible)**2 + (df["lon"].astype(float) - lon_cible)**2)
         idx_min = distances.idxmin()
         return str(df.loc[idx_min, "nom"])
@@ -142,7 +156,7 @@ def afficher():
     if "is_tracking" not in st.session_state:
         st.session_state.is_tracking = False
 
-    st.title("🛰️ LEILA — Module de Localisation de Parcelle")
+    st.title("🛰️ LEYLA — Module de Localisation de Parcelle")
     st.markdown("---")
 
     # --- ÉTAPE 1 : Accueil ---
@@ -174,7 +188,6 @@ def afficher():
         if st.session_state.besoin_maquette:
             st.write("✨ **Mode Maquettes activé :** Leila a besoin d'un polygone complet.")
             
-            # --- STRUCTURE EN 3 ONGLETS CONFORMÉMENT À VOTRE REQUÊTE ---
             tab_gps, tab_fichiers, tab_manuel = st.tabs([
                 "📡 Suivi GPS Direct (Walk & Track)", 
                 "📁 Téléversement de Croquis/Fichiers", 
@@ -184,7 +197,7 @@ def afficher():
             # --- ONGLET 1: TRACKING GPS CONTINU EN DIRECT ---
             with tab_gps:
                 st.markdown("#### 🚶 Mode Marche Terrain (Relevé Continu)")
-                st.info("💡 **Instructions :** Activez la géolocalisation sur votre téléphone. Placez-vous sur la première borne, cliquez sur **Démarrer**, faites le tour de la parcelle à pied, puis cliquez sur **Boucler et Valider**.")
+                st.info("💡 **Instructions :** Placez-vous sur la première borne, démarrez le suivi, parcourez le périmètre, puis validez la fermeture de la parcelle.")
 
                 c_start, c_add, c_stop = st.columns(3)
                 with c_start:
@@ -198,30 +211,22 @@ def afficher():
                         st.session_state.is_tracking = False
                         st.rerun()
 
-                with c_add:
-                    if st.button("📍 Marquer une borne manuellement", use_container_width=True):
-                        # Action pour forcer un point si besoin
-                        pass
-
-                # Composant JS/HTML de géolocalisation
                 if st.session_state.is_tracking:
-                    st.success("🟢 **Acoustique GPS active :** Enregistrement de votre parcours...")
+                    st.success("🟢 **Acquisition GPS active :** Enregistrement du parcours...")
                     
-                    # Interface d'ajout rapide de coordonnées si le GPS mobile réagit via formulaire
                     c_lat, c_lon, c_alt = st.columns(3)
                     with c_lat:
-                        g_lat = st.number_input("Lat actuelle", value=5.942100, format="%.6f")
+                        g_lat = st.number_input("Lat actuelle", value=5.942100, format="%.6f", key="g_lat_input")
                     with c_lon:
-                        g_lon = st.number_input("Lon actuelle", value=-4.215400, format="%.6f")
+                        g_lon = st.number_input("Lon actuelle", value=-4.215400, format="%.6f", key="g_lon_input")
                     with c_alt:
-                        g_alt = st.number_input("Alt actuelle (m)", value=120.0)
+                        g_alt = st.number_input("Alt actuelle (m)", value=120.0, key="g_alt_input")
 
-                    if st.button("➕ Capturer ce point du parcours", use_container_width=True):
+                    if st.button("➕ Capturer la borne actuelle", use_container_width=True):
                         st.session_state.points_gps.append({'lat': g_lat, 'lon': g_lon, 'alt': g_alt})
                         parler(f"Point numéro {len(st.session_state.points_gps)} enregistré")
                         st.rerun()
 
-                # Tableau des bornes enregistrées pendant la marche
                 if st.session_state.points_gps:
                     st.write(f"🚩 **Bornes capturées ({len(st.session_state.points_gps)}) :**")
                     df_pts = pd.DataFrame(st.session_state.points_gps)
@@ -229,7 +234,7 @@ def afficher():
 
                     c_reset, c_valid = st.columns(2)
                     with c_reset:
-                        if st.button("🗑️ Effacer tous les points"):
+                        if st.button("🗑️ Effacer tous les points", use_container_width=True):
                             st.session_state.points_gps = []
                             st.rerun()
                     with c_valid:
@@ -278,7 +283,7 @@ def afficher():
                         else:
                             st.error("⚠️ Moins de 3 points valides trouvés.")
                     except Exception as e:
-                        st.error(f"Erreur de lecture : {e}")
+                        st.error(f"Erreur de lecture du fichier : {e}")
 
             # --- ONGLET 3: SAISIE MANUELLE ---
             with tab_manuel:
@@ -366,7 +371,7 @@ def afficher():
         else:
             st.warning(f"⚠️ **Domaine de l'État :** {statut_texte}")
 
-        cle_vocal_final = f"{superficie_ha}-{nom_localite}-{st.session_state.besoin_maquette}"
+        cle_vocal_final = f"{superficie_ha:.2f}-{nom_localite}-{st.session_state.besoin_maquette}"
         if "dernier_vocal_module3" not in st.session_state or st.session_state.dernier_vocal_module3 != cle_vocal_final:
             discours = f"La parcelle est située à {nom_localite}. Superficie : {superficie_ha:.2f} hectares. {statut_texte}."
             parler(discours)
