@@ -5,7 +5,6 @@ import threading
 import speech_recognition as sr
 import os
 import re
-from cerveau_central import sauvegarder_donnee
  
 # --- DICTIONNAIRE AGRONOMIQUE DE L'INGÉNIEUR LEYLA ---
 DIAGNOSTIQUE = {
