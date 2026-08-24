@@ -2,15 +2,28 @@ import streamlit as st
 import sqlite3
 import os
 from datetime import datetime
+from supabase import create_client
 
 # --- CONFIGURATION DE LA TABLETTE ---
 st.set_page_config(page_title="Leyla Agri - Tablette Terrain", page_icon="📱", layout="centered")
+
+# --- INITIALISATION DE SUPABASE VIA LES SECRETS ---
+@st.cache_resource
+def init_supabase():
+    try:
+        url = st.secrets["supabase"]["url"]
+        key = st.secrets["supabase"]["key"]
+        return create_client(url, key)
+    except Exception as e:
+        st.error(f"Erreur de configuration Supabase : {e}")
+        return None
+
+supabase = init_supabase()
 
 # --- INITIALISATION DE LA BASE DE DONNÉES LOCALE (SQLite) ---
 def init_local_db():
     conn = sqlite3.connect("leyla_terrain.db")
     cursor = conn.cursor()
-    # Table des rapports locaux en attente de synchronisation
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS rapports_locaux (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,7 +49,6 @@ init_local_db()
 st.title("📱 Leyla Agri - Mode Terrain")
 st.markdown("---")
 
-# Utilisation de st.session_state pour simuler le verrouillage de l'identification
 if "identifie" not in st.session_state:
     st.session_state.identifie = False
 
@@ -59,7 +71,6 @@ if not st.session_state.identifie:
                 st.error("Veuillez remplir tous les champs d'identification.")
     st.stop()
 
-# Si le profil est verrouillé, on affiche un récapitulatif discret dans la barre latérale
 with st.sidebar:
     st.markdown("### 👤 Session Active")
     st.write(f"**Coop :** {st.session_state.cooperative}")
@@ -116,12 +127,11 @@ elif choix_module == "4. Estimation de Rendement":
 
 st.markdown("---")
 
-# --- BOUTON ENREGISTRER (LOCAL - SQLite) AVEC RESET POUR LE PRODUCTEUR SUIVANT ---
+# --- BOUTON ENREGISTRER (LOCAL - SQLite) ---
 if st.button("💾 Enregistrer et passer au producteur suivant", use_container_width=True):
     if nom_producteur and choix_module != "-- Choisir un module --":
         date_actuelle = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
         
-        # Insertion dans la base SQLite locale de la tablette
         conn = sqlite3.connect("leyla_terrain.db")
         cursor = conn.cursor()
         cursor.execute("""
@@ -143,19 +153,15 @@ if st.button("💾 Enregistrer et passer au producteur suivant", use_container_w
         conn.close()
         
         st.success(f"Données de {nom_producteur} enregistrées avec succès dans la tablette !")
-        
-        # Réinitialisation propre pour enchaîner le producteur suivant
         st.rerun()
-        
     else:
         st.error("Veuillez renseigner le nom du producteur et choisir un module valide.")
 
-# --- 4. LE BOUTON "ENVOYER" (SYNCHRONISATION VERS LE SERVEUR CENTRAL) ---
+# --- 4. LE BOUTON "ENVOYER" (SYNCHRONISATION VERS SUPABASE) ---
 st.markdown("---")
 st.header("🔄 Synchronisation / Envoi au Serveur Central")
-st.info("Lorsque vous disposez d'une connexion Internet (réseau stable), cliquez ci-dessous pour envoyer les données enregistrées vers le serveur central.")
+st.info("Lorsque vous disposez d'une connexion Internet, cliquez ci-dessous pour envoyer les données vers le serveur central Supabase.")
 
-# Affichage des éléments en attente dans SQLite
 conn = sqlite3.connect("leyla_terrain.db")
 cursor = conn.cursor()
 cursor.execute("SELECT COUNT(*) FROM rapports_locaux WHERE statut='En attente'")
@@ -165,14 +171,53 @@ conn.close()
 st.write(f"📦 Rapports en attente d'envoi dans la tablette : **{nombre_attente}**")
 
 if st.button("🚀 SYNCHRONISER / ENVOYER AU SERVEUR CENTRAL", use_container_width=True):
-    if nombre_attente > 0:
-        # Simulation de l'envoi HTTP vers le serveur central
-        conn = sqlite3.connect("leyla_terrain.db")
-        cursor = conn.cursor()
-        cursor.execute("UPDATE rapports_locaux SET statut='Envoyé' WHERE statut='En attente'")
-        conn.commit()
-        conn.close()
-        st.success("Synchronisation réussie ! Toutes les données ont été transmises au serveur central.")
-        st.rerun()
-    else:
+    if nombre_attente > 0 and supabase:
+        try:
+            # Récupérer les données en attente
+            conn = sqlite3.connect("leyla_terrain.db")
+            cursor = conn.cursor()
+            cursor.execute("SELECT id, cooperative, section, technicien, producteur, code_producteur, superficie, age_parcelle, module_type, donnees_module FROM rapports_locaux WHERE statut='En attente'")
+            lignes = cursor.fetchall()
+            
+            succes_envoi = True
+            for ligne in lignes:
+                row_id, coop, sec, tech, prod, code_p, sup, age_p, mod_t, donnees_m = ligne
+                
+                # Conversion sécurisée de l'âge de la parcelle en entier (ex: "12 ans" -> 12)
+                age_int = 0
+                try:
+                    age_int = int(''.join(filter(str.isdigit, str(age_p))))
+                except:
+                    age_int = 0
+
+                # Préparation du dictionnaire pour la table Supabase
+                payload = {
+                    "cooperative_id": coop,
+                    "section_id": sec,
+                    "agent_id": tech,
+                    "nom_producteur": prod,
+                    "code_producteur": str(code_p) if code_p else "",
+                    "superficie": float(sup),
+                    "age_cacaoyere": age_int,
+                    "module_execute": mod_t,
+                    "observations_diagnostic": donnees_m,
+                    "rdue_conforme": True
+                }
+                
+                # Insertion réelle dans Supabase
+                response = supabase.table("producteurs_parcelles").insert(payload).execute()
+                
+                # Marquer comme envoyé localement
+                cursor.execute("UPDATE rapports_locaux SET statut='Envoyé' WHERE id=?", (row_id,))
+            
+            conn.commit()
+            conn.close()
+            st.success("Synchronisation réussie ! Toutes les données ont été transmises et enregistrées sur le serveur central Supabase.")
+            st.rerun()
+            
+        except Exception as e:
+            st.error(f"Erreur lors de la transmission vers le serveur central : {e}")
+    elif nombre_attente == 0:
         st.warning("Aucune nouvelle donnée en attente de synchronisation.")
+    else:
+        st.error("Impossible de se connecter au serveur central Supabase.")
