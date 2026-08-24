@@ -24,6 +24,29 @@ if 'donnees_carres' not in st.session_state:
 if 'saisie_carres_terminee' not in st.session_state:
     st.session_state.saisie_carres_terminee = False
 
+
+# --- Fonctions de Diagnostic Autonomes (Sans moteur externe) ---
+def analyser_sante_locale(cssv, assainissement, elagage):
+    alertes = []
+    if cssv == "Présence visible":
+        alertes.append("⚠️ Attaque de Swollen Shoot (CSSV) détectée")
+    if assainissement == "OUI":
+        alertes.append("⚠️ Risque phytosanitaire (Résidus présents)")
+    if elagage == "NON":
+        alertes.append("⚠️ Élégage nécessaire pour réduire l'ombrage excessif")
+    
+    if not alertes:
+        return "✅ État sanitaire global de la parcelle : Bon"
+    return " Diagnostic Santé : " + " | ".join(alertes)
+
+def analyser_fertilite_locale(texture_sol, engrais_type):
+    return f"🌱 Fertilité : Sol {texture_sol} | Apport engrais : {engrais_type}"
+
+def analyser_productivite_locale(age, ombrage, recolte):
+     status = "Optimale" if 8 <= age <= 20 else "Jeune plantation ou vieillissante"
+     return f"📈 Productivité : Plantation de {age} ans ({status}) | Arbres d'ombrage : {ombrage}"
+
+
 # --- Fonctions des Parties ---
 def afficher_partie_1():
     st.subheader("Partie 1 : Informations du Producteur")
@@ -65,18 +88,21 @@ def afficher_partie_2():
     if s == 1:
         st.write("### 1. Coordonnées GPS")
         if st.button("📍 Capturer la position", key="btn_gps_capture_final"):
-            st.session_state.gps = streamlit_geolocation()        
+            if streamlit_geolocation:
+                st.session_state.gps = streamlit_geolocation()
+            else:
+                st.warning("Module GPS Web indisponible.")
         if 'gps' in st.session_state and st.session_state.gps:
             st.write("Position capturée :", st.session_state.gps)
         
     elif s == 2:
         st.session_state.data_rendement['pluvio'] = st.radio("2. Appréciation de la pluviométrie", ["BON", "MOYEN", "MAUVAIS"], key="r_pluvio")
     elif s == 3:
-        st.session_state.data_rendement['recolte'] = st.number_input("3. Récolte de l'année dernière", min_value=0, key="n_recolte")
+        st.session_state.data_rendement['recolte'] = st.number_input("3. Récolte de l'année dernière (kg)", min_value=0, key="n_recolte")
     elif s == 4:
         st.session_state.data_rendement['materiel'] = st.radio("4. Matériel végétal utilisé", ["cnra", "Tout Venant"], key="r_materiel")
     elif s == 5:
-        st.session_state.data_rendement['prod_max'] = st.number_input("5. Production annuelle la plus élevée", min_value=0, key="n_prod_max")
+        st.session_state.data_rendement['prod_max'] = st.number_input("5. Production annuelle la plus élevée (kg)", min_value=0, key="n_prod_max")
     elif s == 6:
         st.session_state.data_rendement['age_arbres'] = st.number_input("6. Âge des arbres (années)", min_value=0, key="n_age")
     elif s == 7:
@@ -120,7 +146,6 @@ def afficher_partie_2():
 def afficher_estimation():
     st.subheader("Partie 3 : Diagnostic et Comptage par Carré")
     
-    # 1. Initialisation de la variable nombre_carres (par défaut à 3 ou valeur choisie)
     if 'nombre_carres' not in st.session_state:
         st.session_state.nombre_carres = 3
     if 'index_carre_actuel' not in st.session_state:
@@ -130,7 +155,6 @@ def afficher_estimation():
     if 'saisie_carres_terminee' not in st.session_state:
         st.session_state.saisie_carres_terminee = False
 
-    # 2. Choix dynamique du nombre de carrés si on est au tout début de la partie 3
     if not st.session_state.saisie_carres_terminee and len(st.session_state.donnees_carres) == 0 and st.session_state.index_carre_actuel == 1:
         st.session_state.nombre_carres = st.number_input(
             "Combien de carrés d'échantillonnage (10m x 10m) souhaitez-vous analyser ?", 
@@ -179,13 +203,11 @@ def afficher_estimation():
                     st.session_state.data_rendement["details_carres"] = st.session_state.donnees_carres
                     st.session_state.data_rendement["horodatage"] = time.strftime("%Y-%m-%d %H:%M:%S")
                     
-                    # Import local des fonctions d'analyse pour éviter les boucles circulaires
-                    from moteur_layla import analyser_sante, analyser_fertilite, analyser_productivite
+                    # Exécution du diagnostic local
                     data = st.session_state.data_rendement
-                    
-                    diag_sante = analyser_sante(data.get('cssv'), data.get('assainissement'), data.get('elagage'))
-                    diag_fert = analyser_fertilite(data.get('texture_sol'), data.get('engrais_type'))
-                    diag_prod = analyser_productivite(data.get('age_arbres'), data.get('ombrage'), data.get('recolte', 0))
+                    diag_sante = analyser_sante_locale(data.get('cssv'), data.get('assainissement'), data.get('elagage'))
+                    diag_fert = analyser_fertilite_locale(data.get('texture_sol'), data.get('engrais_type'))
+                    diag_prod = analyser_productivite_locale(data.get('age_arbres'), data.get('ombrage'), data.get('recolte', 0))
                     
                     st.session_state.diag_sante = diag_sante
                     st.session_state.diag_fert = diag_fert
@@ -210,7 +232,7 @@ def afficher_estimation():
                     st.session_state.data_rendement["previsions"] = st.session_state.resultats_previsionnels
                     st.rerun()
     else:
-        st.write("### 🔍 Diagnostic Layla IA")
+        st.write("### 🔍 Diagnostic Terrain")
         st.success(st.session_state.diag_sante)
         st.info(st.session_state.diag_fert)
         st.warning(st.session_state.diag_prod)
@@ -223,8 +245,7 @@ def afficher_estimation():
         st.warning(f"🟠 **Moyen Terme / 4-5 mois (Chérèles ajustées) :** ~{res['moyen_terme']} Tonnes")
         
         st.write("---")
-        # BOUTON UNIQUE DE FIN : Enregistre, transmet au chef et revient à l'accueil
-        if st.button("🏁 Enregistrer et envoyer au Chef", type="primary", key="btn_sortir_p3_fin"):
+        if st.button("🏁 Enregistrer et sauvegarder localement", type="primary", key="btn_sortir_p3_fin"):
             fichier_json = "base_de_donnees_layla.json"
             if os.path.exists(fichier_json):
                 with open(fichier_json, "r", encoding="utf-8") as f:
@@ -238,16 +259,15 @@ def afficher_estimation():
             if "Estimation_Rendement" not in data_file:
                 data_file["Estimation_Rendement"] = []
 
-            # Sauvegarde directe dans le tableau du chef
             data_file["Estimation_Rendement"].append(st.session_state.data_rendement)
 
             with open(fichier_json, "w", encoding="utf-8") as f:
                 json.dump(data_file, f, indent=4, ensure_ascii=False)
 
-            st.success("✅ Rapport enregistré et transmis avec succès au Tableau de Bord du Chef !")
+            st.success("✅ Rapport enregistré avec succès dans la base locale !")
             st.balloons()
             
-            # Réinitialisation totale des états
+            # Réinitialisation des états
             st.session_state.data_rendement = {}
             st.session_state.gps = None  
             st.session_state.etape_courante = 1
@@ -255,9 +275,8 @@ def afficher_estimation():
             st.session_state.donnees_carres = []
             st.session_state.index_carre_actuel = 1
             st.session_state.saisie_carres_terminee = False
-            st.session_state.nombre_carres = 3 # Réinitialisation de la valeur par défaut
+            st.session_state.nombre_carres = 3
             
-            # Correction clé : Vérification de l'existence de 'module_actif' pour éviter l'erreur KeyError
             if 'module_actif' in st.session_state:
                 st.session_state.module_actif = "accueil"
             
