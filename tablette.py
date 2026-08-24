@@ -6,7 +6,7 @@ import requests
 
 # --- IMPORTATION DE TES VRAIS MODULES ---
 import diagnostique
-import estimation_de_rendement  # Assure-toi que le fichier est renommé estimation_de_rendement.py (avec underscores)
+import estimation_de_rendement
 import geolocalisation
 
 # --- CONFIGURATION DE LA TABLETTE ---
@@ -72,7 +72,7 @@ with st.sidebar:
         st.session_state.identifie = False
         st.rerun()
 
-# --- 2. LES DIFFÉRENTS MODULES DE TERRAIN ---
+# --- 2. SÉLECTION ET EXÉCUTION DES MODULES TERRAIN ---
 st.header("🛠️ Modules de Saisie")
 choix_module = st.selectbox(
     "Sélectionnez le module à exécuter :",
