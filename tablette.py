@@ -4,7 +4,7 @@ import os
 from datetime import datetime
 import requests
 
-# --- IMPORTATION DE TES VRAIS MODULES ---
+# --- IMPORTATION DE TES MODULES ---
 import diagnostique
 import estimation_de_rendement
 import geolocalisation
@@ -72,7 +72,27 @@ with st.sidebar:
         st.session_state.identifie = False
         st.rerun()
 
-# --- 2. SÉLECTION ET EXÉCUTION DES MODULES TERRAIN ---
+# --- 2. FICHE DE SAISIE DU PRODUCTEUR & DE LA PARCELLE ---
+st.header("📋 Fiche Producteur & Parcelle")
+col1, col2 = st.columns(2)
+with col1:
+    nom_producteur = st.text_input("Nom du Producteur", key="nom_prod_tab")
+    code_producteur = st.text_input("Code du Producteur (optionnel)", key="code_prod_tab")
+with col2:
+    superficie = st.number_input("Superficie (Hectares)", min_value=0.1, step=0.1, value=1.0, key="sup_prod_tab")
+    age_parcelle = st.text_input("Âge de la cacaoyère (ex: 12 ans)", key="age_prod_tab")
+
+# Stockage dans le session_state pour accès global par les modules si besoin
+st.session_state.info_producteur = {
+    "nom": nom_producteur,
+    "code": code_producteur,
+    "superficie": superficie,
+    "age": age_parcelle
+}
+
+st.markdown("---")
+
+# --- 3. SÉLECTION ET EXÉCUTION DES MODULES TERRAIN ---
 st.header("🛠️ Modules de Saisie")
 choix_module = st.selectbox(
     "Sélectionnez le module à exécuter :",
@@ -91,7 +111,7 @@ elif choix_module == "2. Géo-intelligence & RDUE":
 elif choix_module == "3. Estimation de Rendement":
     estimation_de_rendement.afficher()
 
-# --- 3. SYNCHRONISATION / ENVOI AU SERVEUR CENTRAL ---
+# --- 4. SYNCHRONISATION / ENVOI AU SERVEUR CENTRAL ---
 st.markdown("---")
 st.header("🔄 Synchronisation / Envoi au Serveur Central")
 st.info("Lorsque vous disposez d'une connexion Internet, cliquez ci-dessous pour envoyer les données vers le serveur central Supabase.")
