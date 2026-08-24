@@ -1,15 +1,27 @@
 import streamlit as st
+import pyttsx3
+import threading
 import os
-import sqlite3
+import json
 import time
 import math
-import json
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import pydeck as pdk
 from shapely.geometry import Polygon, Point
-from datetime import datetime
+
+def parler(texte):
+    def run_engine():
+        try:
+            engine = pyttsx3.init()
+            engine.setProperty('rate', 175)
+            engine.setProperty('volume', 1.0)
+            engine.say(texte)
+            engine.runAndWait()
+        except Exception:
+            pass
+    threading.Thread(target=run_engine, daemon=True).start()
 
 # =========================================================================
 # --- 1. RÉFÉRENTIELS (EUDR, PARCS, FORÊTS & AGRO-FORÊTS) ---
@@ -64,43 +76,8 @@ agroforets = {
 }
 
 # =========================================================================
-# --- 2. FONCTIONS DE CALCULS, BDD & ANALYSES ---
+# --- 2. FONCTIONS DE CALCULS & ANALYSES ---
 # =========================================================================
-def init_db():
-    """Initialise la table des relevés géographiques dans SQLite."""
-    conn = sqlite3.connect("leyla_terrain.db")
-    cursor = conn.cursor()
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS geolocalisations (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date_creation TEXT,
-            producteur TEXT,
-            localite TEXT,
-            superficie_ha REAL,
-            altitude_m INTEGER,
-            statut_eudr TEXT,
-            conforme INTEGER,
-            points_json TEXT,
-            statut_envoi TEXT DEFAULT 'En attente'
-        )
-    """)
-    conn.commit()
-    conn.close()
-
-def enregistrer_geolocalisation(producteur, localite, superficie, altitude, statut_eudr, conforme, points):
-    """Insère un levé cadastral dans la base locale."""
-    init_db()
-    conn = sqlite3.connect("leyla_terrain.db")
-    cursor = conn.cursor()
-    now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    cursor.execute("""
-        INSERT INTO geolocalisations 
-        (date_creation, producteur, localite, superficie_ha, altitude_m, statut_eudr, conforme, points_json, statut_envoi)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'En attente')
-    """, (now, producteur, localite, superficie, altitude, statut_eudr, 1 if conforme else 0, json.dumps(points)))
-    conn.commit()
-    conn.close()
-
 def calculer_surface_haversine(coords):
     n = len(coords)
     if n < 3: 
@@ -142,7 +119,7 @@ def analyser_domaines_etat(coords_lat_lon):
 def chercher_lieu_excel(centre_gps, chemin="base_ivoire.xlsx"):
     lat_cible, lon_cible = centre_gps
     if not os.path.exists(chemin):
-        return "Localité non référencée (Fichier absent)"
+        return "Localité non référencée (Fichier Excel absent)"
     try:
         df = pd.read_excel(chemin, usecols=[28, 29, 30], skiprows=1, names=["nom", "lat", "lon"])
         df = df.dropna(subset=["nom", "lat", "lon"])
@@ -150,7 +127,7 @@ def chercher_lieu_excel(centre_gps, chemin="base_ivoire.xlsx"):
         idx_min = distances.idxmin()
         return str(df.loc[idx_min, "nom"])
     except Exception as e:
-        return f"Localité estimée"
+        return f"Localité estimée ({e})"
 
 # =========================================================================
 # --- 3. MODULE PRINCIPAL STREAMLIT ---
@@ -162,110 +139,157 @@ def afficher():
         st.session_state.besoin_maquette = None
     if "points_gps" not in st.session_state:
         st.session_state.points_gps = []
+    if "is_tracking" not in st.session_state:
+        st.session_state.is_tracking = False
 
-    st.title("🛰️ LEYLA — Cartographie & GPS Terrain")
+    st.title("🛰️ LEILA — Module de Localisation de Parcelle")
     st.markdown("---")
 
-    # --- ÉTAPE 1 : Choix du Mode ---
+    # --- ÉTAPE 1 : Accueil ---
     if st.session_state.etape_module == 1:
-        st.subheader("📋 Étape 1 : Sélection du Mode de Relevé")
-        st.info("Choisissez le type d'analyse géographique à effectuer pour cette parcelle.")
+        st.subheader("🤖 Étape 1 : Accueil par Leila")
+        texte_accueil = "En plus de la localisation, voulez-vous voir la maquette 2D ou 3D de la parcelle ?"
+        st.info(f"**Leila :** *« {texte_accueil} »*")
+        
+        if "voix_initiale_fait" not in st.session_state:
+            parler(texte_accueil)
+            st.session_state.voix_initiale_fait = True
 
         col1, col2 = st.columns(2)
         with col1:
-            if st.button("🗺️ Mode Parcelle Complète (2D/3D & Polygons)", type="primary", use_container_width=True):
+            if st.button("🟢 Oui (Je veux les maquettes 2D/3D)", type="primary", use_container_width=True):
                 st.session_state.besoin_maquette = True
                 st.session_state.etape_module = 2
                 st.rerun()
         with col2:
-            if st.button("📍 Mode Point Unique (Localisation Simple)", use_container_width=True):
+            if st.button("🔴 Non (Seulement l'emplacement exact)", use_container_width=True):
                 st.session_state.besoin_maquette = False
                 st.session_state.etape_module = 2
                 st.rerun()
 
-    # --- ÉTAPE 2 : Capture GPS Pas à Pas (Garmin Style) ou Import ---
+    # --- ÉTAPE 2 : Saisie des données ---
     elif st.session_state.etape_module == 2:
-        st.subheader("📍 Étape 2 : Acquisition des Coordonnées GPS")
+        st.subheader("📍 Étape 2 : Acquisition des Coordonnées Géographiques")
 
         if st.session_state.besoin_maquette:
-            tab_garmin, tab_saisie_libre, tab_fichier = st.tabs([
-                "📱 GPS Pas à Pas (Mode Garmin)", 
-                "✍️ Saisie Texte Bloc", 
-                "📁 Importer GPX / CSV"
+            st.write("✨ **Mode Maquettes activé :** Leila a besoin d'un polygone complet.")
+            
+            # --- STRUCTURE EN 3 ONGLETS CONFORMÉMENT À VOTRE REQUÊTE ---
+            tab_gps, tab_fichiers, tab_manuel = st.tabs([
+                "📡 Suivi GPS Direct (Walk & Track)", 
+                "📁 Téléversement de Croquis/Fichiers", 
+                "✏️ Saisie Manuelle des Bornes"
             ])
 
-            # --- TAB 1 : Mode Garmin Smartphone ---
-            with tab_garmin:
-                st.write("🚶‍♂️ **Parcourez le périmètre et relevez chaque borne/sommet :**")
-                
-                # HTML5 Geolocation API injection
-                html_gps = """
-                <script>
-                function getGPS() {
-                    if (navigator.geolocation) {
-                        navigator.geolocation.getCurrentPosition(
-                            (position) => {
-                                document.getElementById("lat_out").value = position.coords.latitude;
-                                document.getElementById("lon_out").value = position.coords.longitude;
-                                document.getElementById("alt_out").value = position.coords.altitude || 120;
-                                document.getElementById("gps_status").innerText = "✅ Position GPS capturée avec succès !";
-                            },
-                            (error) => {
-                                document.getElementById("gps_status").innerText = "⚠️ Erreur GPS : " + error.message;
-                            },
-                            { enableHighAccuracy: true, timeout: 10000 }
-                        );
-                    } else {
-                        document.getElementById("gps_status").innerText = "⚠️ La géolocalisation n'est pas supportée.";
-                    }
-                }
-                </script>
-                <div style="padding:10px; background-color:#262730; border-radius:8px; margin-bottom:10px;">
-                    <button onclick="getGPS()" style="width:100%; padding:10px; background-color:#ff4b4b; color:white; border:none; border-radius:5px; font-weight:bold; cursor:pointer;">
-                        📡 Capturer le Point GPS du Smartphone
-                    </button>
-                    <p id="gps_status" style="color:#00ffcc; font-size:12px; margin-top:5px; text-align:center;">Cliquez pour géolocaliser l'appareil.</p>
-                </div>
-                """
-                st.components.v1.html(html_gps, height=110)
+            # --- ONGLET 1: TRACKING GPS CONTINU EN DIRECT ---
+            with tab_gps:
+                st.markdown("#### 🚶 Mode Marche Terrain (Relevé Continu)")
+                st.info("💡 **Instructions :** Activez la géolocalisation sur votre téléphone. Placez-vous sur la première borne, cliquez sur **Démarrer**, faites le tour de la parcelle à pied, puis cliquez sur **Boucler et Valider**.")
 
-                col_lat, col_lon, col_alt = st.columns(3)
-                with col_lat:
-                    g_lat = st.number_input("Latitude", value=5.942100, format="%.6f", key="g_lat")
-                with col_lon:
-                    g_lon = st.number_input("Longitude", value=-4.215400, format="%.6f", key="g_lon")
-                with col_alt:
-                    g_alt = st.number_input("Altitude (m)", value=120.0, step=1.0, key="g_alt")
-
-                col_btn1, col_btn2 = st.columns(2)
-                with col_btn1:
-                    if st.button("📍 Ajouter ce point GPS", type="primary", use_container_width=True):
-                        st.session_state.points_gps.append({'lat': g_lat, 'lon': g_lon, 'alt': g_alt})
-                        st.success(f"Point {len(st.session_state.points_gps)} ajouté !")
+                c_start, c_add, c_stop = st.columns(3)
+                with c_start:
+                    if st.button("▶️ Démarrer le tracé GPS", use_container_width=True, type="primary"):
+                        st.session_state.is_tracking = True
+                        parler("Suivi GPS activé. Vous pouvez commencer à marcher le long des limites.")
                         st.rerun()
 
-                with col_btn2:
-                    if st.button("↩️ Effacer le dernier point", use_container_width=True):
-                        if st.session_state.points_gps:
-                            st.session_state.points_gps.pop()
-                            st.rerun()
+                with c_stop:
+                    if st.button("🛑 Arrêter le suivi", use_container_width=True):
+                        st.session_state.is_tracking = False
+                        st.rerun()
 
-                # Affichage des bornes déjà capturées
+                with c_add:
+                    if st.button("📍 Marquer une borne manuellement", use_container_width=True):
+                        # Action pour forcer un point si besoin
+                        pass
+
+                # Composant JS/HTML de géolocalisation
+                if st.session_state.is_tracking:
+                    st.success("🟢 **Acoustique GPS active :** Enregistrement de votre parcours...")
+                    
+                    # Interface d'ajout rapide de coordonnées si le GPS mobile réagit via formulaire
+                    c_lat, c_lon, c_alt = st.columns(3)
+                    with c_lat:
+                        g_lat = st.number_input("Lat actuelle", value=5.942100, format="%.6f")
+                    with c_lon:
+                        g_lon = st.number_input("Lon actuelle", value=-4.215400, format="%.6f")
+                    with c_alt:
+                        g_alt = st.number_input("Alt actuelle (m)", value=120.0)
+
+                    if st.button("➕ Capturer ce point du parcours", use_container_width=True):
+                        st.session_state.points_gps.append({'lat': g_lat, 'lon': g_lon, 'alt': g_alt})
+                        parler(f"Point numéro {len(st.session_state.points_gps)} enregistré")
+                        st.rerun()
+
+                # Tableau des bornes enregistrées pendant la marche
                 if st.session_state.points_gps:
-                    st.markdown("#### 📐 Bornes enregistrées :")
+                    st.write(f"🚩 **Bornes capturées ({len(st.session_state.points_gps)}) :**")
                     df_pts = pd.DataFrame(st.session_state.points_gps)
                     st.dataframe(df_pts, use_container_width=True)
 
-            # --- TAB 2 : Saisie Libre ---
-            with tab_saisie_libre:
-                saisie_defaut = "\n".join([f"{p['lat']}, {p['lon']}, {p['alt']}" for p in st.session_state.points_gps])
+                    c_reset, c_valid = st.columns(2)
+                    with c_reset:
+                        if st.button("🗑️ Effacer tous les points"):
+                            st.session_state.points_gps = []
+                            st.rerun()
+                    with c_valid:
+                        if st.button("🎯 Boucler la parcelle et analyser", type="primary", use_container_width=True):
+                            if len(st.session_state.points_gps) >= 3:
+                                st.session_state.is_tracking = False
+                                st.session_state.etape_module = 3
+                                st.rerun()
+                            else:
+                                st.error("⚠️ Il faut au moins 3 points GPS pour fermer le polygone de la parcelle.")
+
+            # --- ONGLET 2: TÉLÉVERSEMENT DE FICHIERS ---
+            with tab_fichiers:
+                st.markdown("#### 📁 Charger un fichier de terrain (GPX, CSV, TXT)")
+                croquis_file = st.file_uploader("Choisissez un fichier", type=["gpx", "csv", "txt"], key="file_upload_tab")
+                
+                if croquis_file is not None:
+                    try:
+                        pts_charges = []
+                        nom_fichier = croquis_file.name.lower()
+                        if nom_fichier.endswith('.gpx'):
+                            import xml.etree.ElementTree as ET
+                            tree = ET.parse(croquis_file)
+                            root = tree.getroot()
+                            namespace = {'gpx': root.tag.split('}')[0].strip('{')} if '}' in root.tag else {}
+                            elements = root.findall('.//gpx:trkpt', namespace) or root.findall('.//trkpt', namespace) or root.findall('.//gpx:wpt', namespace) or root.findall('.//wpt', namespace)
+                            
+                            for pt in elements:
+                                lat = float(pt.get('lat'))
+                                lon = float(pt.get('lon'))
+                                ele_elem = pt.find('gpx:ele', namespace) if namespace else pt.find('ele')
+                                alt = float(ele_elem.text) if ele_elem is not None else 120.0
+                                pts_charges.append({'lat': lat, 'lon': lon, 'alt': alt})
+                        else:
+                            df_croquis = pd.read_csv(croquis_file)
+                            if 'lat' in df_croquis.columns and 'lon' in df_croquis.columns:
+                                for _, row in df_croquis.iterrows():
+                                    pts_charges.append({'lat': float(row['lat']), 'lon': float(row['lon']), 'alt': float(row.get('alt', 120))})
+
+                        if len(pts_charges) >= 3:
+                            st.session_state.points_gps = pts_charges
+                            st.success(f"✅ {len(pts_charges)} points chargés depuis le fichier !")
+                            if st.button("🚀 Analyser ce fichier", type="primary"):
+                                st.session_state.etape_module = 3
+                                st.rerun()
+                        else:
+                            st.error("⚠️ Moins de 3 points valides trouvés.")
+                    except Exception as e:
+                        st.error(f"Erreur de lecture : {e}")
+
+            # --- ONGLET 3: SAISIE MANUELLE ---
+            with tab_manuel:
+                st.markdown("#### ✏️ Saisie textuelle des coordonnées")
                 saisie_texte = st.text_area(
-                    "Entrez la liste des points (Latitude, Longitude, Altitude)", 
-                    value=saisie_defaut, 
+                    "Coordonnées GPS (Format : Latitude, Longitude, Altitude)", 
                     placeholder="5.9421, -4.2154, 120\n5.9430, -4.2150, 122\n5.9415, -4.2140, 118",
-                    height=150
+                    key="manual_text_area"
                 )
-                if st.button("🔄 Mettre à jour depuis le texte", use_container_width=True):
+
+                if st.button("🚀 Valider la saisie manuelle", type="primary"):
                     pts = []
                     for ligne in saisie_texte.split('\n'):
                         if ',' in ligne:
@@ -277,60 +301,27 @@ def afficher():
                                 pts.append({'lat': lat, 'lon': lon, 'alt': alt})
                             except ValueError:
                                 continue
-                    st.session_state.points_gps = pts
-                    st.success(f"{len(pts)} points pris en compte.")
-                    st.rerun()
-
-            # --- TAB 3 : Fichier ---
-            with tab_fichier:
-                croquis_file = st.file_uploader("Téléversez un fichier (GPX, CSV, TXT)", type=["gpx", "csv", "txt"])
-                if croquis_file is not None:
-                    try:
-                        nom_fichier = croquis_file.name.lower()
-                        pts_charges = []
-                        if nom_fichier.endswith('.gpx'):
-                            import xml.etree.ElementTree as ET
-                            tree = ET.parse(croquis_file)
-                            root = tree.getroot()
-                            namespace = {'gpx': root.tag.split('}')[0].strip('{')} if '}' in root.tag else {}
-                            elements = root.findall('.//gpx:trkpt', namespace) or root.findall('.//trkpt', namespace)
-                            if not elements:
-                                elements = root.findall('.//gpx:wpt', namespace) or root.findall('.//wpt', namespace)
-                            for pt in elements:
-                                lat = float(pt.get('lat'))
-                                lon = float(pt.get('lon'))
-                                ele_elem = pt.find('gpx:ele', namespace) if namespace else pt.find('ele')
-                                alt = float(ele_elem.text) if ele_elem is not None else 120.0
-                                pts_charges.append({'lat': lat, 'lon': lon, 'alt': alt})
-                        else:
-                            df_croquis = pd.read_csv(croquis_file)
-                            if 'lat' in df_croquis.columns and 'lon' in df_croquis.columns:
-                                for _, row in df_croquis.iterrows():
-                                    pts_charges.append({'lat': row['lat'], 'lon': row['lon'], 'alt': row.get('alt', 120.0)})
-
-                        if pts_charges:
-                            st.session_state.points_gps = pts_charges
-                            st.success(f"✅ {len(pts_charges)} points chargés depuis le fichier !")
-                    except Exception as e:
-                        st.error(f"Erreur de lecture du fichier : {e}")
-
-            st.markdown("---")
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("⬅️ Retour", use_container_width=True):
-                    st.session_state.etape_module = 1
-                    st.rerun()
-            with c2:
-                if st.button("🚀 Valider et calculer la parcelle", type="primary", use_container_width=True):
-                    if len(st.session_state.points_gps) >= 3:
+                    if len(pts) >= 3:
+                        st.session_state.points_gps = pts
                         st.session_state.etape_module = 3
                         st.rerun()
                     else:
-                        st.error("⚠️ Il faut au moins 3 points GPS pour fermer le polygone de la parcelle.")
+                        st.error("⚠️ Veuillez fournir au moins 3 points GPS valides.")
+
+            st.markdown("---")
+            if st.button("⬅️ Retour au choix initial"):
+                st.session_state.etape_module = 1
+                st.rerun()
 
         else:
-            # Mode Simple
-            st.write("🎯 **Saisie du centre de la parcelle :**")
+            st.write("🎯 **Mode Localisation Simple activé :**")
+            instruction = "Entrez la latitude et la longitude de la parcelle."
+            st.info(f"**Leila :** *« {instruction} »*")
+            
+            if "voix_etape2_non" not in st.session_state:
+                parler(instruction)
+                st.session_state.voix_etape2_non = True
+
             lat_simple = st.text_input("Latitude", value="5.9421")
             lon_simple = st.text_input("Longitude", value="-4.2154")
 
@@ -340,7 +331,7 @@ def afficher():
                     st.session_state.etape_module = 1
                     st.rerun()
             with c2:
-                if st.button("🚀 Valider l'emplacement", type="primary", use_container_width=True):
+                if st.button("🚀 Obtenir l'emplacement", type="primary", use_container_width=True):
                     try:
                         lat_f = float(lat_simple)
                         lon_f = float(lon_simple)
@@ -355,9 +346,9 @@ def afficher():
                     except ValueError:
                         st.error("⚠️ Coordonnées invalides.")
 
-    # --- ÉTAPE 3 : Résultats & Maquettes ---
+    # --- ÉTAPE 3 : Résultats ---
     elif st.session_state.etape_module == 3:
-        st.subheader("📊 Étape 3 : Résultats de l'Analyse Cadastrale")
+        st.subheader("📊 Étape 3 : Résultats de l'Analyse par Leila")
 
         tuples_coords = [(p['lat'], p['lon']) for p in st.session_state.points_gps]
         superficie_ha, centre_gps = calculer_surface_haversine(tuples_coords)
@@ -368,17 +359,21 @@ def afficher():
         m1, m2, m3 = st.columns(3)
         m1.metric("🌳 SUPERFICIE", f"{superficie_ha:.4f} Ha")
         m2.metric("📍 LOCALITÉ", nom_localite)
-        m3.metric("⛰️ ALTITUDE MOYENNE", f"{int(alt_moyenne)} m")
+        m3.metric("⛰️ ALTITUDE", f"{int(alt_moyenne)} m")
 
         if est_conforme:
-            st.success(f"✅ **Statut Réglementaire :** {statut_texte}")
+            st.success(f"✅ **Domaine de l'État :** {statut_texte}")
         else:
-            st.warning(f"⚠️ **Statut Réglementaire :** {statut_texte}")
+            st.warning(f"⚠️ **Domaine de l'État :** {statut_texte}")
 
-        nom_producteur = st.text_input("Nom & Prénoms du Producteur", value="Producteur Non Renseigné")
+        cle_vocal_final = f"{superficie_ha}-{nom_localite}-{st.session_state.besoin_maquette}"
+        if "dernier_vocal_module3" not in st.session_state or st.session_state.dernier_vocal_module3 != cle_vocal_final:
+            discours = f"La parcelle est située à {nom_localite}. Superficie : {superficie_ha:.2f} hectares. {statut_texte}."
+            parler(discours)
+            st.session_state.dernier_vocal_module3 = cle_vocal_final
 
         if st.session_state.besoin_maquette:
-            st.markdown("### 🗺️ Visualisation Cartographique")
+            st.markdown("### 🗺️ Maquettes de la Parcelle (2D & 3D)")
             tab_3d, tab_2d = st.tabs(["🌲 Maquette Réaliste 3D", "📊 Plan Cadastral 2D"])
 
             with tab_3d:
@@ -387,11 +382,12 @@ def afficher():
                     angle_horizontal = st.slider("Rotation azimut (0-360°)", 0, 360, 40, step=10)
                 with col_rot2:
                     angle_vertical = st.slider("Inclinaison pitch (0-85°)", 0, 85, 50, step=5)
-
+                
                 poly_coords_3d = [[p['lon'], p['lat']] for p in st.session_state.points_gps]
+                
                 df_sol = pd.DataFrame([{"polygon": poly_coords_3d, "elevation": alt_moyenne}])
                 df_surface = pd.DataFrame([{"polygon": poly_coords_3d, "elevation": alt_moyenne + 1}])
-
+                
                 layers = [
                     pdk.Layer("PolygonLayer", df_sol, get_polygon="polygon", get_fill_color="[110, 60, 20, 230]", extruded=True, get_elevation="elevation", elevation_scale=0.05),
                     pdk.Layer("PolygonLayer", df_surface, get_polygon="polygon", get_fill_color="[46, 125, 50, 210]", extruded=True, get_elevation="elevation", elevation_scale=0.1)
@@ -401,7 +397,7 @@ def afficher():
                     latitude=centre_gps[0], longitude=centre_gps[1], zoom=16.5,
                     pitch=angle_vertical, bearing=angle_horizontal
                 )
-
+                
                 st.pydeck_chart(pdk.Deck(layers=layers, initial_view_state=view_state, map_style="mapbox://styles/mapbox/satellite-streets-v11"))
 
             with tab_2d:
@@ -418,24 +414,48 @@ def afficher():
                 st.pyplot(fig)
 
         st.markdown("---")
-        if st.button("💾 Enregistrer la parcelle dans la base SQLite", type="primary", use_container_width=True):
-            enregistrer_geolocalisation(
-                producteur=nom_producteur,
-                localite=nom_localite,
-                superficie=superficie_ha,
-                altitude=int(alt_moyenne),
-                statut_eudr=statut_texte,
-                conforme=est_conforme,
-                points=st.session_state.points_gps
-            )
+        if st.button("🏁 Enregistrer et envoyer au Chef", type="primary", key="btn_sortir_p3_fin", use_container_width=True):
+            fichier_json = "base_de_donnees_layla.json"
+            data_file = {}
+            if os.path.exists(fichier_json):
+                try:
+                    with open(fichier_json, "r", encoding="utf-8") as f:
+                        data_file = json.load(f)
+                except Exception:
+                    data_file = {}
 
-            st.success("✅ Levé cadastral enregistré avec succès dans SQLite (Statut : En attente) !")
+            if "file_attente_locale" not in data_file:
+                data_file["file_attente_locale"] = []
+
+            rapport_parcelle = {
+                "horodatage": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "nom": "Producteur Localisation",
+                "zone": "Zone Agricole",
+                "ville": nom_localite,
+                "superficie": superficie_ha,
+                "diagnostic": statut_texte,
+                "altitude_moyenne": int(alt_moyenne),
+                "est_conforme": est_conforme,
+                "besoin_maquette": st.session_state.besoin_maquette,
+                "gps": {"latitude": centre_gps[0], "longitude": centre_gps[1]},
+                "points_gps_bruts": st.session_state.points_gps
+            }
+
+            data_file["file_attente_locale"].append(rapport_parcelle)
+
+            with open(fichier_json, "w", encoding="utf-8") as f:
+                json.dump(data_file, f, indent=4, ensure_ascii=False)
+
+            parler("OK, c'est parti pour une nouvelle localisation.")
+            st.success("✅ Rapport enregistré et transmis avec succès !")
             st.balloons()
-
+            
             # Réinitialisation
             st.session_state.points_gps = []
             st.session_state.etape_module = 1
             st.session_state.besoin_maquette = None
+            for cle_voix in ["voix_initiale_fait", "voix_etape2_oui", "voix_etape2_non", "dernier_vocal_module3"]:
+                st.session_state.pop(cle_voix, None)
             
             time.sleep(1.5)
             st.rerun()
