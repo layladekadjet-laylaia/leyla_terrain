@@ -343,6 +343,129 @@ DIAGNOSTIQUE = {
     }
 }
 
+import sqlite3
+import time
+
+# --- DICTIONNAIRE TERRAIN DE LEYLA (25 PATHOLOGIES & RAVAGEURS) ---
+DICTIONNAIRE_DIAGNOSTIC = {
+    "1. Pourriture brune des cabosses (Phytophthora)": [
+        "tache noire", "taches noires", "cabosse noire", "pourri", "pourriture", 
+        "jus noir", "odeur forte", "moulue noire", "cabosse marron", "chocolat noir"
+    ],
+    "2. Attaque de Mirides / Punaises (Sahlbergella / Distantiella)": [
+        "tache brune", "taches brunes", "piqûre", "piqure", "desséché", 
+        "cabosse grillée", "trous sur cabosse", "cratère", "dessèchement", "brûlure"
+    ],
+    "3. Cochenilles (Vecteurs du Swollen Shoot)": [
+        "point blanc", "points blancs", "poudre blanche", "coton", 
+        "substance collante", "pucerons blancs", "amas blanc", "fourmis"
+    ],
+    "4. Virus du Swollen Shoot (CSSV)": [
+        "gonflement", "rameau gonflé", "mosaïque", "feuille rouge", 
+        "strie rouge", "jaunissement des veines", "baisse de rendement", "tiges déformées"
+    ],
+    "5. Chancre du tronc (Phytophthora palmivora)": [
+        "liquide rouge", "liquide brun", "tronc qui coule", "blessure rouge", 
+        "écorce fendue", "saignement", "écorce craquelée", "gomme"
+    ],
+    "6. Chenilles & Foreurs de tiges (Eulophonotus)": [
+        "trous dans le bois", "sciure", "chenille", "tige cassée", 
+        "galerie", "feuilles mangées", "trous de foreur"
+    ],
+    "7. Anthracnose (Colletotrichum gloeosporioides)": [
+        "taches nécrotiques", "bords desséchés", "feuilles perforées", 
+        "taches avec aureole", "dessèchement des jeunes feuilles"
+    ],
+    "8. Maladie du balai de sorcière (Moniliophthora perniciosa)": [
+        "branches en balai", "ramification excessive", "mousse de rameaux", 
+        "cabosse en forme de fraise", "déformation des bourgeons"
+    ],
+    "9. Moniliose (Moniliophthora roreri)": [
+        "poussière blanche", "cabosse lourde", "poudre grise", "cabosse bosseuse", 
+        "tache marron avec poudre"
+    ],
+    "10. Trachéomycose / Flétrissement vasculaire (Fusarium)": [
+        "flétrissement rapide", "feuilles sèches restées accrochées", 
+        "jaunissement brutal", "dessèchement d'un côté de l'arbre"
+    ],
+    "11. Pourridié racinaire (Rosellinia / Armillaria)": [
+        "racines pourries", "filaments blancs sous l'écorce", "champignon au pied", 
+        "arbre qui tombe", "déchaussement"
+    ],
+    "12. Termites / Mutilation des racines et troncs": [
+        "galeries de terre", "tunnels de terre", "bois mangé", "termites", 
+        "tronc creux", "terre sur le tronc"
+    ],
+    "13. Thrips du cacaoyer (Selenothrips rubrocinctus)": [
+        "feuilles argentées", "aspect plombé", "gouttes noires sous feuilles", 
+        "feuilles bronzées", "chute des feuilles"
+    ],
+    "14. Pucerons du cacaoyer (Toxoptera aurantii)": [
+        "petits insectes noirs", "pucerons noirs", "jeunes pousses crispées", 
+        "feuilles enroulées", "jabon"
+    ],
+    "15. Charançons / Borer des cabosses": [
+        "petits trous sur cabosse", "sciure sur cabosse", "larve dans cabosse", 
+        "cabosse trouée"
+    ],
+    "16. Rats et Écureuils (Rongeurs)": [
+        "cabosse rongée", "trous de dents", "coque ouverte", "fèves mangées", 
+        "reste de cabosse par terre"
+    ],
+    "17. Carence en Azote (N)": [
+        "jaunissement général", "anciennes feuilles jaunes", "petite taille", 
+        "arbre pâle", "manque de vigueur"
+    ],
+    "18. Carence en Potassion (K)": [
+        "bord des feuilles brûlé", "brûlure marginale", "dessèchement de la pointe", 
+        "feuilles enroulées vers le bas"
+    ],
+    "19. Carence en Phosphore (P)": [
+        "feuilles violettes", "teinte pourpre", "feuilles vert foncé rigides", 
+        "retard de croissance"
+    ],
+    "20. Carence en Zinc (Zn) / Feuille en faucille": [
+        "feuilles étroites", "feuilles déformées en faux", "petite feuille", 
+        "feuille ondulée"
+    ],
+    "21. Grillure du feuillage / Coup de soleil (Stress hydrique)": [
+        "feuilles grilées", "brûlure du soleil", "feuilles cassantes", 
+        "chute massive en saison sèche"
+    ],
+    "22. Mousse et Epiphytes (Lichen / Guppy)": [
+        "mousse verte", "lichen blanc", "tronc couvert de plante", 
+        "liane étrangleuse", "barbe sur branches"
+    ],
+    "23. Cherelle Wilt (Avortement naturel des jeunes cabosses)": [
+        "petite cabosse jaune", "cherelle noire sèche", "petite cabosse flétrie", 
+        "avortement sans attaque"
+    ],
+    "24. Attaque de Loranthus (Plante parasite / Mistletoe)": [
+        "plante incrustée", "grosse boule verte sur branche", "parasite sur branche", 
+        "fleurs rouges parasites"
+    ],
+    "25. Dégâts de Rongeurs et Pigeons (Oiseaux / Piqueurs)": [
+        "coups de bec", "trous d'oiseaux", "cabosse piquée"
+    ]
+}
+
+def analyser_description_terrain(texte_saisi):
+    """Analyse le texte saisi par le technicien et retourne la liste des maladies correspondantes."""
+    if not texte_saisi:
+        return []
+        
+    texte = texte_saisi.lower()
+    maladies_detectees = []
+    
+    for maladie, mots_cles in DICTIONNAIRE_DIAGNOSTIC.items():
+        for mot in mots_cles:
+            if mot in texte:
+                if maladie not in maladies_detectees:
+                    maladies_detectees.append(maladie)
+                break
+                
+    return maladies_detectees
+
 # --- OUTILS DE TRAITEMENT TEXTE ---
 
 def nettoyer_texte(txt):
