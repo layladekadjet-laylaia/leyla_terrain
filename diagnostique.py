@@ -5,7 +5,52 @@ import threading
 import speech_recognition as sr
 import os
 import re
- 
+import sqlite3
+import json
+
+# --- GESTION DE LA BASE DE DONNÉES LOCALE (SQLITE) ---
+DB_LOCAL_PATH = "donnees_locales.db"
+
+def init_db_locale():
+    """Initialise la table SQLite locale si elle n'existe pas."""
+    conn = sqlite3.connect(DB_LOCAL_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS diagnostics_locaux (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            nom_producteur TEXT,
+            zone TEXT,
+            horodatage TEXT,
+            rapport_diagnostic TEXT,
+            symptomes_observes TEXT,
+            statut_eudr TEXT,
+            statut_synchro TEXT DEFAULT 'En attente'
+        )
+    """)
+    conn.commit()
+    conn.close()
+
+def sauvegarder_en_local_sqlite(donnees):
+    """Insère le rapport directement dans SQLite avec le statut 'En attente'."""
+    init_db_locale()
+    conn = sqlite3.connect(DB_LOCAL_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO diagnostics_locaux 
+        (nom_producteur, zone, horodatage, rapport_diagnostic, symptomes_observes, statut_eudr, statut_synchro)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    """, (
+        donnees["nom"],
+        donnees["zone"],
+        donnees["horodatage"],
+        donnees["diagnostic"],
+        json.dumps(donnees["symptomes_observes"]),
+        donnees["statut_eudr"],
+        "En attente"
+    ))
+    conn.commit()
+    conn.close()
+
 # --- DICTIONNAIRE AGRONOMIQUE DE L'INGÉNIEUR LEYLA ---
 DIAGNOSTIQUE = {
     "POURRITURE_BRUNE": {
@@ -314,7 +359,7 @@ DIAGNOSTIQUE = {
 # --- OUTILS DE TRAITEMENT TEXTE ET AUDIO ---
 
 def nettoyer_texte(txt):
-    """Nettoie le texte, retire les mots vides et normalise les plurielles."""
+    """Nettoie le texte, retire les mots vides et normalise les pluriels."""
     mots_ig = ["des", "de", "la", "le", "les", "un", "une", "au", "aux", "du", "d", "l"]
     mots_filtres = [m for m in str(txt).lower().split() if m not in mots_ig]
     return " ".join([m[:-1] if m.endswith('s') and len(m) > 3 else m for m in mots_filtres])
@@ -509,16 +554,16 @@ def afficher():
         parler(reponse_leila)
         st.rerun()
 
-    # --- ENREGISTREMENT ET ENVOI ---
+    # --- ENREGISTREMENT EN BASE LOCALE (SQLITE) ---
     if st.session_state.diagnostic_final_cache_leila:
         st.markdown("---")
-        st.success("✅ Diagnostic clinique prêt à être transmis au tableau de bord central.")
+        st.info("📌 **Enregistrement local** (Le rapport sera stocké sur la tablette en attente de synchronisation).")
         
         col_n, col_z = st.columns(2)
         nom_prod = col_n.text_input("Nom du Producteur", value="Producteur Local", key="input_nom_prod_diag")
         zone_prod = col_z.text_input("Zone / Localité", value="Zone Centre", key="input_zone_prod_diag")
 
-        if st.button("📤 Enregistrer et envoyer chez le Chef", type="primary", key="btn_envoi_chef_diag"):
+        if st.button("💾 Sauvegarder localement (En attente de synchro)", type="primary", key="btn_envoi_chef_diag"):
             nouveau_rapport = {
                 "nom": nom_prod,
                 "zone": zone_prod,
@@ -528,11 +573,12 @@ def afficher():
                 "statut_eudr": "Conforme / Diagnostiqué par Leila"
             }
 
-            sauvegarder_donnee("Diagnostic_Phytosanitaire", nouveau_rapport)
+            # Sauvegarde uniquement en locale SQLite
+            sauvegarder_en_local_sqlite(nouveau_rapport)
 
-            msg_succes = "Rapport phytosanitaire envoyé avec succès au tableau de bord central !"
-            st.success(f"🚀 {msg_succes}")
-            parler(msg_succes)
+            msg_succes = "Rapport phytosanitaire sauvegardé dans la base locale (Statut: En attente de synchronisation)."
+            st.success(f"💾 {msg_succes}")
+            parler("Diagnostic enregistré localement en attente de réseau.")
             
             # Reset
             st.session_state.diagnostic_final_cache_leila = None
