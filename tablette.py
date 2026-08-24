@@ -4,7 +4,6 @@ import os
 from datetime import datetime
 import requests
 
-import customtkinter as ctk
 import diagnostique
 import estimation_de_rendement 
 import geolocalisation
