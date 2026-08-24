@@ -4,8 +4,9 @@ import os
 from datetime import datetime
 import requests
 
+# --- IMPORTATION DE TES VRAIS MODULES ---
 import diagnostique
-import estimation_de_rendement 
+import estimation_de_rendement  # Assure-toi que le fichier est renommé estimation_de_rendement.py (avec underscores)
 import geolocalisation
 
 # --- CONFIGURATION DE LA TABLETTE ---
@@ -71,84 +72,26 @@ with st.sidebar:
         st.session_state.identifie = False
         st.rerun()
 
-# --- 2. FICHE DE SAISIE DU PRODUCTEUR & DE LA PARCELLE ---
-st.header("📋 Fiche Producteur & Parcelle")
-col1, col2 = st.columns(2)
-with col1:
-    nom_producteur = st.text_input("Nom du Producteur")
-    code_producteur = st.text_input("Code du Producteur (optionnel)")
-with col2:
-    superficie = st.number_input("Superficie (Hectares)", min_value=0.1, step=0.1)
-    age_parcelle = st.text_input("Âge de la cacaoyère (ex: 12 ans)")
-
-st.markdown("---")
-
-# --- 3. LES DIFFÉRENTS MODULES DE TERRAIN ---
+# --- 2. LES DIFFÉRENTS MODULES DE TERRAIN ---
 st.header("🛠️ Modules de Saisie")
 choix_module = st.selectbox(
     "Sélectionnez le module à exécuter :",
-    ["-- Choisir un module --", "1. Diagnostic Phytosanitaire", "2. Géo-intelligence & RDUE", "3. Plan de Développement (PDC)", "4. Estimation de Rendement"]
+    ["-- Choisir un module --", "1. Diagnostic Phytosanitaire", "2. Géo-intelligence & RDUE", "3. Estimation de Rendement"]
 )
-
-donnees_module_str = ""
-
-if choix_module == "1. Diagnostic Phytosanitaire":
-    st.subheader("🌿 Module Diagnostic")
-    symptome_saisi = st.text_area("Décrivez les symptômes ou sélectionnez les observations (Feuilles, Cabosses...)")
-    donnees_module_str = f"Diagnostic: {symptome_saisi}"
-
-elif choix_module == "2. Géo-intelligence & RDUE":
-    st.subheader("🛰️ Module Géo-intelligence (Conformité RDUE)")
-    st.info("Appuyez sur le bouton ci-dessous pour capturer les limites GPS de la parcelle (Simulation).")
-    if st.button("📍 Capturer les coordonnées GPS / Polygone"):
-        st.success("Polygone GPS enregistré avec succès (Zone conforme - Hors forêt classée).")
-    donnees_module_str = "GPS: Polygone capturé et validé localement."
-
-elif choix_module == "3. Plan de Développement (PDC)":
-    st.subheader("📊 Module PDC (Plan de Développement de la Cacaoyère)")
-    chapitre_1 = st.text_input("Chapitre 1 : État général des infrastructures et des parcelles")
-    chapitre_2 = st.text_input("Chapitre 2 : Besoins en intendants et fertilisation")
-    donnees_module_str = f"PDC - Chap 1: {chapitre_1} | Chap 2: {chapitre_2}"
-
-elif choix_module == "4. Estimation de Rendement":
-    st.subheader("⚖️ Module Estimation de Rendement")
-    pieds_ha = st.number_input("Nombre de pieds par hectare", value=1300)
-    cabosses_pied = st.number_input("Nombre moyen de cabosses par pied", value=25)
-    donnees_module_str = f"Rendement - Pieds/ha: {pieds_ha}, Cabosses/pied: {cabosses_pied}"
 
 st.markdown("---")
 
-# --- BOUTON ENREGISTRER (LOCAL - SQLite) ---
-if st.button("💾 Enregistrer et passer au producteur suivant", use_container_width=True):
-    if nom_producteur and choix_module != "-- Choisir un module --":
-        date_actuelle = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        
-        conn = sqlite3.connect("leyla_terrain.db")
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO rapports_locaux (cooperative, section, technicien, producteur, code_producteur, superficie, age_parcelle, module_type, donnees_module, date_saisie)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
-            st.session_state.cooperative,
-            st.session_state.section,
-            st.session_state.technicien,
-            nom_producteur,
-            code_producteur,
-            superficie,
-            age_parcelle,
-            choix_module,
-            donnees_module_str,
-            date_actuelle
-        ))
-        conn.commit()
-        conn.close()
-        
-        st.success(f"Données de {nom_producteur} enregistrées avec succès dans la tablette !")
-        st.rerun()
-    else:
-        st.error("Veuillez renseigner le nom du producteur et choisir un module valide.")
+# --- APPEL DES VRAIS MODULES ---
+if choix_module == "1. Diagnostic Phytosanitaire":
+    diagnostique.afficher()
 
-# --- 4. LE BOUTON "ENVOYER" (SYNCHRONISATION VERS SUPABASE VIA REQUÊTE HTTP) ---
+elif choix_module == "2. Géo-intelligence & RDUE":
+    geolocalisation.afficher()
+
+elif choix_module == "3. Estimation de Rendement":
+    estimation_de_rendement.afficher()
+
+# --- 3. SYNCHRONISATION / ENVOI AU SERVEUR CENTRAL ---
 st.markdown("---")
 st.header("🔄 Synchronisation / Envoi au Serveur Central")
 st.info("Lorsque vous disposez d'une connexion Internet, cliquez ci-dessous pour envoyer les données vers le serveur central Supabase.")
