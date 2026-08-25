@@ -154,7 +154,7 @@ import streamlit.components.v1 as components
 def composant_tracker_garmin():
     """
     Composant HTML/JS mis à jour pour le suivi GPS.
-    Synchronise automatiquement chaque point avec Streamlit en temps réel.
+    Transmet les points à Streamlit et gère l'action de boucle sans réinitialisation.
     """
     html_code = """
     <!DOCTYPE html>
@@ -184,6 +184,7 @@ def composant_tracker_garmin():
                 font-weight: bold; 
                 cursor: pointer;
                 box-shadow: 0 4px 10px rgba(0,230,118,0.3);
+                transition: background-color 0.2s;
             }
             .btn-disabled {
                 background-color: #424242 !important;
@@ -197,7 +198,7 @@ def composant_tracker_garmin():
         <div class="tracker-card">
             <p style="margin:0; font-size: 15px; font-weight: bold; color: #4fc3f7;">🛰️ Relevé GPS Automatique (Pas : 1m)</p>
             
-            <button id="btn-loop" class="btn-valid btn-disabled" disabled onclick="envoyerPointsManuel()">
+            <button id="btn-loop" class="btn-valid btn-disabled" disabled onclick="validerEtBoucler()">
                 🎯 BOUCLER ET VALIDER (0 / 3 PTS)
             </button>
 
@@ -212,18 +213,21 @@ def composant_tracker_garmin():
         let lastLon = null;
         const minDistanceMeters = 1.0;
 
-        // Fonction universelle d'envoi des données vers Streamlit
-        function transmettreAStreamlit(payload) {
+        function transmettreAStreamlit(points, boucle = false) {
             window.parent.postMessage({
                 isStreamlitMessage: true,
                 type: "streamlit:setComponentValue",
-                value: payload
+                value: {
+                    points: points,
+                    boucle_terminee: boucle
+                }
             }, "*");
         }
 
-        function envoyerPointsManuel() {
+        function validerEtBoucler() {
             if (pointsList.length >= 3) {
-                transmettreAStreamlit(pointsList);
+                // Envoi final avec le drapeau de boucle activé
+                transmettreAStreamlit(pointsList, true);
             }
         }
 
@@ -279,8 +283,8 @@ def composant_tracker_garmin():
                             btn.innerText = "🎯 BOUCLER ET VALIDER (" + pointsList.length + " / 3 PTS)";
                         }
 
-                        // SYNCHRONISATION AUTOMATIQUE EN TEMPS RÉEL AVEC STREAMLIT
-                        transmettreAStreamlit(pointsList);
+                        // Synchronisation continue sans fermer
+                        transmettreAStreamlit(pointsList, false);
 
                     } else {
                         document.getElementById("status_text").innerText = "🟡 En attente de déplacement (Actuel: " + dist.toFixed(1) + "m)";
@@ -289,9 +293,9 @@ def composant_tracker_garmin():
                 },
                 (error) => {
                     let msg = "Erreur GPS (" + error.code + ")";
-                    if (error.code === 1) msg = "⚠️ Autorisation GPS refusée sur cet appareil.";
+                    if (error.code === 1) msg = "⚠️ Autorisation GPS refusée.";
                     else if (error.code === 2) msg = "⚠️ Signal GPS indisponible.";
-                    else if (error.code === 3) msg = "⚠️ Délai d'attente GPS dépassé.";
+                    else if (error.code === 3) msg = "⚠️ Délai GPS dépassé.";
                     
                     document.getElementById("status_text").innerText = "🔴 " + msg;
                     document.getElementById("status_text").style.color = "#ff5252";
@@ -299,7 +303,7 @@ def composant_tracker_garmin():
                 { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
             );
         } else {
-            document.getElementById("status_text").innerText = "🔴 Géolocalisation non supportée par ce navigateur.";
+            document.getElementById("status_text").innerText = "🔴 Géolocalisation non supportée.";
         }
         </script>
     </body>
@@ -345,7 +349,7 @@ def afficher():
             "✏️ Saisie Manuelle des Bornes"
         ])
 
-                # --- ONGLET 1 : GPS DIRECT ---
+# --- ONGLET 1 : GPS DIRECT ---
         with tab_gps:
             st.markdown("#### 🚶 Mode Marche Terrain (Relevé Continu Automatique)")
             st.info("💡 **Instructions :** Activez le tracé et marchez. Le bouton vert du tracker s'activera dès 3 points, ou utilisez le bouton de validation sous la carte.")
@@ -362,18 +366,26 @@ def afficher():
                     st.session_state.points_gps = []
                     st.rerun()
 
-            # --- BLOC D'ACQUISITION ET VALIDATION ---
+            # --- BLOC D'ACQUISITION ET VALIDATION INTÉGRÉ ---
             if st.session_state.is_tracking:
                 st.success("🟢 **Acquisition GPS active :** Enregistrement de la trace...")
-                points_transmis = composant_tracker_garmin()
                 
-                # 1. Mise à jour dynamique et rafraîchissement si de nouveaux points arrivent
-                if points_transmis and isinstance(points_transmis, list):
-                    if len(points_transmis) != len(st.session_state.points_gps):
-                        st.session_state.points_gps = points_transmis
+                data_gps = composant_tracker_garmin()
+
+                if data_gps and isinstance(data_gps, dict):
+                    # 1. Récupération en temps réel des points capturés
+                    points_recus = data_gps.get("points", [])
+                    if points_recus and len(points_recus) != len(st.session_state.points_gps):
+                        st.session_state.points_gps = points_recus
                         st.rerun()
 
-                # 2. Bouton Streamlit natif pour forcer la clôture de la parcelle
+                    # 2. Détection du clic explicite sur "BOUCLER LA PARCELLE" dans le composant HTML
+                    if data_gps.get("boucle_terminee") is True:
+                        st.session_state.is_tracking = False
+                        st.session_state.etape_module = 3  # Passage automatique aux résultats
+                        st.rerun()
+
+                # 3. Bouton Streamlit natif complémentaire (secours/alternative)
                 nbr_pts = len(st.session_state.points_gps)
                 if nbr_pts >= 3:
                     if st.button(f"🛡️ BOUCLER LA PARCELLE ET ANALYSER ({nbr_pts} PTS)", type="primary", use_container_width=True, key="btn_boucler_natif"):
@@ -381,6 +393,7 @@ def afficher():
                         st.session_state.etape_module = 3
                         st.rerun()
 
+            # Affichage du tableau de points capturés
             if st.session_state.points_gps:
                 st.write(f"🚩 **Points de trace validés ({len(st.session_state.points_gps)}) :**")
                 df_pts = pd.DataFrame(st.session_state.points_gps)
