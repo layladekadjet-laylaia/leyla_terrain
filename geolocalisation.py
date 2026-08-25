@@ -156,13 +156,12 @@ import plotly.graph_objects as go
 import math
 
 # =========================================================================
-# --- 1. COMPOSANT TRACKER GPS (AUTONOME EN LOCALSTORAGE) ---
+# --- 1. COMPOSANT TRACKER GPS (CORRIGÉ AVEC AUTO-SYNC) ---
 # =========================================================================
 def composant_tracker_garmin():
     """
-    Composant HTML/JS autonome style Garmin.
-    Sauvegarde la trace dans le localStorage du mobile pour éviter toute perte lors des rerun.
-    Ne transmet les données à Streamlit qu'au moment de l'arrêt/bouclage.
+    Composant HTML/JS autonome qui stocke la trace dans le localStorage
+    et met à jour la variable globale Streamlit à chaque modification.
     """
     html_code = """
     <!DOCTYPE html>
@@ -181,33 +180,16 @@ def composant_tracker_garmin():
                 border: 1px solid #333;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.5);
             }
-            .btn-action {
-                width: 100%; 
-                padding: 14px; 
-                margin: 8px 0;
-                border: none; 
-                border-radius: 8px; 
-                font-size: 15px; 
-                font-weight: bold; 
-                cursor: pointer;
-                transition: 0.2s;
-            }
-            .btn-stop { background-color: #ff5252; color: white; }
-            .btn-disabled { background-color: #424242 !important; color: #757575 !important; cursor: not-allowed !important; }
             .status-box { font-size: 13px; font-weight: bold; margin: 6px 0; }
         </style>
     </head>
     <body>
         <div class="tracker-card">
             <p style="margin:0; font-size: 15px; font-weight: bold; color: #4fc3f7;">🛰️ Relevé GPS Continuous (Pas : 1m)</p>
-            
-            <button id="btn-stop" class="btn-action btn-stop btn-disabled" disabled onclick="stopperEtEnvoyer()">
-                🛑 ARRÊTER ET BOUCLER (0 PTS)
-            </button>
-
             <div id="status_text" class="status-box" style="color: #ffb74d;">⏳ Initialisation du GPS...</div>
             <p id="coords_display" style="font-family: monospace; font-size: 12px; margin: 4px 0; color: #b0bec5;">Lat: -- | Lon: -- (±--m)</p>
             <p id="count_display" style="font-size: 14px; color: #81c784; margin-top: 6px; font-weight: bold;">Points enregistrés : 0</p>
+            <input type="hidden" id="gps_data_input" value="">
         </div>
 
         <script>
@@ -216,30 +198,14 @@ def composant_tracker_garmin():
         let lastLon = pointsList.length > 0 ? pointsList[pointsList.length - 1].lon : null;
         const minDistanceMeters = 1.0;
 
-        function updateUI() {
-            const btn = document.getElementById("btn-stop");
+        function updateStreamlit() {
+            if (window.Streamlit) {
+                Streamlit.setComponentValue({
+                    points: pointsList,
+                    total: pointsList.length
+                });
+            }
             document.getElementById("count_display").innerText = "Points enregistrés : " + pointsList.length;
-            if (pointsList.length >= 3) {
-                btn.disabled = false;
-                btn.classList.remove("btn-disabled");
-                btn.innerText = "🛑 ARRÊTER ET BOUCLER LA PARCELLE (" + pointsList.length + " PTS)";
-            } else {
-                btn.disabled = true;
-                btn.classList.add("btn-disabled");
-                btn.innerText = "🛑 ARRÊTER ET BOUCLER (" + pointsList.length + " / 3 PTS MIN)";
-            }
-        }
-
-        function stopperEtEnvoyer() {
-            if (pointsList.length >= 3) {
-                if (window.Streamlit) {
-                    Streamlit.setComponentValue({
-                        points: pointsList,
-                        termine: true
-                    });
-                }
-                localStorage.removeItem("leyla_gps_trace");
-            }
         }
 
         function haversineDistance(lat1, lon1, lat2, lon2) {
@@ -251,8 +217,6 @@ def composant_tracker_garmin():
                       Math.sin(dLon/2) * Math.sin(dLon/2);
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
         }
-
-        updateUI();
 
         if ("geolocation" in navigator) {
             navigator.geolocation.watchPosition(
@@ -282,219 +246,105 @@ def composant_tracker_garmin():
                         
                         document.getElementById("status_text").innerText = "🟢 GPS Actif - Acquisition de la trace...";
                         document.getElementById("status_text").style.color = "#00e676";
-                        updateUI();
+                        updateStreamlit();
                     } else {
                         document.getElementById("status_text").innerText = "🟡 En attente de déplacement...";
                         document.getElementById("status_text").style.color = "#ffb74d";
                     }
                 },
                 (error) => {
-                    document.getElementById("status_text").innerText = "🔴 Signal GPS perdu ou refusé (" + error.code + ")";
+                    document.getElementById("status_text").innerText = "🔴 Signal GPS perdu (" + error.code + ")";
                     document.getElementById("status_text").style.color = "#ff5252";
                 },
                 { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
             );
-        } else {
-            document.getElementById("status_text").innerText = "🔴 Géolocalisation non supportée sur cet appareil.";
         }
+        
+        // Synchro initiale
+        setTimeout(updateStreamlit, 500);
         </script>
     </body>
     </html>
     """
-    return components.html(html_code, height=230)
+    return components.html(html_code, height=180)
 
 # =========================================================================
-# --- 2. CALCULS GÉOMÉTRIQUES (HA VERSINE & SHOELACE) ---
-# =========================================================================
-def calculer_superficie_et_perimetre(points):
-    """Calcule le périmètre (m) et la superficie (m² / ha) d'un polygone de points GPS."""
-    if len(points) < 3:
-        return 0.0, 0.0, 0.0
-
-    R = 6378137.0  # Rayon Terre (m)
-    perimetre = 0.0
-    
-    # 1. Périmètre
-    for i in range(len(points)):
-        p1 = points[i]
-        p2 = points[(i + 1) % len(points)]
-        
-        dlat = math.radians(p2['lat'] - p1['lat'])
-        dlon = math.radians(p2['lon'] - p1['lon'])
-        a = math.sin(dlat/2)**2 + math.cos(math.radians(p1['lat'])) * math.cos(math.radians(p2['lat'])) * math.sin(dlon/2)**2
-        c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-        perimetre += R * c
-
-    # 2. Superficie (Projection équirectangulaire + Formule du Lacet / Shoelace)
-    lat_moy = math.radians(sum(p['lat'] for p in points) / len(points))
-    x = [R * math.radians(p['lon']) * math.cos(lat_moy) for p in points]
-    y = [R * math.radians(p['lat']) for p in points]
-    
-    superficie_m2 = 0.5 * abs(sum(x[i] * y[(i + 1) % len(x)] - x[(i + 1) % len(x)] * y[i] for i in range(len(x))))
-    superficie_ha = superficie_m2 / 10000.0
-
-    return perimetre, superficie_m2, superficie_ha
-
-# =========================================================================
-# --- 3. GÉNÉRATION DES MAQUETTES 2D ET 3D ---
-# =========================================================================
-def generer_maquette_2d(points):
-    lats = [p['lat'] for p in points] + [points[0]['lat']]
-    lons = [p['lon'] for p in points] + [points[0]['lon']]
-
-    fig = go.Figure()
-    fig.add_trace(go.Scattermapbox(
-        mode="lines+markers",
-        lat=lats, lon=lons,
-        marker={'size': 8, 'color': '#00e676'},
-        line={'width': 3, 'color': '#00e676'},
-        fill="toself",
-        fillcolor="rgba(0, 230, 118, 0.2)",
-        name="Parcelle"
-    ))
-
-    fig.update_layout(
-        mapbox={
-            'style': "open-street-map",
-            'center': {'lat': np.mean(lats), 'lon': np.mean(lons)},
-            'zoom': 17
-        },
-        margin={'l': 0, 'r': 0, 't': 0, 'b': 0},
-        height=400
-    )
-    return fig
-
-def generer_maquette_3d(points):
-    # Transformation coordonnées relatives en mètres pour la vue 3D
-    R = 6378137.0
-    lat0 = math.radians(points[0]['lat'])
-    lon0 = math.radians(points[0]['lon'])
-
-    x, y, z = [], [], []
-    for p in points:
-        px = R * (math.radians(p['lon']) - lon0) * math.cos(lat0)
-        py = R * (math.radians(p['lat']) - lat0)
-        pz = p.get('alt', 0.0)
-        x.append(px)
-        y.append(py)
-        z.append(pz)
-
-    # Fermeture de la boucle
-    x.append(x[0])
-    y.append(y[0])
-    z.append(z[0])
-
-    fig = go.Figure()
-    fig.add_trace(go.Scatter3d(
-        x=x, y=y, z=z,
-        mode='lines+markers',
-        marker=dict(size=4, color='#4fc3f7'),
-        line=dict(color='#00e676', width=6),
-        name="Trace 3D"
-    ))
-
-    fig.update_layout(
-        scene=dict(
-            xaxis_title="X (m)",
-            yaxis_title="Y (m)",
-            zaxis_title="Altitude (m)",
-            aspectmode='data'
-        ),
-        margin=dict(l=0, r=0, t=0, b=0),
-        height=450
-    )
-    return fig
-
-# =========================================================================
-# --- 4. FONCTION PRINCIPALE : AFFICHER ---
+# --- 2. FONCTION AFFICHER (BOUTON D'ARRÊT NATIVE STREAMLIT) ---
 # =========================================================================
 def afficher():
     if "etape_module" not in st.session_state:
         st.session_state.etape_module = 1
     if "points_gps" not in st.session_state:
         st.session_state.points_gps = []
-    if "is_tracking" not in st.session_state:
-        st.session_state.is_tracking = False
     if "nom_producteur" not in st.session_state:
         st.session_state.nom_producteur = ""
 
     st.title("🛰️ LEYLA — Cartographie & Topographie Terrain")
 
-    # --- ÉTAPE 1 : Accueil ---
+    # ÉTAPE 1 : Configuration
     if st.session_state.etape_module == 1:
-        st.info("💡 **Mode Calcul de Zone Garmin** : Activez le tracé, effectuez le tour complet de la parcelle puis stopez pour obtenir la superficie exacte.")
+        st.info("💡 **Mode Calcul de Zone Garmin** : Activez le tracé, effectuez le tour complet de la parcelle puis stoppez pour obtenir la superficie exacte.")
         st.session_state.nom_producteur = st.text_input("Nom du Producteur / Code Parcelle :", placeholder="ex: Kouadio - Parcelle Cocoa A")
         
         if st.button("▶️ Démarrer le Calcul de Zone", type="primary", use_container_width=True):
             if st.session_state.nom_producteur.strip() == "":
                 st.warning("⚠️ Veillez renseigner le nom du producteur avant de démarrer.")
             else:
-                st.session_state.is_tracking = True
                 st.session_state.points_gps = []
                 st.session_state.etape_module = 2
                 st.rerun()
 
-    # --- ÉTAPE 2 : Tracker et Acquisition GPS ---
+    # ÉTAPE 2 : Acquisition GPS
     elif st.session_state.etape_module == 2:
         st.subheader(f"📍 Acquisition Terrain : {st.session_state.nom_producteur}")
-        
-        if st.button("🔄 Annuler / Réinitialiser la marche", type="secondary"):
-            st.session_state.is_tracking = False
+
+        # Injecter le tracker iFrame
+        donnees = composant_tracker_garmin()
+
+        if isinstance(donnees, dict) and "points" in donnees:
+            st.session_state.points_gps = donnees["points"]
+
+        nbr_points = len(st.session_state.points_gps)
+
+        # BOUTON NATIF STREAMLIT : Garantit l'exécution directe du clic
+        if nbr_points >= 3:
+            if st.button(f"🛑 ARRÊTER ET BOUCLER LA PARCELLE ({nbr_points} PTS)", type="primary", use_container_width=True):
+                st.session_state.etape_module = 3
+                st.rerun()
+        else:
+            st.button(f"🛑 ARRÊTER ET BOUCLER ({nbr_points} / 3 PTS MIN)", disabled=True, use_container_width=True)
+
+        if st.button("🔄 Annuler / Réinitialiser la marche", type="secondary", use_container_width=True):
             st.session_state.points_gps = []
             st.session_state.etape_module = 1
             st.rerun()
 
-        st.markdown("---")
-        
-        # Injection du composant HTML Garmin
-        donnees_composant = composant_tracker_garmin()
-
-        # Capture de l'événement de fin de parcours envoyé par l'iFrame
-        if isinstance(donnees_composant, dict):
-            if donnees_composant.get("termine") is True:
-                st.session_state.points_gps = donnees_composant.get("points", [])
-                st.session_state.is_tracking = False
-                st.session_state.etape_module = 3
-                st.rerun()
-
-    # --- ÉTAPE 3 : Résultats, Maquettes 2D / 3D & Enregistrement ---
+    # ÉTAPE 3 : Synthèse & Cartographie
     elif st.session_state.etape_module == 3:
         pts = st.session_state.points_gps
         perimetre, sup_m2, sup_ha = calculer_superficie_et_perimetre(pts)
 
-        st.success(f"🎉 **Calcul de Zone Terminé avec Succès !**")
-        st.subheader(f"📋 Fiche Synthese : {st.session_state.nom_producteur}")
+        st.success("🎉 **Calcul de Zone Terminé avec Succès !**")
+        st.subheader(f"📋 Fiche Synthèse : {st.session_state.nom_producteur}")
 
-        # KPI Metrics
         col1, col2, col3 = st.columns(3)
         col1.metric("Superficie (Ha)", f"{sup_ha:.3f} ha")
         col2.metric("Superficie (m²)", f"{sup_m2:.1f} m²")
         col3.metric("Périmètre", f"{perimetre:.1f} m")
 
-        # Cartes 2D / 3D
-        tab_2d, tab_3d, tab_data = st.tabs(["🗺️ Maquette 2D (Vue Vue du Ciel)", "🧊 Maquette Topographique 3D", "📊 Tableau des Sommets GPS"])
+        tab_2d, tab_3d, tab_data = st.tabs(["🗺️ Maquette 2D", "🧊 Maquette 3D", "📊 Sommets GPS"])
 
         with tab_2d:
             st.plotly_chart(generer_maquette_2d(pts), use_container_width=True)
-
         with tab_3d:
             st.plotly_chart(generer_maquette_3d(pts), use_container_width=True)
-
         with tab_data:
-            df_pts = pd.DataFrame(pts)
-            st.dataframe(df_pts, use_container_width=True)
+            st.dataframe(pd.DataFrame(pts), use_container_width=True)
 
-        st.markdown("---")
-        c_save, c_restart = st.columns(2)
-        with c_save:
-            if st.button("💾 Enregistrer la Parcelle dans LEYLA", type="primary", use_container_width=True):
-                st.balloons()
-                st.success("✅ Données enregistrées dans la base de données !")
-        with c_restart:
-            if st.button("🔄 Effectuer un Nouveau Relevé", use_container_width=True):
-                st.session_state.etape_module = 1
-                st.session_state.points_gps = []
-                st.rerun()
+        if st.button("🔄 Nouveau Relevé", use_container_width=True):
+            st.session_state.etape_module = 1
+            st.session_state.points_gps = []
+            st.rerun()
 
 # =========================================================================
 # --- 5. POINT D'ENTRÉE DU SCRIPT ---
