@@ -421,7 +421,6 @@ def afficher():
         st.session_state.etape_module = 1
         st.rerun()
 
-
     else:
         st.write("🎯 **Mode Localisation Simple activé :**")
         instruction = "Entrez la latitude et la longitude de la parcelle."
@@ -429,31 +428,32 @@ def afficher():
             
         if "voix_etape2_non" not in st.session_state:
             parler(instruction)                
-st.session_state.voix_etape2_non = True
+            st.session_state.voix_etape2_non = True
 
-            lat_simple = st.text_input("Latitude", value="5.9421")
-            lon_simple = st.text_input("Longitude", value="-4.2154")
+        lat_simple = st.text_input("Latitude", value="5.9421")
+        lon_simple = st.text_input("Longitude", value="-4.2154")
 
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("⬅️ Retour", use_container_width=True):
-                    st.session_state.etape_module = 1
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("⬅️ Retour", use_container_width=True):
+                st.session_state.etape_module = 1
+                st.rerun()
+        with c2:
+            if st.button("🚀 Obtenir l'emplacement", type="primary", use_container_width=True):
+                try:
+                    lat_f = float(lat_simple)
+                    lon_f = float(lon_simple)
+                    st.session_state.points_gps = [
+                        {'lat': lat_f + 0.0005, 'lon': lon_f - 0.0005, 'alt': 120},
+                        {'lat': lat_f + 0.0005, 'lon': lon_f + 0.0005, 'alt': 120},
+                        {'lat': lat_f - 0.0005, 'lon': lon_f + 0.0005, 'alt': 120},
+                        {'lat': lat_f - 0.0005, 'lon': lon_f - 0.0005, 'alt': 120}
+                    ]
+                    st.session_state.etape_module = 3
                     st.rerun()
-            with c2:
-                if st.button("🚀 Obtenir l'emplacement", type="primary", use_container_width=True):
-                    try:
-                        lat_f = float(lat_simple)
-                        lon_f = float(lon_simple)
-                        st.session_state.points_gps = [
-                            {'lat': lat_f + 0.0005, 'lon': lon_f - 0.0005, 'alt': 120},
-                            {'lat': lat_f + 0.0005, 'lon': lon_f + 0.0005, 'alt': 120},
-                            {'lat': lat_f - 0.0005, 'lon': lon_f + 0.0005, 'alt': 120},
-                            {'lat': lat_f - 0.0005, 'lon': lon_f - 0.0005, 'alt': 120}
-                        ]
-                        st.session_state.etape_module = 3
-                        st.rerun()
-                    except ValueError:
-                        st.error("⚠️ Coordonnées invalides.")
+                except ValueError:
+                    st.error("⚠️ Coordonnées invalides.")
+
             
 
     # --- ÉTAPE 3 : Résultats ---
