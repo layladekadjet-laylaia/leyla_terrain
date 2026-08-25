@@ -298,11 +298,11 @@ def afficher():
 
         if st.session_state.is_tracking:
             st.success("🟢 **Acquisition GPS active :** Enregistrement de la trace en cours...")
-        
+            
             # Composant JS d'écoute GPS continu
             point_recu = composant_tracker_garmin()
-        
-            # Validation stricte du type et des clés pour éviter le TypeError
+            
+            # Validation stricte pour éviter l'erreur de type
             if (
                 point_recu 
                 and isinstance(point_recu, dict) 
@@ -330,7 +330,7 @@ def afficher():
             st.dataframe(df_pts, use_container_width=True)
 
             c_reset, c_valid = st.columns(2)
-                with c_reset:
+            with c_reset:
                 if st.button("🗑️ Effacer tous les points", use_container_width=True):
                     st.session_state.points_gps = []
                     st.rerun()
