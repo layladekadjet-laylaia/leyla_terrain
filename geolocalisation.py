@@ -279,61 +279,69 @@ def afficher():
                 "✏️ Saisie Manuelle des Bornes"
             ])
 
-            # --- ONGLET 1: TRACKING GPS CONTINU EN DIRECT (MODE GARMIN AUTOMATIQUE) ---
-            with tab_gps:
-                st.markdown("#### 🚶 Mode Marche Terrain (Relevé Continu Automatique)")
-                st.info("💡 **Instructions :** Activez le tracé et marchez autour de la parcelle. Les points sont enregistrés automatiquement au fur et à mesure de vos pas. Cliquez sur **Boucler la parcelle** lorsque vous êtes revenu au point de départ.")
+     # --- ONGLET 1: TRACKING GPS CONTINU EN DIRECT (MODE GARMIN AUTOMATIQUE) ---
+    with tab_gps:
+        st.markdown("#### 🚶 Mode Marche Terrain (Relevé Continu Automatique)")
+        st.info("💡 **Instructions :** Activez le tracé et marchez autour de la parcelle. Les points sont enregistrés automatiquement au fur et à mesure de vos pas. Cliquez sur **Boucler la parcelle** lorsque vous êtes revenu au point de départ.")
 
-                c_start, c_stop = st.columns(2)
-                with c_start:
-                    if st.button("▶️ Démarrer le tracé GPS", use_container_width=True, type="primary"):
-                        st.session_state.is_tracking = True
-                        parler("Suivi automatique activé. Avancez le long des limites de la parcelle.")
-                        st.rerun()
+        c_start, c_stop = st.columns(2)
+        with c_start:
+            if st.button("▶️ Démarrer le tracé GPS", use_container_width=True, type="primary"):
+                st.session_state.is_tracking = True
+                parler("Suivi automatique activé. Avancez le long des limites de la parcelle.")
+                st.rerun()
 
-                with c_stop:
-                    if st.button("🛑 Arrêter le suivi", use_container_width=True):
+        with c_stop:
+            if st.button("🛑 Arrêter le suivi", use_container_width=True):
+                st.session_state.is_tracking = False
+                st.rerun()
+
+        if st.session_state.is_tracking:
+            st.success("🟢 **Acquisition GPS active :** Enregistrement de la trace en cours...")
+        
+            # Composant JS d'écoute GPS continu
+            point_recu = composant_tracker_garmin()
+        
+            # Validation stricte du type et des clés pour éviter le TypeError
+            if (
+                point_recu 
+                and isinstance(point_recu, dict) 
+                and 'lat' in point_recu 
+                and 'lon' in point_recu 
+                and point_recu['lat'] is not None 
+                and point_recu['lon'] is not None
+            ):
+                lat_r = round(float(point_recu['lat']), 6)
+                lon_r = round(float(point_recu['lon']), 6)
+                alt_r = round(float(point_recu.get('alt', 120.0)), 1)
+
+                # Évite d'ajouter le même point si la position n'a pas varié
+                if not st.session_state.points_gps or (
+                    st.session_state.points_gps[-1]['lat'] != lat_r or 
+                    st.session_state.points_gps[-1]['lon'] != lon_r
+                ):
+                    st.session_state.points_gps.append({'lat': lat_r, 'lon': lon_r, 'alt': alt_r})
+                    parler(f"Point {len(st.session_state.points_gps)} capturé")
+                    st.rerun()
+
+        if st.session_state.points_gps:
+            st.write(f"🚩 **Points de trace capturés ({len(st.session_state.points_gps)}) :**")
+            df_pts = pd.DataFrame(st.session_state.points_gps)
+            st.dataframe(df_pts, use_container_width=True)
+
+            c_reset, c_valid = st.columns(2)
+                with c_reset:
+                if st.button("🗑️ Effacer tous les points", use_container_width=True):
+                    st.session_state.points_gps = []
+                    st.rerun()
+            with c_valid:
+                if st.button("🎯 Boucler la parcelle et analyser", type="primary", use_container_width=True):
+                    if len(st.session_state.points_gps) >= 3:
                         st.session_state.is_tracking = False
+                        st.session_state.etape_module = 3
                         st.rerun()
-
-                if st.session_state.is_tracking:
-                    st.success("🟢 **Acquisition GPS active :** Enregistrement de la trace en cours...")
-                    
-                    # Composant JS d'écoute GPS continu
-                    point_recu = composant_tracker_garmin()
-                    
-                    if point_recu:
-                        lat_r = round(point_recu['lat'], 6)
-                        lon_r = round(point_recu['lon'], 6)
-                        alt_r = round(point_recu['alt'], 1)
-
-                        # Évite d'ajouter le même point si la position n'a pas varié
-                        if not st.session_state.points_gps or (
-                            st.session_state.points_gps[-1]['lat'] != lat_r or 
-                            st.session_state.points_gps[-1]['lon'] != lon_r
-                        ):
-                            st.session_state.points_gps.append({'lat': lat_r, 'lon': lon_r, 'alt': alt_r})
-                            parler(f"Point {len(st.session_state.points_gps)} capturé")
-                            st.rerun()
-
-                if st.session_state.points_gps:
-                    st.write(f"🚩 **Points de trace capturés ({len(st.session_state.points_gps)}) :**")
-                    df_pts = pd.DataFrame(st.session_state.points_gps)
-                    st.dataframe(df_pts, use_container_width=True)
-
-                    c_reset, c_valid = st.columns(2)
-                    with c_reset:
-                        if st.button("🗑️ Effacer tous les points", use_container_width=True):
-                            st.session_state.points_gps = []
-                            st.rerun()
-                    with c_valid:
-                        if st.button("🎯 Boucler la parcelle et analyser", type="primary", use_container_width=True):
-                            if len(st.session_state.points_gps) >= 3:
-                                st.session_state.is_tracking = False
-                                st.session_state.etape_module = 3
-                                st.rerun()
-                            else:
-                                st.error("⚠️ Il faut au moins 3 points GPS pour fermer le polygone de la parcelle.")
+                    else:
+                        st.error("⚠️ Il faut au moins 3 points GPS pour fermer le polygone de la parcelle.")
 
             # --- ONGLET 2: TÉLÉVERSEMENT DE FICHIERS ---
             with tab_fichiers:
