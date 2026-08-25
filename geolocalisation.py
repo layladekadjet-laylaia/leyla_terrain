@@ -331,10 +331,10 @@ def afficher():
             "✏️ Saisie Manuelle des Bornes"
         ])
 
-        # --- ONGLET 1 : GPS DIRECT ---
+                # --- ONGLET 1 : GPS DIRECT ---
         with tab_gps:
             st.markdown("#### 🚶 Mode Marche Terrain (Relevé Continu Automatique)")
-            st.info("💡 **Instructions :** Activez le tracé et marchez. Le bouton vert s'activera automatiquement dès que vous aurez enregistré au moins 3 points.")
+            st.info("💡 **Instructions :** Activez le tracé et marchez. Le bouton vert du tracker s'activera dès 3 points, ou utilisez le bouton de validation sous la carte.")
 
             c_start, c_stop = st.columns(2)
             with c_start:
@@ -348,19 +348,21 @@ def afficher():
                     st.session_state.points_gps = []
                     st.rerun()
 
-            # --- BLOC D'ACQUISITION ET BOUTON NAFIF DE SECOURS ---
+            # --- BLOC D'ACQUISITION ET VALIDATION ---
             if st.session_state.is_tracking:
                 st.success("🟢 **Acquisition GPS active :** Enregistrement de la trace...")
                 points_transmis = composant_tracker_garmin()
                 
-                # 1. Mise à jour automatique des points si le composant renvoie une liste
+                # 1. Mise à jour dynamique et rafraîchissement si de nouveaux points arrivent
                 if points_transmis and isinstance(points_transmis, list):
-                    st.session_state.points_gps = points_transmis
+                    if len(points_transmis) != len(st.session_state.points_gps):
+                        st.session_state.points_gps = points_transmis
+                        st.rerun()
 
-                # 2. Bouton Streamlit natif pour forcer le passage à l'Étape 3
+                # 2. Bouton Streamlit natif pour forcer la clôture de la parcelle
                 nbr_pts = len(st.session_state.points_gps)
                 if nbr_pts >= 3:
-                    if st.button(f"🛡️ BOUCLER LA PARCELLE ({nbr_pts} PTS)", type="primary", use_container_width=True):
+                    if st.button(f"🛡️ BOUCLER LA PARCELLE ET ANALYSER ({nbr_pts} PTS)", type="primary", use_container_width=True, key="btn_boucler_natif"):
                         st.session_state.is_tracking = False
                         st.session_state.etape_module = 3
                         st.rerun()
@@ -370,9 +372,10 @@ def afficher():
                 df_pts = pd.DataFrame(st.session_state.points_gps)
                 st.dataframe(df_pts, use_container_width=True)
 
-                if st.button("🚀 Passer directement à l'Analyse", type="primary", use_container_width=True):
+                if st.button("🚀 Passer directement à l'Analyse", type="primary", use_container_width=True, key="btn_analyse_directe"):
                     st.session_state.etape_module = 3
                     st.rerun()
+
 
         # --- ONGLET 2 : TÉLÉVERSEMENT DE FICHIERS ---
         with tab_fichiers:
