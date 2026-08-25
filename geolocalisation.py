@@ -154,7 +154,7 @@ import streamlit.components.v1 as components
 def composant_tracker_garmin():
     """
     Composant HTML/JS mis à jour pour le suivi GPS.
-    Le bouton est rendu visible par défaut et s'active à partir de 3 points.
+    Synchronise automatiquement chaque point avec Streamlit en temps réel.
     """
     html_code = """
     <!DOCTYPE html>
@@ -197,7 +197,7 @@ def composant_tracker_garmin():
         <div class="tracker-card">
             <p style="margin:0; font-size: 15px; font-weight: bold; color: #4fc3f7;">🛰️ Relevé GPS Automatique (Pas : 1m)</p>
             
-            <button id="btn-loop" class="btn-valid btn-disabled" disabled onclick="envoyerPoints()">
+            <button id="btn-loop" class="btn-valid btn-disabled" disabled onclick="envoyerPointsManuel()">
                 🎯 BOUCLER ET VALIDER (0 / 3 PTS)
             </button>
 
@@ -212,13 +212,18 @@ def composant_tracker_garmin():
         let lastLon = null;
         const minDistanceMeters = 1.0;
 
-        function envoyerPoints() {
+        // Fonction universelle d'envoi des données vers Streamlit
+        function transmettreAStreamlit(payload) {
+            window.parent.postMessage({
+                isStreamlitMessage: true,
+                type: "streamlit:setComponentValue",
+                value: payload
+            }, "*");
+        }
+
+        function envoyerPointsManuel() {
             if (pointsList.length >= 3) {
-                window.parent.postMessage({
-                    isStreamlitMessage: true,
-                    type: "streamlit:setComponentValue",
-                    value: pointsList
-                }, "*");
+                transmettreAStreamlit(pointsList);
             }
         }
 
@@ -273,25 +278,34 @@ def composant_tracker_garmin():
                         } else {
                             btn.innerText = "🎯 BOUCLER ET VALIDER (" + pointsList.length + " / 3 PTS)";
                         }
+
+                        // SYNCHRONISATION AUTOMATIQUE EN TEMPS RÉEL AVEC STREAMLIT
+                        transmettreAStreamlit(pointsList);
+
                     } else {
                         document.getElementById("status_text").innerText = "🟡 En attente de déplacement (Actuel: " + dist.toFixed(1) + "m)";
                         document.getElementById("status_text").style.color = "#ffb74d";
                     }
                 },
                 (error) => {
-                    document.getElementById("status_text").innerText = "🔴 Erreur GPS (" + error.code + ") : " + error.message;
+                    let msg = "Erreur GPS (" + error.code + ")";
+                    if (error.code === 1) msg = "⚠️ Autorisation GPS refusée sur cet appareil.";
+                    else if (error.code === 2) msg = "⚠️ Signal GPS indisponible.";
+                    else if (error.code === 3) msg = "⚠️ Délai d'attente GPS dépassé.";
+                    
+                    document.getElementById("status_text").innerText = "🔴 " + msg;
                     document.getElementById("status_text").style.color = "#ff5252";
                 },
-                { enableHighAccuracy: true, maximumAge: 0, timeout: 10000 }
+                { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
             );
         } else {
-            document.getElementById("status_text").innerText = "🔴 Géolocalisation non disponible.";
+            document.getElementById("status_text").innerText = "🔴 Géolocalisation non supportée par ce navigateur.";
         }
         </script>
     </body>
     </html>
     """
-    return components.html(html_code, height=260)
+    return components.html(html_code, height=270)
 
 # =========================================================================
 # --- 2. FONCTION AFFICHER POUR LA PAGE ---
