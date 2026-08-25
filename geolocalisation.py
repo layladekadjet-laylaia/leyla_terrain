@@ -144,21 +144,18 @@ def chercher_lieu_excel(centre_gps, chemin="base_ivoire.xlsx"):
     except Exception as e:
         return f"Localité estimée ({e})"
 
-# =========================================================================
-# --- COMPOSANT TRACKER GPS AUTOMATIQUE (STYLE GARMIN) ---
-# =========================================================================
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================================
-# --- 1. COMPOSANT TRACKER GPS COMPATIBLE (POST-JUIN 2026) ---
+# --- 1. COMPOSANT TRACKER GPS ---
 # =========================================================================
 def composant_tracker_garmin():
     """
-    Composant HTML/JS mis à jour pour contourner les restrictions d'obsolescence.
-    Le bouton est rendu visible par défaut et activé à partir de 3 points.
-    
+    Composant HTML/JS mis à jour pour le suivi GPS.
+    Le bouton est rendu visible par défaut et s'active à partir de 3 points.
+    """
     html_code = """
     <!DOCTYPE html>
     <html>
@@ -200,7 +197,6 @@ def composant_tracker_garmin():
         <div class="tracker-card">
             <p style="margin:0; font-size: 15px; font-weight: bold; color: #4fc3f7;">🛰️ Relevé GPS Automatique (Pas : 1m)</p>
             
-            <!-- Bouton toujours présent dans le DOM mais désactivé au départ -->
             <button id="btn-loop" class="btn-valid btn-disabled" disabled onclick="envoyerPoints()">
                 🎯 BOUCLER ET VALIDER (0 / 3 PTS)
             </button>
@@ -294,123 +290,136 @@ def composant_tracker_garmin():
         </script>
     </body>
     </html>
-    
-    # Utilisation de components.html avec hauteur ajustée
+    """
     return components.html(html_code, height=260)
 
 # =========================================================================
-# --- 2. INTEGRATION DANS L'ONGLET TAB_GPS ---
+# --- 2. FONCTION AFFICHER POUR LA PAGE ---
 # =========================================================================
-# Remplace la section 'with tab_gps:' par ceci dans ton code principal :
+def afficher():
+    if "etape_module" not in st.session_state:
+        st.session_state.etape_module = 1
+    if "points_gps" not in st.session_state:
+        st.session_state.points_gps = []
+    if "is_tracking" not in st.session_state:
+        st.session_state.is_tracking = False
 
-with tab_gps:
-    st.markdown("#### 🚶 Mode Marche Terrain (Relevé Continu Automatique)")
-    st.info("💡 **Instructions :** Activez le tracé et marchez. Le bouton vert s'activera automatiquement dès que vous aurez enregistré au moins 3 points.")
+    st.title("🛰️ LEYLA — Module de Localisation")
 
-    c_start, c_stop = st.columns(2)
-    with c_start:
-        if st.button("▶️ Démarrer le tracé GPS", use_container_width=True, type="primary"):
-            st.session_state.is_tracking = True
-            st.rerun()
+    tab_gps, tab_fichiers, tab_manuel = st.tabs([
+        "📡 Suivi GPS Direct (Walk & Track)", 
+        "📁 Téléversement de Croquis/Fichiers", 
+        "✏️ Saisie Manuelle des Bornes"
+    ])
 
-    with c_stop:
-        if st.button("🛑 Arrêter / Réinitialiser", use_container_width=True):
-            st.session_state.is_tracking = False
-            st.session_state.points_gps = []
-            st.rerun()
+    # --- ONGLET 1 : GPS DIRECT ---
+    with tab_gps:
+        st.markdown("#### 🚶 Mode Marche Terrain (Relevé Continu Automatique)")
+        st.info("💡 **Instructions :** Activez le tracé et marchez. Le bouton vert s'activera automatiquement dès que vous aurez enregistré au moins 3 points.")
 
-    if st.session_state.is_tracking:
-        st.success("🟢 **Acquisition GPS active :** Enregistrement de la trace...")
-        
-        # Le composant renvoie la liste directement lors du clic
-        points_transmis = composant_tracker_garmin()
-        
-        if points_transmis and isinstance(points_transmis, list) and len(points_transmis) >= 3:
-            st.session_state.points_gps = points_transmis
-            st.session_state.is_tracking = False
-            st.session_state.etape_module = 3
-            st.rerun()
-
-    if st.session_state.points_gps:
-        st.write(f"🚩 **Points de trace validés ({len(st.session_state.points_gps)}) :**")
-        df_pts = pd.DataFrame(st.session_state.points_gps)
-        st.dataframe(df_pts, use_container_width=True)
-
-                    if st.button("🚀 Passer directement à l'Analyse", type="primary", use_container_width=True):
-                        st.session_state.etape_module = 3
-                        st.rerun()
-
-            # --- ONGLET 2: TÉLÉVERSEMENT DE FICHIERS ---
-            with tab_fichiers:
-                st.markdown("#### 📁 Charger un fichier de terrain (GPX, CSV, TXT)")
-                croquis_file = st.file_uploader("Choisissez un fichier", type=["gpx", "csv", "txt"], key="file_upload_tab")
-                
-                if croquis_file is not None:
-                    try:
-                        pts_charges = []
-                        nom_fichier = croquis_file.name.lower()
-                        if nom_fichier.endswith('.gpx'):
-                            import xml.etree.ElementTree as ET
-                            tree = ET.parse(croquis_file)
-                            root = tree.getroot()
-                            namespace = {'gpx': root.tag.split('}')[0].strip('{')} if '}' in root.tag else {}
-                            elements = root.findall('.//gpx:trkpt', namespace) or root.findall('.//trkpt', namespace) or root.findall('.//gpx:wpt', namespace) or root.findall('.//wpt', namespace)
-                            
-                            for pt in elements:
-                                lat = float(pt.get('lat'))
-                                lon = float(pt.get('lon'))
-                                ele_elem = pt.find('gpx:ele', namespace) if namespace else pt.find('ele')
-                                alt = float(ele_elem.text) if ele_elem is not None else 120.0
-                                pts_charges.append({'lat': lat, 'lon': lon, 'alt': alt})
-                        else:
-                            df_croquis = pd.read_csv(croquis_file)
-                            if 'lat' in df_croquis.columns and 'lon' in df_croquis.columns:
-                                for _, row in df_croquis.iterrows():
-                                    pts_charges.append({'lat': float(row['lat']), 'lon': float(row['lon']), 'alt': float(row.get('alt', 120))})
-
-                        if len(pts_charges) >= 3:
-                            st.session_state.points_gps = pts_charges
-                            st.success(f"✅ {len(pts_charges)} points chargés depuis le fichier !")
-                            if st.button("🚀 Analyser ce fichier", type="primary"):
-                                st.session_state.etape_module = 3
-                                st.rerun()
-                        else:
-                            st.error("⚠️ Moins de 3 points valides trouvés.")
-                    except Exception as e:
-                        st.error(f"Erreur de lecture du fichier : {e}")
-
-            # --- ONGLET 3: SAISIE MANUELLE ---
-            with tab_manuel:
-                st.markdown("#### ✏️ Saisie textuelle des coordonnées")
-                saisie_texte = st.text_area(
-                    "Coordonnées GPS (Format : Latitude, Longitude, Altitude)", 
-                    placeholder="5.9421, -4.2154, 120\n5.9430, -4.2150, 122\n5.9415, -4.2140, 118",
-                    key="manual_text_area"
-                )
-
-                if st.button("🚀 Valider la saisie manuelle", type="primary"):
-                    pts = []
-                    for ligne in saisie_texte.split('\n'):
-                        if ',' in ligne:
-                            morceaux = ligne.split(',')
-                            try:
-                                lat = float(morceaux[0].strip())
-                                lon = float(morceaux[1].strip())
-                                alt = float(morceaux[2].strip()) if len(morceaux) > 2 else 120.0
-                                pts.append({'lat': lat, 'lon': lon, 'alt': alt})
-                            except ValueError:
-                                continue
-                    if len(pts) >= 3:
-                        st.session_state.points_gps = pts
-                        st.session_state.etape_module = 3
-                        st.rerun()
-                    else:
-                        st.error("⚠️ Veuillez fournir au moins 3 points GPS valides.")
-
-            st.markdown("---")
-            if st.button("⬅️ Retour au choix initial"):
-                st.session_state.etape_module = 1
+        c_start, c_stop = st.columns(2)
+        with c_start:
+            if st.button("▶️ Démarrer le tracé GPS", use_container_width=True, type="primary"):
+                st.session_state.is_tracking = True
                 st.rerun()
+
+        with c_stop:
+            if st.button("🛑 Arrêter / Réinitialiser", use_container_width=True):
+                st.session_state.is_tracking = False
+                st.session_state.points_gps = []
+                st.rerun()
+
+        if st.session_state.is_tracking:
+            st.success("🟢 **Acquisition GPS active :** Enregistrement de la trace...")
+            
+            points_transmis = composant_tracker_garmin()
+            
+            if points_transmis and isinstance(points_transmis, list) and len(points_transmis) >= 3:
+                st.session_state.points_gps = points_transmis
+                st.session_state.is_tracking = False
+                st.session_state.etape_module = 3
+                st.rerun()
+
+        if st.session_state.points_gps:
+            st.write(f"🚩 **Points de trace validés ({len(st.session_state.points_gps)}) :**")
+            df_pts = pd.DataFrame(st.session_state.points_gps)
+            st.dataframe(df_pts, use_container_width=True)
+
+            if st.button("🚀 Passer directement à l'Analyse", type="primary", use_container_width=True):
+                st.session_state.etape_module = 3
+                st.rerun()
+
+    # --- ONGLET 2 : TÉLÉVERSEMENT DE FICHIERS ---
+    with tab_fichiers:
+        st.markdown("#### 📁 Charger un fichier de terrain (GPX, CSV, TXT)")
+        croquis_file = st.file_uploader("Choisissez un fichier", type=["gpx", "csv", "txt"], key="file_upload_tab")
+        
+        if croquis_file is not None:
+            try:
+                pts_charges = []
+                nom_fichier = croquis_file.name.lower()
+                if nom_fichier.endswith('.gpx'):
+                    import xml.etree.ElementTree as ET
+                    tree = ET.parse(croquis_file)
+                    root = tree.getroot()
+                    namespace = {'gpx': root.tag.split('}')[0].strip('{')} if '}' in root.tag else {}
+                    elements = root.findall('.//gpx:trkpt', namespace) or root.findall('.//trkpt', namespace) or root.findall('.//gpx:wpt', namespace) or root.findall('.//wpt', namespace)
+                    
+                    for pt in elements:
+                        lat = float(pt.get('lat'))
+                        lon = float(pt.get('lon'))
+                        ele_elem = pt.find('gpx:ele', namespace) if namespace else pt.find('ele')
+                        alt = float(ele_elem.text) if ele_elem is not None else 120.0
+                        pts_charges.append({'lat': lat, 'lon': lon, 'alt': alt})
+                else:
+                    df_croquis = pd.read_csv(croquis_file)
+                    if 'lat' in df_croquis.columns and 'lon' in df_croquis.columns:
+                        for _, row in df_croquis.iterrows():
+                            pts_charges.append({'lat': float(row['lat']), 'lon': float(row['lon']), 'alt': float(row.get('alt', 120))})
+
+                if len(pts_charges) >= 3:
+                    st.session_state.points_gps = pts_charges
+                    st.success(f"✅ {len(pts_charges)} points chargés depuis le fichier !")
+                    if st.button("🚀 Analyser ce fichier", type="primary"):
+                        st.session_state.etape_module = 3
+                        st.rerun()
+                else:
+                    st.error("⚠️ Moins de 3 points valides trouvés.")
+            except Exception as e:
+                st.error(f"Erreur de lecture du fichier : {e}")
+
+    # --- ONGLET 3 : SAISIE MANUELLE ---
+    with tab_manuel:
+        st.markdown("#### ✏️ Saisie textuelle des coordonnées")
+        saisie_texte = st.text_area(
+            "Coordonnées GPS (Format : Latitude, Longitude, Altitude)", 
+            placeholder="5.9421, -4.2154, 120\n5.9430, -4.2150, 122\n5.9415, -4.2140, 118",
+            key="manual_text_area"
+        )
+
+        if st.button("🚀 Valider la saisie manuelle", type="primary"):
+            pts = []
+            for ligne in saisie_texte.split('\n'):
+                if ',' in ligne:
+                    morceaux = ligne.split(',')
+                    try:
+                        lat = float(morceaux[0].strip())
+                        lon = float(morceaux[1].strip())
+                        alt = float(morceaux[2].strip()) if len(morceaux) > 2 else 120.0
+                        pts.append({'lat': lat, 'lon': lon, 'alt': alt})
+                    except ValueError:
+                        continue
+            if len(pts) >= 3:
+                st.session_state.points_gps = pts
+                st.session_state.etape_module = 3
+                st.rerun()
+            else:
+                st.error("⚠️ Veuillez fournir au moins 3 points GPS valides.")
+
+    st.markdown("---")
+    if st.button("⬅️ Retour au choix initial"):
+        st.session_state.etape_module = 1
+        st.rerun()
 
 
         else:
