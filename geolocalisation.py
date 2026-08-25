@@ -247,6 +247,60 @@ def composant_tracker_garmin():
 
 
 
+
+import math
+
+def haversine_distance_pts(lat1, lon1, lat2, lon2):
+    """Calcule la distance en mètres entre deux points GPS."""
+    R = 6371000  # Rayon de la Terre en mètres
+    phi1, phi2 = math.radians(lat1), math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+
+    a = math.sin(delta_phi / 2.0)**2 + \
+        math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0)**2
+    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
+    return R * c
+
+def calculer_superficie_et_perimetre(pts):
+    """
+    Calcule le périmètre (mètres) et la superficie (m² et ha) 
+    d'un polygone à partir d'une liste de dicts [{'lat':..., 'lon':...}].
+    """
+    if not pts or len(pts) < 3:
+        return 0.0, 0.0, 0.0
+
+    # 1. Calcul du périmètre
+    perimetre = 0.0
+    n = len(pts)
+    for i in range(n):
+        p1 = pts[i]
+        p2 = pts[(i + 1) % n] # Bouclage vers le 1er point
+        perimetre += haversine_distance_pts(p1['lat'], p1['lon'], p2['lat'], p2['lon'])
+
+    # 2. Calcul de la superficie (Formule des trapèzes sur coordonnées projetées)
+    # Projection locale en mètres par rapport au centre du polygone
+    lat_center = sum(p['lat'] for p in pts) / n
+    r_earth = 6371000.0
+
+    coords_m = []
+    for p in pts:
+        x = math.radians(p['lon']) * r_earth * math.cos(math.radians(lat_center))
+        y = math.radians(p['lat']) * r_earth
+        coords_m.append((x, y))
+
+    # Formule du lacet (Shoelace formula)
+    area = 0.0
+    for i in range(n):
+        j = (i + 1) % n
+        area += coords_m[i][0] * coords_m[j][1]
+        area -= coords_m[j][0] * coords_m[i][1]
+    
+    sup_m2 = abs(area) / 2.0
+    sup_ha = sup_m2 / 10000.0
+
+    return perimetre, sup_m2, sup_ha
+
 # =========================================================================
 # --- 2. FONCTION AFFICHER ---
 # =========================================================================
@@ -273,23 +327,26 @@ def afficher():
                 st.session_state.etape_module = 2
                 st.rerun()
 
-            # ÉTAPE 2 : Acquisition GPS
+                # ÉTAPE 2 : Acquisition GPS
     elif st.session_state.etape_module == 2:
         st.subheader(f"📍 Acquisition Terrain : {st.session_state.nom_producteur}")
 
-        # Composant affichage temps réel
-        composant_tracker_garmin()
+        # Capture de la valeur renvoyée par le composant custom
+        retour_gps = composant_tracker_garmin()
 
-        # Bouton natif Streamlit (Insensible aux réinitialisations d'iframe)
-        if st.button("🛑 ARRÊTER ET BOUCLER LA PARCELLE", type="primary", use_container_width=True):
-            # Récupération sécurisée du LocalStorage via JS
-            get_data_js = """
-            <script>
-            const data = localStorage.getItem("leyla_gps_trace") || "[]";
-            window.parent.postMessage({type: "streamlit:setComponentValue", value: JSON.parse(data)}, "*");
-            </script>
-            """
-            # Extraction des données enregistrées
+        # Si l'utilisateur clique sur le bouton dans l'iframe ou transmet les points
+        if isinstance(retour_gps, dict) and retour_gps.get("status") == "FINISHED":
+            pts = retour_gps.get("points", [])
+            if len(pts) >= 3:
+                st.session_state.points_gps = pts
+                st.session_state.etape_module = 3
+                st.rerun()
+            else:
+                st.warning("⚠️ Veuillez enregistrer au moins 3 points avant de boucler.")
+        
+        # En fallback : si retour_gps renvoie directement une liste de points
+        elif isinstance(retour_gps, list) and len(retour_gps) >= 3:
+            st.session_state.points_gps = retour_gps
             st.session_state.etape_module = 3
             st.rerun()
 
@@ -299,34 +356,41 @@ def afficher():
             st.session_state.etape_module = 1
             st.rerun()
 
-
-
     # ÉTAPE 3 : Synthèse & Cartographie
     elif st.session_state.etape_module == 3:
         pts = st.session_state.points_gps
-        perimetre, sup_m2, sup_ha = calculer_superficie_et_perimetre(pts)
+        
+        # Sécurité : vérification que la liste de points n'est pas vide
+        if not pts or len(pts) < 3:
+            st.error("⚠️ Aucun point GPS n'a été récupéré. Veuillez recommencer le relevé.")
+            if st.button("⬅️ Retour à l'accueil"):
+                st.session_state.etape_module = 1
+                st.rerun()
+        else:
+            perimetre, sup_m2, sup_ha = calculer_superficie_et_perimetre(pts)
 
-        st.success("🎉 **Calcul de Zone Terminé avec Succès !**")
-        st.subheader(f"📋 Fiche Synthèse : {st.session_state.nom_producteur}")
+            st.success("🎉 **Calcul de Zone Terminé avec Succès !**")
+            st.subheader(f"📋 Fiche Synthèse : {st.session_state.nom_producteur}")
 
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Superficie (Ha)", f"{sup_ha:.3f} ha")
-        col2.metric("Superficie (m²)", f"{sup_m2:.1f} m²")
-        col3.metric("Périmètre", f"{perimetre:.1f} m")
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Superficie (Ha)", f"{sup_ha:.3f} ha")
+            col2.metric("Superficie (m²)", f"{sup_m2:.1f} m²")
+            col3.metric("Périmètre", f"{perimetre:.1f} m")
 
-        tab_2d, tab_3d, tab_data = st.tabs(["🗺️ Maquette 2D", "🧊 Maquette 3D", "📊 Sommets GPS"])
+            tab_2d, tab_3d, tab_data = st.tabs(["🗺️ Maquette 2D", "🧊 Maquette 3D", "📊 Sommets GPS"])
 
-        with tab_2d:
-            st.plotly_chart(generer_maquette_2d(pts), use_container_width=True)
-        with tab_3d:
-            st.plotly_chart(generer_maquette_3d(pts), use_container_width=True)
-        with tab_data:
-            st.dataframe(pd.DataFrame(pts), use_container_width=True)
+            with tab_2d:
+                st.plotly_chart(generer_maquette_2d(pts), use_container_width=True)
+            with tab_3d:
+                st.plotly_chart(generer_maquette_3d(pts), use_container_width=True)
+            with tab_data:
+                st.dataframe(pd.DataFrame(pts), use_container_width=True)
 
-        if st.button("🔄 Nouveau Relevé", use_container_width=True):
-            st.session_state.etape_module = 1
-            st.session_state.points_gps = []
-            st.rerun()
+            if st.button("🔄 Nouveau Relevé", use_container_width=True):
+                st.session_state.etape_module = 1
+                st.session_state.points_gps = []
+                st.rerun()
+
 
 
 # =========================================================================
