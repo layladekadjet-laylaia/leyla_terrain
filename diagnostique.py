@@ -44,7 +44,7 @@ DIAGNOSTIQUE = {
         "nom": "Pourriture Brune des Cabosses (Phytophthora palmivora / megakarya)",
         "classe": "Fongique / Oomycète",
         "diagnostics": [
-            {"id": "Forme classique sur fruit (Cabosse)", "symptomes": ["tache brune", "cabosse noire", "pourriture", "feutrage blanc", "moisissure veloutee"]},
+            {"id": "Forme classique sur fruit (Cabosse)", "symptomes": ["tache brune","tâches brunes", "tâche brune", "tache brune", "cabosse noire", "pourriture", "feutrage blanc", "moisissure veloutee"]},
             {"id": "Forme foliaire et vasculaire", "symptomes": ["taches marron sur les feuilles", "dessechement pointes vegetatives", "necrose bourgeons", "chute feuilles vertes"]},
             {"id": "Forme chancres", "symptomes": ["ecorce brunie", "suintement gélatineux", "liquide rougeatre", "liquide violace", "dessechement charpentiere"]}
         ],
