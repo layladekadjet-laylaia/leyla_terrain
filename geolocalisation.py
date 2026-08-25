@@ -424,11 +424,11 @@ def afficher():
 
     else:
         st.write("🎯 **Mode Localisation Simple activé :**")
-            instruction = "Entrez la latitude et la longitude de la parcelle."
-            st.info(f"**Leila :** *« {instruction} »*")
+        instruction = "Entrez la latitude et la longitude de la parcelle."
+        st.info(f"**Leila :** *« {instruction} »*")
             
-            if "voix_etape2_non" not in st.session_state:
-                parler(instruction)
+        if "voix_etape2_non" not in st.session_state:
+            parler(instruction)
                 st.session_state.voix_etape2_non = True
 
             lat_simple = st.text_input("Latitude", value="5.9421")
