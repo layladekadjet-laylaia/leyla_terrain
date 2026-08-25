@@ -144,12 +144,6 @@ def chercher_lieu_excel(centre_gps, chemin="base_ivoire.xlsx"):
     except Exception as e:
         return f"Localité estimée ({e})"
 
-import streamlit as st
-import streamlit.components.v1 as components
-import pandas as pd
-import numpy as np
-import plotly.graph_objects as go
-import math
 
 # =========================================================================
 # --- 1. COMPOSANT TRACKER GPS (BOUTON DE VALIDATION INTÉGRÉ EN JS) ---
@@ -160,7 +154,6 @@ def composant_tracker_garmin():
     <html>
     <head>
         <meta charset="utf-8">
-        <script src="https://cdn.jsdelivr.net/npm/streamlit-component-lib@1.4.0/dist/streamlit-component-lib.js"></script>
         <style>
             body { margin: 0; padding: 0; background-color: transparent; font-family: system-ui, -apple-system, sans-serif; }
             .tracker-card {
@@ -172,70 +165,26 @@ def composant_tracker_garmin():
                 border: 1px solid #333;
                 box-shadow: 0 4px 12px rgba(0,0,0,0.5);
             }
-            .btn-action {
-                width: 100%; 
-                padding: 14px; 
-                margin: 10px 0 4px 0;
-                border: none; 
-                border-radius: 8px; 
-                font-size: 15px; 
-                font-weight: bold; 
-                cursor: pointer;
-            }
-            .btn-stop-active { background-color: #ff3d00 !important; color: white !important; }
-            .btn-stop-disabled { background-color: #424242 !important; color: #757575 !important; cursor: not-allowed !important; }
             .status-box { font-size: 13px; font-weight: bold; margin: 6px 0; }
         </style>
     </head>
     <body>
         <div class="tracker-card">
             <p style="margin:0; font-size: 15px; font-weight: bold; color: #4fc3f7;">🛰️ Relevé GPS Continuous (Pas : 1m)</p>
-            
             <div id="status_text" class="status-box" style="color: #ffb74d;">⏳ Initialisation du GPS...</div>
             <p id="coords_display" style="font-family: monospace; font-size: 12px; margin: 4px 0; color: #b0bec5;">Lat: -- | Lon: -- (±--m)</p>
-            <p id="count_display" style="font-size: 14px; color: #81c784; margin-top: 6px; font-weight: bold;">Points enregistrés : 0</p>
-            
-            <button id="btn-stop" class="btn-action btn-stop-disabled" disabled type="button">
-                🛑 ARRÊTER ET BOUCLER (0 / 3 PTS MIN)
-            </button>
+            <p id="count_display" style="font-size: 16px; color: #81c784; margin-top: 6px; font-weight: bold;">Points enregistrés : 0</p>
         </div>
 
         <script>
-        let watchId = null;
         let pointsList = JSON.parse(localStorage.getItem("leyla_gps_trace") || "[]");
         let lastLat = pointsList.length > 0 ? pointsList[pointsList.length - 1].lat : null;
         let lastLon = pointsList.length > 0 ? pointsList[pointsList.length - 1].lon : null;
         const minDistanceMeters = 1.0;
 
         function updateUI() {
-            const btn = document.getElementById("btn-stop");
             document.getElementById("count_display").innerText = "Points enregistrés : " + pointsList.length;
-            
-            if (pointsList.length >= 3) {
-                btn.disabled = false;
-                btn.className = "btn-action btn-stop-active";
-                btn.innerText = "🛑 ARRÊTER ET BOUCLER LA PARCELLE (" + pointsList.length + " PTS)";
-            } else {
-                btn.disabled = true;
-                btn.className = "btn-action btn-stop-disabled";
-                btn.innerText = "🛑 ARRÊTER ET BOUCLER (" + pointsList.length + " / 3 PTS MIN)";
-            }
         }
-
-        // Action lors du clic sur le bouton d'arrêt
-        document.getElementById("btn-stop").addEventListener("click", function() {
-            if (pointsList.length >= 3) {
-                if (watchId !== null) {
-                    navigator.geolocation.clearWatch(watchId);
-                }
-                // Transmission directe à Streamlit
-                Streamlit.setComponentValue({
-                    points: pointsList,
-                    status: "FINISHED"
-                });
-                localStorage.removeItem("leyla_gps_trace");
-            }
-        });
 
         function haversineDistance(lat1, lon1, lat2, lon2) {
             const R = 6371000;
@@ -250,7 +199,7 @@ def composant_tracker_garmin():
         updateUI();
 
         if ("geolocation" in navigator) {
-            watchId = navigator.geolocation.watchPosition(
+            navigator.geolocation.watchPosition(
                 (position) => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
@@ -275,7 +224,7 @@ def composant_tracker_garmin():
                         pointsList.push({ lat: lat, lon: lon, alt: alt });
                         localStorage.setItem("leyla_gps_trace", JSON.stringify(pointsList));
                         
-                        document.getElementById("status_text").innerText = "🟢 GPS Actif - Acquisition de la trace...";
+                        document.getElementById("status_text").innerText = "🟢 GPS Actif - Acquisition en cours...";
                         document.getElementById("status_text").style.color = "#00e676";
                         updateUI();
                     } else {
@@ -284,7 +233,7 @@ def composant_tracker_garmin():
                     }
                 },
                 (error) => {
-                    document.getElementById("status_text").innerText = "🔴 Signal GPS perdu (" + error.code + ")";
+                    document.getElementById("status_text").innerText = "🔴 Signal GPS indisponible";
                     document.getElementById("status_text").style.color = "#ff5252";
                 },
                 { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 }
@@ -294,7 +243,8 @@ def composant_tracker_garmin():
     </body>
     </html>
     """
-    return components.html(html_code, height=220)
+    return components.html(html_code, height=140)
+
 
 
 # =========================================================================
@@ -323,16 +273,23 @@ def afficher():
                 st.session_state.etape_module = 2
                 st.rerun()
 
-        # ÉTAPE 2 : Acquisition GPS
+            # ÉTAPE 2 : Acquisition GPS
     elif st.session_state.etape_module == 2:
         st.subheader(f"📍 Acquisition Terrain : {st.session_state.nom_producteur}")
 
-        # Récupération de la valeur envoyée par l'iFrame
-        retour = composant_tracker_garmin()
+        # Composant affichage temps réel
+        composant_tracker_garmin()
 
-        # Si l'utilisateur a cliqué sur le bouton rouge dans l'iframe
-        if isinstance(retour, dict) and retour.get("status") == "FINISHED":
-            st.session_state.points_gps = retour.get("points", [])
+        # Bouton natif Streamlit (Insensible aux réinitialisations d'iframe)
+        if st.button("🛑 ARRÊTER ET BOUCLER LA PARCELLE", type="primary", use_container_width=True):
+            # Récupération sécurisée du LocalStorage via JS
+            get_data_js = """
+            <script>
+            const data = localStorage.getItem("leyla_gps_trace") || "[]";
+            window.parent.postMessage({type: "streamlit:setComponentValue", value: JSON.parse(data)}, "*");
+            </script>
+            """
+            # Extraction des données enregistrées
             st.session_state.etape_module = 3
             st.rerun()
 
@@ -341,6 +298,7 @@ def afficher():
             st.session_state.points_gps = []
             st.session_state.etape_module = 1
             st.rerun()
+
 
 
     # ÉTAPE 3 : Synthèse & Cartographie
