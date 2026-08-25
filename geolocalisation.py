@@ -348,15 +348,22 @@ def afficher():
                     st.session_state.points_gps = []
                     st.rerun()
 
+            # --- BLOC D'ACQUISITION ET BOUTON NAFIF DE SECOURS ---
             if st.session_state.is_tracking:
                 st.success("🟢 **Acquisition GPS active :** Enregistrement de la trace...")
                 points_transmis = composant_tracker_garmin()
                 
-                if points_transmis and isinstance(points_transmis, list) and len(points_transmis) >= 3:
+                # 1. Mise à jour automatique des points si le composant renvoie une liste
+                if points_transmis and isinstance(points_transmis, list):
                     st.session_state.points_gps = points_transmis
-                    st.session_state.is_tracking = False
-                    st.session_state.etape_module = 3
-                    st.rerun()
+
+                # 2. Bouton Streamlit natif pour forcer le passage à l'Étape 3
+                nbr_pts = len(st.session_state.points_gps)
+                if nbr_pts >= 3:
+                    if st.button(f"🛡️ BOUCLER LA PARCELLE ({nbr_pts} PTS)", type="primary", use_container_width=True):
+                        st.session_state.is_tracking = False
+                        st.session_state.etape_module = 3
+                        st.rerun()
 
             if st.session_state.points_gps:
                 st.write(f"🚩 **Points de trace validés ({len(st.session_state.points_gps)}) :**")
@@ -438,6 +445,7 @@ def afficher():
         if st.button("⬅️ Retour au choix initial", key="btn_retour_etape2"):
             st.session_state.etape_module = 1
             st.rerun()
+
 
     # --- ÉTAPE SIMPLE : Saisie d'un Point Unique ---
     elif st.session_state.etape_module == "simple":
