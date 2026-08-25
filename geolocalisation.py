@@ -484,7 +484,7 @@ def afficher():
                 except ValueError:
                     st.error("⚠️ Coordonnées invalides.")
 
-    # --- ÉTAPE 3 : Résultats ---
+        # --- ÉTAPE 3 : Résultats ---
     elif st.session_state.etape_module == 3:
         st.subheader("📊 Étape 3 : Résultats de l'Analyse par Leila")
 
@@ -555,6 +555,8 @@ def afficher():
         if st.button("🏁 Enregistrer et envoyer au Chef", type="primary", key="btn_sortir_p3_fin", use_container_width=True):
             fichier_json = "base_de_donnees_layla.json"
             data_file = {}
+
+            # 1. Lecture ou création du fichier JSON local
             if os.path.exists(fichier_json):
                 try:
                     with open(fichier_json, "r", encoding="utf-8") as f:
@@ -565,9 +567,10 @@ def afficher():
             if "file_attente_locale" not in data_file:
                 data_file["file_attente_locale"] = []
 
+            # 2. Structure du rapport
             rapport_parcelle = {
                 "horodatage": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "nom": "Producteur Localisation",
+                "nom": st.session_state.get("nom_producteur", "Producteur Localisation"),
                 "zone": "Zone Agricole",
                 "ville": nom_localite,
                 "superficie": superficie_ha,
@@ -579,16 +582,21 @@ def afficher():
                 "points_gps_bruts": st.session_state.points_gps
             }
 
+            # 3. Ajout dans le JSON local
             data_file["file_attente_locale"].append(rapport_parcelle)
-
             with open(fichier_json, "w", encoding="utf-8") as f:
                 json.dump(data_file, f, indent=4, ensure_ascii=False)
 
+            # 4. Synchronisation immédiate avec la session Streamlit
+            if "file_attente_locale" not in st.session_state:
+                st.session_state.file_attente_locale = []
+            st.session_state.file_attente_locale.append(rapport_parcelle)
+
             parler("OK, c'est parti pour une nouvelle localisation.")
-            st.success("✅ Rapport enregistré et transmis avec succès !")
+            st.success("✅ Rapport enregistré et ajouté à la liste d'attente !")
             st.balloons()
             
-            # Réinitialisation
+            # Réinitialisation des variables de parcours
             st.session_state.points_gps = []
             st.session_state.etape_module = 1
             st.session_state.besoin_maquette = False
@@ -600,3 +608,4 @@ def afficher():
 
 if __name__ == "__main__":
     afficher()
+
