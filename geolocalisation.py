@@ -349,10 +349,12 @@ def afficher():
             "✏️ Saisie Manuelle des Bornes"
         ])
 
-# --- ONGLET 1 : GPS DIRECT ---
+        # --- ONGLET 1 : GPS DIRECT ---
         with tab_gps:
             st.markdown("#### 🚶 Mode Marche Terrain (Relevé Continu Automatique)")
-            st.info("💡 **Instructions :** Activez le tracé et marchez. Le bouton vert du tracker s'activera dès 3 points, ou utilisez le bouton de validation sous la carte.")
+            st.info("💡 **Instructions :** Activez le tracé, marchez. Une fois le parcours fini, appuyez sur **Arrêter et Analyser**.")
+
+            nbr_pts = len(st.session_state.points_gps)
 
             c_start, c_stop = st.columns(2)
             with c_start:
@@ -361,23 +363,27 @@ def afficher():
                     st.rerun()
 
             with c_stop:
-                if st.button("🛑 Arrêter / Réinitialiser", use_container_width=True):
+                # Le bouton d'arrêt affiche le nombre de points capturés et sert de validation
+                label_stop = f"🛑 Arrêter et Analyser ({nbr_pts} pts)" if nbr_pts >= 3 else "🛑 Arrêter / Réinitialiser"
+                if st.button(label_stop, use_container_width=True, type="secondary" if nbr_pts < 3 else "primary"):
                     st.session_state.is_tracking = False
-                    st.session_state.points_gps = []
+                    if nbr_pts >= 3:
+                        st.session_state.etape_module = 3  # Envoie directement à l'étape 3
+                    else:
+                        st.session_state.points_gps = []  # Reset si moins de 3 points
                     st.rerun()
 
-            # --- BLOC D'ACQUISITION ET VALIDATION INTÉGRÉ ---
+            # --- BLOC D'ACQUISITION ---
             if st.session_state.is_tracking:
                 st.success("🟢 **Acquisition GPS active :** Enregistrement de la trace...")
+                points_transmis = composant_tracker_garmin()
                 
-                data_gps = composant_tracker_garmin()
-
-                if data_gps and isinstance(data_gps, dict):
-                    # 1. Récupération en temps réel des points capturés
-                    points_recus = data_gps.get("points", [])
-                    if points_recus and len(points_recus) != len(st.session_state.points_gps):
-                        st.session_state.points_gps = points_recus
+                # Mise à jour des points
+                if points_transmis and isinstance(points_transmis, list):
+                    if len(points_transmis) != len(st.session_state.points_gps):
+                        st.session_state.points_gps = points_transmis
                         st.rerun()
+
 
                     # 2. Détection du clic explicite sur "BOUCLER LA PARCELLE" dans le composant HTML
                     if data_gps.get("boucle_terminee") is True:
