@@ -147,23 +147,63 @@ def chercher_lieu_excel(centre_gps, chemin="base_ivoire.xlsx"):
 # =========================================================================
 # --- COMPOSANT TRACKER GPS AUTOMATIQUE (STYLE GARMIN) ---
 # =========================================================================
+import os
+import json
+import time
+import pandas as pd
+import matplotlib.pyplot as plt
+import pydeck as pdk
+import streamlit as st
+import streamlit.components.v1 as components
+
+# =========================================================================
+# --- 1. COMPOSANT TRACKER GPS OPTIMISÉ ---
+# =========================================================================
 def composant_tracker_garmin():
+    """
+    Composant HTML/JS qui accumule les points GPS localement dans un tableau 
+    et transmet la liste complète à Streamlit lors du clic sur le bouton de bouclage.
+    """
     html_code = """
-    <div style="background-color: #1e1e1e; padding: 12px; border-radius: 8px; text-align: center; color: white;">
-        <p style="margin:0; font-size: 14px;">🛰️ <b>Relevé GPS automatique (Pas : 1 Mètre)</b></p>
-        <p id="status_text" style="color: #f1c40f; margin: 4px 0; font-size: 12px;">Initialisation du composant...</p>
+    <div id="tracker-container" style="background-color: #1e1e1e; padding: 15px; border-radius: 8px; text-align: center; color: white; font-family: sans-serif;">
+        <p style="margin:0; font-size: 14px; font-weight: bold;">🛰️ Relevé GPS automatique (Pas : 1 Mètre)</p>
+        <p id="status_text" style="color: #f1c40f; margin: 6px 0; font-size: 13px; font-weight: bold;">Initialisation du GPS...</p>
         <p id="coords_display" style="font-family: monospace; font-size: 12px; margin: 0; color: #bdc3c7;">Lat: -- | Lon: -- | Alt: --</p>
-        <p id="count_display" style="font-size: 11px; color: #2ecc71; margin-top: 4px;">Points capturés : 0</p>
+        <p id="count_display" style="font-size: 13px; color: #2ecc71; margin-top: 6px; font-weight: bold;">Points capturés : 0</p>
+        
+        <button id="btn-loop" style="
+            display: none; 
+            width: 100%; 
+            padding: 12px; 
+            margin-top: 10px;
+            background-color: #27ae60; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            font-size: 15px; 
+            font-weight: bold; 
+            cursor: pointer;
+        ">
+            🎯 Boucler la parcelle et envoyer à Leila
+        </button>
     </div>
 
     <script>
+    function sendToStreamlit(value) {
+        window.parent.postMessage({
+            isStreamlitMessage: true,
+            type: "streamlit:setComponentValue",
+            value: value
+        }, "*");
+    }
+
+    let pointsList = [];
     let lastLat = null;
     let lastLon = null;
-    let pointCount = 0;
-    const minDistanceMeters = 1.0; // Capturation fixée à 1 mètre
+    const minDistanceMeters = 1.0;
 
     function haversineDistance(lat1, lon1, lat2, lon2) {
-        const R = 6371000; // Rayon de la Terre en mètres
+        const R = 6371000;
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLon = (lon2 - lon1) * Math.PI / 180;
         const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -199,13 +239,15 @@ def composant_tracker_garmin():
                 if (addPoint) {
                     lastLat = lat;
                     lastLon = lon;
-                    pointCount++;
-                    document.getElementById("count_display").innerText = "Points capturés localement : " + pointCount + " (Dernier déplacement: " + dist.toFixed(1) + "m)";
-                    document.getElementById("status_text").innerText = "🟢 GPS Actif - Point enregistré à 1m";
+                    pointsList.push({ lat: lat, lon: lon, alt: alt });
+                    
+                    document.getElementById("count_display").innerText = "Points capturés localement : " + pointsList.length + " (Dernier déplacement: " + dist.toFixed(1) + "m)";
+                    document.getElementById("status_text").innerText = "🟢 GPS Actif - Point enregistré";
                     document.getElementById("status_text").style.color = "#2ecc71";
 
-                    const pointData = { lat: lat, lon: lon, alt: alt };
-                    window.parent.postMessage({ type: 'streamlit:setComponentValue', value: pointData }, '*');
+                    if (pointsList.length >= 3) {
+                        document.getElementById("btn-loop").style.display = "block";
+                    }
                 } else {
                     document.getElementById("status_text").innerText = "🟡 En attente d'un déplacement de 1m (Actuel: " + dist.toFixed(1) + "m)";
                     document.getElementById("status_text").style.color = "#f1c40f";
@@ -217,19 +259,23 @@ def composant_tracker_garmin():
             },
             {
                 enableHighAccuracy: true,
-                maximumAge: 0,         // Force la lecture en temps réel sans utiliser le cache
+                maximumAge: 0,
                 timeout: 5000
             }
         );
     } else {
         document.getElementById("status_text").innerText = "🔴 La géolocalisation n'est pas supportée par ce navigateur.";
     }
+
+    document.getElementById("btn-loop").addEventListener("click", () => {
+        sendToStreamlit(pointsList);
+    });
     </script>
     """
-    return components.html(html_code, height=120)
+    return components.html(html_code, height=200)
 
 # =========================================================================
-# --- 3. MODULE PRINCIPAL STREAMLIT ---
+# --- 2. MODULE PRINCIPAL STREAMLIT ---
 # =========================================================================
 def afficher():
     if "etape_module" not in st.session_state:
@@ -279,10 +325,10 @@ def afficher():
                 "✏️ Saisie Manuelle des Bornes"
             ])
 
-            # --- ONGLET 1: TRACKING GPS CONTINU EN DIRECT ---
+            # --- ONGLET 1: TRACKING GPS CONTINU ---
             with tab_gps:
                 st.markdown("#### 🚶 Mode Marche Terrain (Relevé Continu Automatique)")
-                st.info("💡 **Instructions :** Activez le tracé et marchez autour de la parcelle. Les points sont enregistrés automatiquement au fur et à mesure de vos pas. Cliquez sur **Boucler la parcelle** lorsque vous êtes revenu au point de départ.")
+                st.info("💡 **Instructions :** Activez le tracé et marchez autour de la parcelle. Dès que vous avez parcouru les limites (minimum 3 points), un bouton vert **« 🎯 Boucler la parcelle »** apparaîtra directement dans le cadre noir.")
 
                 c_start, c_stop = st.columns(2)
                 with c_start:
@@ -292,37 +338,25 @@ def afficher():
                         st.rerun()
 
                 with c_stop:
-                    if st.button("🛑 Arrêter le suivi", use_container_width=True):
+                    if st.button("🛑 Arrêter / Réinitialiser", use_container_width=True):
                         st.session_state.is_tracking = False
+                        st.session_state.points_gps = []
                         st.rerun()
 
                 if st.session_state.is_tracking:
                     st.success("🟢 **Acquisition GPS active :** Enregistrement de la trace en cours...")
                     
-                    point_recu = composant_tracker_garmin()
+                    # Capture du tableau de points transmis par le bouton du composant JS
+                    points_transmis = composant_tracker_garmin()
                     
-                    if (
-                        point_recu 
-                        and isinstance(point_recu, dict) 
-                        and 'lat' in point_recu 
-                        and 'lon' in point_recu 
-                        and point_recu['lat'] is not None 
-                        and point_recu['lon'] is not None
-                    ):
-                        lat_r = round(float(point_recu['lat']), 6)
-                        lon_r = round(float(point_recu['lon']), 6)
-                        alt_r = round(float(point_recu.get('alt', 120.0)), 1)
-
-                        if not st.session_state.points_gps or (
-                            st.session_state.points_gps[-1]['lat'] != lat_r or 
-                            st.session_state.points_gps[-1]['lon'] != lon_r
-                        ):
-                            st.session_state.points_gps.append({'lat': lat_r, 'lon': lon_r, 'alt': alt_r})
-                            parler(f"Point {len(st.session_state.points_gps)} capturé")
-                            st.rerun()
+                    if points_transmis and isinstance(points_transmis, list) and len(points_transmis) >= 3:
+                        st.session_state.points_gps = points_transmis
+                        st.session_state.is_tracking = False
+                        st.session_state.etape_module = 3
+                        st.rerun()
 
                 if st.session_state.points_gps:
-                    st.write(f"🚩 **Points de trace capturés ({len(st.session_state.points_gps)}) :**")
+                    st.write(f"🚩 **Points de trace validés ({len(st.session_state.points_gps)}) :**")
                     df_pts = pd.DataFrame(st.session_state.points_gps)
                     st.dataframe(df_pts, use_container_width=True)
 
@@ -332,13 +366,9 @@ def afficher():
                             st.session_state.points_gps = []
                             st.rerun()
                     with c_valid:
-                        if st.button("🎯 Boucler la parcelle et analyser", type="primary", use_container_width=True):
-                            if len(st.session_state.points_gps) >= 3:
-                                st.session_state.is_tracking = False
-                                st.session_state.etape_module = 3
-                                st.rerun()
-                            else:
-                                st.error("⚠️ Il faut au moins 3 points GPS pour fermer le polygone de la parcelle.")
+                        if st.button("🚀 Passer à l'Analyse", type="primary", use_container_width=True):
+                            st.session_state.etape_module = 3
+                            st.rerun()
 
             # --- ONGLET 2: TÉLÉVERSEMENT DE FICHIERS ---
             with tab_fichiers:
@@ -378,6 +408,73 @@ def afficher():
                             st.error("⚠️ Moins de 3 points valides trouvés.")
                     except Exception as e:
                         st.error(f"Erreur de lecture du fichier : {e}")
+
+            # --- ONGLET 3: SAISIE MANUELLE ---
+            with tab_manuel:
+                st.markdown("#### ✏️ Saisie textuelle des coordonnées")
+                saisie_texte = st.text_area(
+                    "Coordonnées GPS (Format : Latitude, Longitude, Altitude)", 
+                    placeholder="5.9421, -4.2154, 120\n5.9430, -4.2150, 122\n5.9415, -4.2140, 118",
+                    key="manual_text_area"
+                )
+
+                if st.button("🚀 Valider la saisie manuelle", type="primary"):
+                    pts = []
+                    for ligne in saisie_texte.split('\n'):
+                        if ',' in ligne:
+                            morceaux = ligne.split(',')
+                            try:
+                                lat = float(morceaux[0].strip())
+                                lon = float(morceaux[1].strip())
+                                alt = float(morceaux[2].strip()) if len(morceaux) > 2 else 120.0
+                                pts.append({'lat': lat, 'lon': lon, 'alt': alt})
+                            except ValueError:
+                                continue
+                    if len(pts) >= 3:
+                        st.session_state.points_gps = pts
+                        st.session_state.etape_module = 3
+                        st.rerun()
+                    else:
+                        st.error("⚠️ Veuillez fournir au moins 3 points GPS valides.")
+
+            st.markdown("---")
+            if st.button("⬅️ Retour au choix initial"):
+                st.session_state.etape_module = 1
+                st.rerun()
+
+        else:
+            st.write("🎯 **Mode Localisation Simple activé :**")
+            instruction = "Entrez la latitude et la longitude de la parcelle."
+            st.info(f"**Leila :** *« {instruction} »*")
+            
+            if "voix_etape2_non" not in st.session_state:
+                parler(instruction)
+                st.session_state.voix_etape2_non = True
+
+            lat_simple = st.text_input("Latitude", value="5.9421")
+            lon_simple = st.text_input("Longitude", value="-4.2154")
+
+            c1, c2 = st.columns(2)
+            with c1:
+                if st.button("⬅️ Retour", use_container_width=True):
+                    st.session_state.etape_module = 1
+                    st.rerun()
+            with c2:
+                if st.button("🚀 Obtenir l'emplacement", type="primary", use_container_width=True):
+                    try:
+                        lat_f = float(lat_simple)
+                        lon_f = float(lon_simple)
+                        st.session_state.points_gps = [
+                            {'lat': lat_f + 0.0005, 'lon': lon_f - 0.0005, 'alt': 120},
+                            {'lat': lat_f + 0.0005, 'lon': lon_f + 0.0005, 'alt': 120},
+                            {'lat': lat_f - 0.0005, 'lon': lon_f + 0.0005, 'alt': 120},
+                            {'lat': lat_f - 0.0005, 'lon': lon_f - 0.0005, 'alt': 120}
+                        ]
+                        st.session_state.etape_module = 3
+                        st.rerun()
+                    except ValueError:
+                        st.error("⚠️ Coordonnées invalides.")
+
 
             # --- ONGLET 3: SAISIE MANUELLE ---
             with tab_manuel:
