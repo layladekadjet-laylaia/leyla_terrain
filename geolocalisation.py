@@ -362,16 +362,21 @@ def afficher():
                     st.session_state.is_tracking = True
                     st.rerun()
 
-            with c_stop:
-                # Le bouton d'arrêt affiche le nombre de points capturés et sert de validation
-                label_stop = f"🛑 Arrêter et Analyser ({nbr_pts} pts)" if nbr_pts >= 3 else "🛑 Arrêter / Réinitialiser"
-                if st.button(label_stop, use_container_width=True, type="secondary" if nbr_pts < 3 else "primary"):
-                    st.session_state.is_tracking = False
-                    if nbr_pts >= 3:
-                        st.session_state.etape_module = 3  # Envoie directement à l'étape 3
-                    else:
-                        st.session_state.points_gps = []  # Reset si moins de 3 points
-                    st.rerun()
+                        with c_stop:
+                # Si on a au moins 3 points, le bouton se transforme en validation
+                nbr_pts = len(st.session_state.points_gps)
+                
+                if nbr_pts >= 3:
+                    if st.button(f"🛑 Arrêter et Analyser ({nbr_pts} pts)", type="primary", use_container_width=True):
+                        st.session_state.is_tracking = False
+                        st.session_state.etape_module = 3  # Envoie directement à l'analyse Haversine
+                        st.rerun()
+                else:
+                    if st.button("🛑 Arrêter / Réinitialiser", type="secondary", use_container_width=True):
+                        st.session_state.is_tracking = False
+                        st.session_state.points_gps = []
+                        st.rerun()
+
 
             # --- BLOC D'ACQUISITION ---
             if st.session_state.is_tracking:
