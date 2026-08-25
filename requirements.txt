@@ -14,5 +14,9 @@ SpeechRecognition
 pandas
 streamlit-geolocation
 shapely
+geopy
+supabase
+plotly
+
 
 
