@@ -157,35 +157,38 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # =========================================================================
-# --- 1. COMPOSANT TRACKER GPS OPTIMISÉ ---
+# --- 1. COMPOSANT TRACKER GPS AVEC BOUTON VISIBLE EN HAUT ---
 # =========================================================================
 def composant_tracker_garmin():
     """
-    Composant HTML/JS qui accumule les points GPS localement dans un tableau 
-    et transmet la liste complète à Streamlit lors du clic sur le bouton de bouclage.
+    Composant HTML/JS avec bouton de bouclage placé en haut du bloc
+    pour éviter tout problème de masquage sur écran mobile.
     """
     html_code = """
-    <div id="tracker-container" style="background-color: #1e1e1e; padding: 15px; border-radius: 8px; text-align: center; color: white; font-family: sans-serif;">
-        <p style="margin:0; font-size: 14px; font-weight: bold;">🛰️ Relevé GPS automatique (Pas : 1 Mètre)</p>
-        <p id="status_text" style="color: #f1c40f; margin: 6px 0; font-size: 13px; font-weight: bold;">Initialisation du GPS...</p>
-        <p id="coords_display" style="font-family: monospace; font-size: 12px; margin: 0; color: #bdc3c7;">Lat: -- | Lon: -- | Alt: --</p>
-        <p id="count_display" style="font-size: 13px; color: #2ecc71; margin-top: 6px; font-weight: bold;">Points capturés : 0</p>
+    <div id="tracker-container" style="background-color: #121212; padding: 15px; border-radius: 10px; text-align: center; color: white; font-family: sans-serif; border: 1px solid #333;">
+        <p style="margin:0; font-size: 15px; font-weight: bold; color: #4fc3f7;">🛰️ Relevé GPS Automatique (Pas : 1m)</p>
         
+        <!-- Bouton placé en haut pour être toujours visible dès le 3e point -->
         <button id="btn-loop" style="
             display: none; 
             width: 100%; 
-            padding: 12px; 
-            margin-top: 10px;
-            background-color: #27ae60; 
-            color: white; 
+            padding: 14px; 
+            margin: 10px 0;
+            background-color: #00e676; 
+            color: #000; 
             border: none; 
-            border-radius: 6px; 
-            font-size: 15px; 
+            border-radius: 8px; 
+            font-size: 16px; 
             font-weight: bold; 
             cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,230,118,0.4);
         ">
-            🎯 Boucler la parcelle et envoyer à Leila
+            🎯 BOUCLER ET VALIDER LA PARCELLE
         </button>
+
+        <p id="status_text" style="color: #ffb74d; margin: 8px 0; font-size: 13px; font-weight: bold;">⏳ Recherche du signal GPS...</p>
+        <p id="coords_display" style="font-family: monospace; font-size: 12px; margin: 4px 0; color: #b0bec5;">Lat: -- | Lon: --</p>
+        <p id="count_display" style="font-size: 13px; color: #81c784; margin-top: 6px; font-weight: bold;">Points capturés : 0</p>
     </div>
 
     <script>
@@ -219,10 +222,10 @@ def composant_tracker_garmin():
                 const lat = position.coords.latitude;
                 const lon = position.coords.longitude;
                 const alt = position.coords.altitude !== null ? position.coords.altitude : 120.0;
-                const accuracy = position.coords.accuracy;
+                const accuracy = Math.round(position.coords.accuracy);
 
                 document.getElementById("coords_display").innerText = 
-                    "Lat: " + lat.toFixed(6) + " | Lon: " + lon.toFixed(6) + " (±" + Math.round(accuracy) + "m)";
+                    "Lat: " + lat.toFixed(6) + " | Lon: " + lon.toFixed(6) + " (±" + accuracy + "m)";
 
                 let addPoint = false;
                 let dist = 0;
@@ -241,30 +244,33 @@ def composant_tracker_garmin():
                     lastLon = lon;
                     pointsList.push({ lat: lat, lon: lon, alt: alt });
                     
-                    document.getElementById("count_display").innerText = "Points capturés localement : " + pointsList.length + " (Dernier déplacement: " + dist.toFixed(1) + "m)";
+                    document.getElementById("count_display").innerText = "Points capturés localement : " + pointsList.length + " (Déplacement: " + dist.toFixed(1) + "m)";
                     document.getElementById("status_text").innerText = "🟢 GPS Actif - Point enregistré";
-                    document.getElementById("status_text").style.color = "#2ecc71";
+                    document.getElementById("status_text").style.color = "#00e676";
 
+                    // Affichage prioritaire du bouton dès 3 points
                     if (pointsList.length >= 3) {
-                        document.getElementById("btn-loop").style.display = "block";
+                        const btn = document.getElementById("btn-loop");
+                        btn.style.display = "block";
+                        btn.innerText = "🎯 BOUCLER LA PARCELLE (" + pointsList.length + " PTS)";
                     }
                 } else {
-                    document.getElementById("status_text").innerText = "🟡 En attente d'un déplacement de 1m (Actuel: " + dist.toFixed(1) + "m)";
-                    document.getElementById("status_text").style.color = "#f1c40f";
+                    document.getElementById("status_text").innerText = "🟡 En attente de déplacement (Actuel: " + dist.toFixed(1) + "m)";
+                    document.getElementById("status_text").style.color = "#ffb74d";
                 }
             },
             (error) => {
                 document.getElementById("status_text").innerText = "🔴 Erreur GPS (" + error.code + ") : " + error.message;
-                document.getElementById("status_text").style.color = "#e74c3c";
+                document.getElementById("status_text").style.color = "#ff5252";
             },
             {
                 enableHighAccuracy: true,
                 maximumAge: 0,
-                timeout: 5000
+                timeout: 10000
             }
         );
     } else {
-        document.getElementById("status_text").innerText = "🔴 La géolocalisation n'est pas supportée par ce navigateur.";
+        document.getElementById("status_text").innerText = "🔴 Géolocalisation non disponible.";
     }
 
     document.getElementById("btn-loop").addEventListener("click", () => {
@@ -272,7 +278,7 @@ def composant_tracker_garmin():
     });
     </script>
     """
-    return components.html(html_code, height=200)
+    return components.html(html_code, height=280)
 
 # =========================================================================
 # --- 2. MODULE PRINCIPAL STREAMLIT ---
@@ -295,10 +301,6 @@ def afficher():
         st.subheader("🤖 Étape 1 : Accueil par Leila")
         texte_accueil = "En plus de la localisation, voulez-vous voir la maquette 2D ou 3D de la parcelle ?"
         st.info(f"**Leila :** *« {texte_accueil} »*")
-        
-        if "voix_initiale_fait" not in st.session_state:
-            parler(texte_accueil)
-            st.session_state.voix_initiale_fait = True
 
         col1, col2 = st.columns(2)
         with col1:
@@ -317,8 +319,6 @@ def afficher():
         st.subheader("📍 Étape 2 : Acquisition des Coordonnées Géographiques")
 
         if st.session_state.besoin_maquette:
-            st.write("✨ **Mode Maquettes activé :** Leila a besoin d'un polygone complet.")
-            
             tab_gps, tab_fichiers, tab_manuel = st.tabs([
                 "📡 Suivi GPS Direct (Walk & Track)", 
                 "📁 Téléversement de Croquis/Fichiers", 
@@ -328,13 +328,12 @@ def afficher():
             # --- ONGLET 1: TRACKING GPS CONTINU ---
             with tab_gps:
                 st.markdown("#### 🚶 Mode Marche Terrain (Relevé Continu Automatique)")
-                st.info("💡 **Instructions :** Activez le tracé et marchez autour de la parcelle. Dès que vous avez parcouru les limites (minimum 3 points), un bouton vert **« 🎯 Boucler la parcelle »** apparaîtra directement dans le cadre noir.")
+                st.info("💡 **Instructions :** Appuyez sur Démarrer, marchez le long de la parcelle. Dès que vous avez 3 points, le bouton vert **BOUCLER** apparaîtra en haut dans la zone noire.")
 
                 c_start, c_stop = st.columns(2)
                 with c_start:
                     if st.button("▶️ Démarrer le tracé GPS", use_container_width=True, type="primary"):
                         st.session_state.is_tracking = True
-                        parler("Suivi automatique activé. Avancez le long des limites de la parcelle.")
                         st.rerun()
 
                 with c_stop:
@@ -344,9 +343,9 @@ def afficher():
                         st.rerun()
 
                 if st.session_state.is_tracking:
-                    st.success("🟢 **Acquisition GPS active :** Enregistrement de la trace en cours...")
+                    st.success("🟢 **Acquisition GPS active :** Enregistrement de la trace...")
                     
-                    # Capture du tableau de points transmis par le bouton du composant JS
+                    # Réception des points renvoyés par le bouton JS
                     points_transmis = composant_tracker_garmin()
                     
                     if points_transmis and isinstance(points_transmis, list) and len(points_transmis) >= 3:
@@ -360,15 +359,9 @@ def afficher():
                     df_pts = pd.DataFrame(st.session_state.points_gps)
                     st.dataframe(df_pts, use_container_width=True)
 
-                    c_reset, c_valid = st.columns(2)
-                    with c_reset:
-                        if st.button("🗑️ Effacer tous les points", use_container_width=True):
-                            st.session_state.points_gps = []
-                            st.rerun()
-                    with c_valid:
-                        if st.button("🚀 Passer à l'Analyse", type="primary", use_container_width=True):
-                            st.session_state.etape_module = 3
-                            st.rerun()
+                    if st.button("🚀 Passer directement à l'Analyse", type="primary", use_container_width=True):
+                        st.session_state.etape_module = 3
+                        st.rerun()
 
             # --- ONGLET 2: TÉLÉVERSEMENT DE FICHIERS ---
             with tab_fichiers:
@@ -441,6 +434,7 @@ def afficher():
             if st.button("⬅️ Retour au choix initial"):
                 st.session_state.etape_module = 1
                 st.rerun()
+
 
         else:
             st.write("🎯 **Mode Localisation Simple activé :**")
