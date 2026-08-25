@@ -158,7 +158,7 @@ def composant_tracker_garmin():
     """
     Composant HTML/JS mis à jour pour contourner les restrictions d'obsolescence.
     Le bouton est rendu visible par défaut et activé à partir de 3 points.
-    """
+    
     html_code = """
     <!DOCTYPE html>
     <html>
@@ -294,7 +294,7 @@ def composant_tracker_garmin():
         </script>
     </body>
     </html>
-    """
+    
     # Utilisation de components.html avec hauteur ajustée
     return components.html(html_code, height=260)
 
@@ -303,7 +303,6 @@ def composant_tracker_garmin():
 # =========================================================================
 # Remplace la section 'with tab_gps:' par ceci dans ton code principal :
 
-"""
 with tab_gps:
     st.markdown("#### 🚶 Mode Marche Terrain (Relevé Continu Automatique)")
     st.info("💡 **Instructions :** Activez le tracé et marchez. Le bouton vert s'activera automatiquement dès que vous aurez enregistré au moins 3 points.")
