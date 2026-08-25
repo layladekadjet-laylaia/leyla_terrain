@@ -155,10 +155,6 @@ import math
 # --- 1. COMPOSANT TRACKER GPS (BOUTON DE VALIDATION INTÉGRÉ EN JS) ---
 # =========================================================================
 def composant_tracker_garmin():
-    """
-    Composant HTML/JS autonome. 
-    Le bouton 'ARRÊTER' est géré à 100% en JS pour garantir son déblocage instantané.
-    """
     html_code = """
     <!DOCTYPE html>
     <html>
@@ -185,9 +181,8 @@ def composant_tracker_garmin():
                 font-size: 15px; 
                 font-weight: bold; 
                 cursor: pointer;
-                transition: 0.3s;
             }
-            .btn-stop-active { background-color: #ff3d00 !important; color: white !important; cursor: pointer !important; }
+            .btn-stop-active { background-color: #ff3d00 !important; color: white !important; }
             .btn-stop-disabled { background-color: #424242 !important; color: #757575 !important; cursor: not-allowed !important; }
             .status-box { font-size: 13px; font-weight: bold; margin: 6px 0; }
         </style>
@@ -200,12 +195,13 @@ def composant_tracker_garmin():
             <p id="coords_display" style="font-family: monospace; font-size: 12px; margin: 4px 0; color: #b0bec5;">Lat: -- | Lon: -- (±--m)</p>
             <p id="count_display" style="font-size: 14px; color: #81c784; margin-top: 6px; font-weight: bold;">Points enregistrés : 0</p>
             
-            <button id="btn-stop" class="btn-action btn-stop-disabled" disabled onclick="validerEtStopper()">
+            <button id="btn-stop" class="btn-action btn-stop-disabled" disabled type="button">
                 🛑 ARRÊTER ET BOUCLER (0 / 3 PTS MIN)
             </button>
         </div>
 
         <script>
+        let watchId = null;
         let pointsList = JSON.parse(localStorage.getItem("leyla_gps_trace") || "[]");
         let lastLat = pointsList.length > 0 ? pointsList[pointsList.length - 1].lat : null;
         let lastLon = pointsList.length > 0 ? pointsList[pointsList.length - 1].lon : null;
@@ -226,17 +222,20 @@ def composant_tracker_garmin():
             }
         }
 
-        function validerEtStopper() {
-            if (pointsList.length >= 3 && window.Streamlit) {
-                // Envoi des points et de la validation à Streamlit
+        // Action lors du clic sur le bouton d'arrêt
+        document.getElementById("btn-stop").addEventListener("click", function() {
+            if (pointsList.length >= 3) {
+                if (watchId !== null) {
+                    navigator.geolocation.clearWatch(watchId);
+                }
+                // Transmission directe à Streamlit
                 Streamlit.setComponentValue({
                     points: pointsList,
-                    action: "STOP"
+                    status: "FINISHED"
                 });
-                // Nettoyage du localStorage pour la prochaine session
                 localStorage.removeItem("leyla_gps_trace");
             }
-        }
+        });
 
         function haversineDistance(lat1, lon1, lat2, lon2) {
             const R = 6371000;
@@ -251,7 +250,7 @@ def composant_tracker_garmin():
         updateUI();
 
         if ("geolocation" in navigator) {
-            navigator.geolocation.watchPosition(
+            watchId = navigator.geolocation.watchPosition(
                 (position) => {
                     const lat = position.coords.latitude;
                     const lon = position.coords.longitude;
@@ -297,6 +296,7 @@ def composant_tracker_garmin():
     """
     return components.html(html_code, height=220)
 
+
 # =========================================================================
 # --- 2. FONCTION AFFICHER ---
 # =========================================================================
@@ -323,15 +323,16 @@ def afficher():
                 st.session_state.etape_module = 2
                 st.rerun()
 
-    # ÉTAPE 2 : Acquisition GPS
+        # ÉTAPE 2 : Acquisition GPS
     elif st.session_state.etape_module == 2:
         st.subheader(f"📍 Acquisition Terrain : {st.session_state.nom_producteur}")
 
-        # Capture du composant (renvoie la valeur uniquement quand l'utilisateur clique sur ARRÊTER)
-        retour_gps = composant_tracker_garmin()
+        # Récupération de la valeur envoyée par l'iFrame
+        retour = composant_tracker_garmin()
 
-        if isinstance(retour_gps, dict) and retour_gps.get("action") == "STOP":
-            st.session_state.points_gps = retour_gps.get("points", [])
+        # Si l'utilisateur a cliqué sur le bouton rouge dans l'iframe
+        if isinstance(retour, dict) and retour.get("status") == "FINISHED":
+            st.session_state.points_gps = retour.get("points", [])
             st.session_state.etape_module = 3
             st.rerun()
 
@@ -340,6 +341,7 @@ def afficher():
             st.session_state.points_gps = []
             st.session_state.etape_module = 1
             st.rerun()
+
 
     # ÉTAPE 3 : Synthèse & Cartographie
     elif st.session_state.etape_module == 3:
