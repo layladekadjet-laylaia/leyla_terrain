@@ -454,73 +454,7 @@ def afficher():
                         st.rerun()
                     except ValueError:
                         st.error("⚠️ Coordonnées invalides.")
-
-
-            # --- ONGLET 3: SAISIE MANUELLE ---
-            with tab_manuel:
-                st.markdown("#### ✏️ Saisie textuelle des coordonnées")
-                saisie_texte = st.text_area(
-                    "Coordonnées GPS (Format : Latitude, Longitude, Altitude)", 
-                    placeholder="5.9421, -4.2154, 120\n5.9430, -4.2150, 122\n5.9415, -4.2140, 118",
-                    key="manual_text_area"
-                )
-
-                if st.button("🚀 Valider la saisie manuelle", type="primary"):
-                    pts = []
-                    for ligne in saisie_texte.split('\n'):
-                        if ',' in ligne:
-                            morceaux = ligne.split(',')
-                            try:
-                                lat = float(morceaux[0].strip())
-                                lon = float(morceaux[1].strip())
-                                alt = float(morceaux[2].strip()) if len(morceaux) > 2 else 120.0
-                                pts.append({'lat': lat, 'lon': lon, 'alt': alt})
-                            except ValueError:
-                                continue
-                    if len(pts) >= 3:
-                        st.session_state.points_gps = pts
-                        st.session_state.etape_module = 3
-                        st.rerun()
-                    else:
-                        st.error("⚠️ Veuillez fournir au moins 3 points GPS valides.")
-
-            st.markdown("---")
-            if st.button("⬅️ Retour au choix initial"):
-                st.session_state.etape_module = 1
-                st.rerun()
-
-            else:
-            st.write("🎯 **Mode Localisation Simple activé :**")
-            instruction = "Entrez la latitude et la longitude de la parcelle."
-            st.info(f"**Leila :** *« {instruction} »*")
             
-            if "voix_etape2_non" not in st.session_state:
-                parler(instruction)
-                st.session_state.voix_etape2_non = True
-
-            lat_simple = st.text_input("Latitude", value="5.9421")
-            lon_simple = st.text_input("Longitude", value="-4.2154")
-
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("⬅️ Retour", use_container_width=True):
-                    st.session_state.etape_module = 1
-                    st.rerun()
-            with c2:
-                if st.button("🚀 Obtenir l'emplacement", type="primary", use_container_width=True):
-                    try:
-                        lat_f = float(lat_simple)
-                        lon_f = float(lon_simple)
-                        st.session_state.points_gps = [
-                            {'lat': lat_f + 0.0005, 'lon': lon_f - 0.0005, 'alt': 120},
-                            {'lat': lat_f + 0.0005, 'lon': lon_f + 0.0005, 'alt': 120},
-                            {'lat': lat_f - 0.0005, 'lon': lon_f + 0.0005, 'alt': 120},
-                            {'lat': lat_f - 0.0005, 'lon': lon_f - 0.0005, 'alt': 120}
-                        ]
-                        st.session_state.etape_module = 3
-                        st.rerun()
-                    except ValueError:
-                        st.error("⚠️ Coordonnées invalides.")
 
     # --- ÉTAPE 3 : Résultats ---
     elif st.session_state.etape_module == 3:
