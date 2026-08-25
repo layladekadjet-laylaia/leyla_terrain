@@ -489,7 +489,7 @@ def afficher():
                 st.session_state.etape_module = 1
                 st.rerun()
 
-        else:
+            else:
             st.write("🎯 **Mode Localisation Simple activé :**")
             instruction = "Entrez la latitude et la longitude de la parcelle."
             st.info(f"**Leila :** *« {instruction} »*")
