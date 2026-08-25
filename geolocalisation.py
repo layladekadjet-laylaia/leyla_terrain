@@ -428,8 +428,8 @@ def afficher():
         st.info(f"**Leila :** *« {instruction} »*")
             
         if "voix_etape2_non" not in st.session_state:
-            parler(instruction)
-                st.session_state.voix_etape2_non = True
+            parler(instruction)                
+st.session_state.voix_etape2_non = True
 
             lat_simple = st.text_input("Latitude", value="5.9421")
             lon_simple = st.text_input("Longitude", value="-4.2154")
