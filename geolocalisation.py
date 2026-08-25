@@ -450,18 +450,32 @@ def afficher():
             st.rerun()
 
 
-    # --- ÉTAPE SIMPLE : Saisie d'un Point Unique ---
+    # --- ÉTAPE SIMPLE : Saisie des Bornes de la Parcelle ---
     elif st.session_state.etape_module == "simple":
-        st.write("🎯 **Mode Localisation Simple activé :**")
-        instruction = "Entrez la latitude et la longitude de la parcelle."
+        st.subheader("📍 Localisation par Saisie des Bornes (Calcul Haversine)")
+        instruction = "Veuillez entrer les coordonnées GPS d'au moins 3 bornes pour délimiter la parcelle."
         st.info(f"**Leila :** *« {instruction} »*")
             
         if "voix_etape2_non" not in st.session_state:
             parler(instruction)                
             st.session_state.voix_etape2_non = True
 
-        lat_simple = st.text_input("Latitude", value="5.9421")
-        lon_simple = st.text_input("Longitude", value="-4.2154")
+        st.markdown("##### 📐 Entrez les coordonnées de chaque borne :")
+        
+        # Interface dynamique pour 3 à 6 bornes
+        nb_bornes = st.number_input("Nombre de bornes de la parcelle", min_value=3, max_value=10, value=4, step=1)
+        
+        pts_saisis = []
+        cols = st.columns(2)
+        for i in range(int(nb_bornes)):
+            with cols[i % 2]:
+                st.caption(f"📍 **Borne {i+1}**")
+                lat = st.text_input(f"Latitude B{i+1}", value=f"5.94{21+i}", key=f"lat_simple_{i}")
+                lon = st.text_input(f"Longitude B{i+1}", value=f"-4.21{54+i}", key=f"lon_simple_{i}")
+                try:
+                    pts_saisis.append({'lat': float(lat), 'lon': float(lon), 'alt': 120.0})
+                except ValueError:
+                    pass
 
         c1, c2 = st.columns(2)
         with c1:
@@ -469,25 +483,19 @@ def afficher():
                 st.session_state.etape_module = 1
                 st.rerun()
         with c2:
-            if st.button("🚀 Obtenir l'emplacement", type="primary", use_container_width=True):
-                try:
-                    lat_f = float(lat_simple)
-                    lon_f = float(lon_simple)
-                    st.session_state.points_gps = [
-                        {'lat': lat_f + 0.0005, 'lon': lon_f - 0.0005, 'alt': 120},
-                        {'lat': lat_f + 0.0005, 'lon': lon_f + 0.0005, 'alt': 120},
-                        {'lat': lat_f - 0.0005, 'lon': lon_f + 0.0005, 'alt': 120},
-                        {'lat': lat_f - 0.0005, 'lon': lon_f - 0.0005, 'alt': 120}
-                    ]
+            if st.button("🚀 Calculer la superficie par Haversine", type="primary", use_container_width=True):
+                if len(pts_saisis) >= 3:
+                    st.session_state.points_gps = pts_saisis
                     st.session_state.etape_module = 3
                     st.rerun()
-                except ValueError:
-                    st.error("⚠️ Coordonnées invalides.")
+                else:
+                    st.error("⚠️ Veuillez remplir correctement au moins 3 bornes avec des chiffres valides.")
 
-        # --- ÉTAPE 3 : Résultats ---
+    # --- ÉTAPE 3 : Résultats (Consolidée) ---
     elif st.session_state.etape_module == 3:
         st.subheader("📊 Étape 3 : Résultats de l'Analyse par Leila")
 
+        # 1. Calcul réel par la formule de Haversine sur tous les modes (Garmin, Fichier, Manuel, Bornes)
         tuples_coords = [(p['lat'], p['lon']) for p in st.session_state.points_gps]
         superficie_ha, centre_gps = calculer_surface_haversine(tuples_coords)
         statut_texte, est_conforme = analyser_domaines_etat(tuples_coords)
@@ -495,7 +503,7 @@ def afficher():
         alt_moyenne = sum(p['alt'] for p in st.session_state.points_gps) / len(st.session_state.points_gps)
 
         m1, m2, m3 = st.columns(3)
-        m1.metric("🌳 SUPERFICIE", f"{superficie_ha:.4f} Ha")
+        m1.metric("🌳 SUPERFICIE (Haversine)", f"{superficie_ha:.4f} Ha")
         m2.metric("📍 LOCALITÉ", nom_localite)
         m3.metric("⛰️ ALTITUDE", f"{int(alt_moyenne)} m")
 
@@ -506,57 +514,56 @@ def afficher():
 
         cle_vocal_final = f"{superficie_ha:.2f}-{nom_localite}-{st.session_state.besoin_maquette}"
         if "dernier_vocal_module3" not in st.session_state or st.session_state.dernier_vocal_module3 != cle_vocal_final:
-            discours = f"La parcelle est située à {nom_localite}. Superficie : {superficie_ha:.2f} hectares. {statut_texte}."
+            discours = f"La parcelle est située à {nom_localite}. Superficie calculée par Haversine : {superficie_ha:.2f} hectares. {statut_texte}."
             parler(discours)
             st.session_state.dernier_vocal_module3 = cle_vocal_final
 
-        if st.session_state.besoin_maquette:
-            st.markdown("### 🗺️ Maquettes de la Parcelle (2D & 3D)")
-            tab_3d, tab_2d = st.tabs(["🌲 Maquette Réaliste 3D", "📊 Plan Cadastral 2D"])
+        # 2. Rendu graphique des maquettes 2D & 3D basé sur le polygone exact
+        st.markdown("### 🗺️ Maquettes de la Parcelle (2D & 3D)")
+        tab_3d, tab_2d = st.tabs(["🌲 Maquette Réaliste 3D", "📊 Plan Cadastral 2D"])
 
-            with tab_3d:
-                col_rot1, col_rot2 = st.columns(2)
-                with col_rot1:
-                    angle_horizontal = st.slider("Rotation azimut (0-360°)", 0, 360, 40, step=10)
-                with col_rot2:
-                    angle_vertical = st.slider("Inclinaison pitch (0-85°)", 0, 85, 50, step=5)
-                
-                poly_coords_3d = [[p['lon'], p['lat']] for p in st.session_state.points_gps]
-                
-                df_sol = pd.DataFrame([{"polygon": poly_coords_3d, "elevation": alt_moyenne}])
-                df_surface = pd.DataFrame([{"polygon": poly_coords_3d, "elevation": alt_moyenne + 1}])
-                
-                layers = [
-                    pdk.Layer("PolygonLayer", df_sol, get_polygon="polygon", get_fill_color="[110, 60, 20, 230]", extruded=True, get_elevation="elevation", elevation_scale=0.05),
-                    pdk.Layer("PolygonLayer", df_surface, get_polygon="polygon", get_fill_color="[46, 125, 50, 210]", extruded=True, get_elevation="elevation", elevation_scale=0.1)
-                ]
+        with tab_3d:
+            col_rot1, col_rot2 = st.columns(2)
+            with col_rot1:
+                angle_horizontal = st.slider("Rotation azimut (0-360°)", 0, 360, 40, step=10)
+            with col_rot2:
+                angle_vertical = st.slider("Inclinaison pitch (0-85°)", 0, 85, 50, step=5)
+            
+            poly_coords_3d = [[p['lon'], p['lat']] for p in st.session_state.points_gps]
+            
+            df_sol = pd.DataFrame([{"polygon": poly_coords_3d, "elevation": alt_moyenne}])
+            df_surface = pd.DataFrame([{"polygon": poly_coords_3d, "elevation": alt_moyenne + 1}])
+            
+            layers = [
+                pdk.Layer("PolygonLayer", df_sol, get_polygon="polygon", get_fill_color="[110, 60, 20, 230]", extruded=True, get_elevation="elevation", elevation_scale=0.05),
+                pdk.Layer("PolygonLayer", df_surface, get_polygon="polygon", get_fill_color="[46, 125, 50, 210]", extruded=True, get_elevation="elevation", elevation_scale=0.1)
+            ]
 
-                view_state = pdk.ViewState(
-                    latitude=centre_gps[0], longitude=centre_gps[1], zoom=16.5,
-                    pitch=angle_vertical, bearing=angle_horizontal
-                )
-                
-                st.pydeck_chart(pdk.Deck(layers=layers, initial_view_state=view_state, map_style="mapbox://styles/mapbox/satellite-streets-v11"))
+            view_state = pdk.ViewState(
+                latitude=centre_gps[0], longitude=centre_gps[1], zoom=16.5,
+                pitch=angle_vertical, bearing=angle_horizontal
+            )
+            
+            st.pydeck_chart(pdk.Deck(layers=layers, initial_view_state=view_state, map_style="mapbox://styles/mapbox/satellite-streets-v11"))
 
-            with tab_2d:
-                fig, ax = plt.subplots(figsize=(7, 4))
-                fig.patch.set_facecolor('#1e1e1e')
-                ax.set_facecolor('#1e1e1e')
-                lats = [p['lat'] for p in st.session_state.points_gps] + [st.session_state.points_gps[0]['lat']]
-                lons = [p['lon'] for p in st.session_state.points_gps] + [st.session_state.points_gps[0]['lon']]
-                ax.fill(lons, lats, color='#27ae60', alpha=0.5)
-                ax.plot(lons, lats, color='#2ecc71', marker='o', linewidth=2)
-                ax.tick_params(colors='white', labelsize=8)
-                ax.grid(True, color='#333333', linestyle=':')
-                ax.set_title(f"Plan Cadastral — {nom_localite}", color="white", fontsize=10)
-                st.pyplot(fig)
+        with tab_2d:
+            fig, ax = plt.subplots(figsize=(7, 4))
+            fig.patch.set_facecolor('#1e1e1e')
+            ax.set_facecolor('#1e1e1e')
+            lats = [p['lat'] for p in st.session_state.points_gps] + [st.session_state.points_gps[0]['lat']]
+            lons = [p['lon'] for p in st.session_state.points_gps] + [st.session_state.points_gps[0]['lon']]
+            ax.fill(lons, lats, color='#27ae60', alpha=0.5)
+            ax.plot(lons, lats, color='#2ecc71', marker='o', linewidth=2)
+            ax.tick_params(colors='white', labelsize=8)
+            ax.grid(True, color='#333333', linestyle=':')
+            ax.set_title(f"Plan Cadastral — {nom_localite}", color="white", fontsize=10)
+            st.pyplot(fig)
 
         st.markdown("---")
         if st.button("🏁 Enregistrer et envoyer au Chef", type="primary", key="btn_sortir_p3_fin", use_container_width=True):
             fichier_json = "base_de_donnees_layla.json"
             data_file = {}
 
-            # 1. Lecture ou création du fichier JSON local
             if os.path.exists(fichier_json):
                 try:
                     with open(fichier_json, "r", encoding="utf-8") as f:
@@ -567,7 +574,6 @@ def afficher():
             if "file_attente_locale" not in data_file:
                 data_file["file_attente_locale"] = []
 
-            # 2. Structure du rapport
             rapport_parcelle = {
                 "horodatage": pd.Timestamp.now().strftime("%Y-%m-%d %H:%M:%S"),
                 "nom": st.session_state.get("nom_producteur", "Producteur Localisation"),
@@ -582,28 +588,26 @@ def afficher():
                 "points_gps_bruts": st.session_state.points_gps
             }
 
-            # 3. Ajout dans le JSON local
             data_file["file_attente_locale"].append(rapport_parcelle)
             with open(fichier_json, "w", encoding="utf-8") as f:
                 json.dump(data_file, f, indent=4, ensure_ascii=False)
 
-            # 4. Synchronisation immédiate avec la session Streamlit
-            if "file_attente_locale" not in st.session_state:
-                st.session_state.file_attente_locale = []
-            st.session_state.file_attente_locale.append(rapport_parcelle)
+            # Synchronisation directe de la file d'attente globale
+            st.session_state.file_attente_locale = data_file["file_attente_locale"]
+            st.session_state.file_attente = data_file["file_attente_locale"]
+            st.session_state.rapports_attente = data_file["file_attente_locale"]
 
             parler("OK, c'est parti pour une nouvelle localisation.")
             st.success("✅ Rapport enregistré et ajouté à la liste d'attente !")
             st.balloons()
             
-            # Réinitialisation des variables de parcours
             st.session_state.points_gps = []
             st.session_state.etape_module = 1
             st.session_state.besoin_maquette = False
             for cle_voix in ["voix_initiale_fait", "voix_etape2_oui", "voix_etape2_non", "dernier_vocal_module3"]:
                 st.session_state.pop(cle_voix, None)
             
-            time.sleep(1.5)
+            time.sleep(1)
             st.rerun()
 
 if __name__ == "__main__":
