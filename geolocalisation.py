@@ -422,8 +422,8 @@ def afficher():
         st.rerun()
 
 
-        else:
-            st.write("🎯 **Mode Localisation Simple activé :**")
+    else:
+        st.write("🎯 **Mode Localisation Simple activé :**")
             instruction = "Entrez la latitude et la longitude de la parcelle."
             st.info(f"**Leila :** *« {instruction} »*")
             
