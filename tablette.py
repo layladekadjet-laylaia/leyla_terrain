@@ -141,9 +141,8 @@ else:
     elif choix_module == "3. Estimation de Rendement":
         estimation_de_rendement.afficher()
 
-    elif choix_module == "4.
-PDC":
-pdc.afficher()
+elif choix_module == "4. pdc":
+        plan_de_developpement_de_la_cacaoyere.afficher()
 
 # --- 4. SYNCHRONISATION / ENVOI AU SERVEUR CENTRAL ---
 st.markdown("---")
