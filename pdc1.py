@@ -12,7 +12,8 @@ from fpdf import FPDF
 import datetime
 
 import streamlit as st
-
+def afficher():
+    st.subheader("Module PDC 1")
 # =========================================================================
 # 🎛️ INITIALISATION CENTRALISÉE DE TOUTES LES PAGES (MÉMOIRE GLOBALE LEILA)
 # =========================================================================
