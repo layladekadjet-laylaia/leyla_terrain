@@ -1,6 +1,5 @@
 
-def afficher():
-    st.subheader("Module PDC 4")
+
 def dessiner_page_17_Etat_Du_Sol_Strict():
     st.markdown("""
     <style>
