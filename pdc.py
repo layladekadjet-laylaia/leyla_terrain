@@ -117,7 +117,7 @@ def afficher():
         autre_speculations = st.text_input("Autres spéculations (élevage, production halieutique, etc.)")
         terres_disponibles = st.number_input("Terres disponibles non exploitées (ha)", min_value=0.0, step=0.5)
         outils_equipements = st.text_area("Outils de travail et équipements de production disponibles")
-        informations_sur_la_plantation_de_cacaoyer = les informations sur l'application de cacaoyer")
+        informations_sur_la_plantation_de_cacaoyer = st.text_area("les informations sur l'application de cacaoyer")
         arbres_hors_cacaoyer = st.text_area("Situation des arbres autres que le cacaoyer dans la cacaoyère")
 
         col1, col2 = st.columns([1, 1])
