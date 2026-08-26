@@ -134,51 +134,88 @@ def moteur_de_navigation(n_page_externe=None):
 # ==========================================================
 # 6. CONFIGURATION VISUELLE & SIDEBAR
 # ==========================================================
-appliquer_style_layla()
+import streamlit as st
+import pandas as pd
 
-with st.sidebar:
-    try:
-        st.image("logo_layla.png", width=150)
-    except:
-        st.header("LAYLA IA")
-    
-    st.write("📍 **ZONE : Soubré**")
-    st.divider()
-    
-    page_mode = st.radio(
-        "NAVIGATION",
-        ["🏠 Accueil", "📄 GESTION PDC (ARS 1000)", "📊 STATISTIQUES", "⚙️ CONFIGURATION"]
-    )
-    st.info("Ingénieur Djè Akadjé")
+# 1. Définition de la fonction de style manquante
+def appliquer_style_layla():
+    """Applique le style CSS personnalisé pour le module LAYLA."""
+    st.markdown("""
+        <style>
+        .stApp {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .main-title {
+            color: #2E7D32;
+            font-weight: bold;
+        }
+        </style>
+    """, unsafe_allow_html=True)
 
-# Appel du moteur de navigation unique pour synchroniser proprement la barre latérale
-# On le place ICI pour que le selectbox ne vienne pas écraser les changements des boutons inférieurs
-moteur_de_navigation(st.session_state.page_actuelle)
+# 2. Fonction facultative pour la synthèse vocale (sécurité si non définie)
+def parler(texte):
+    pass
 
-if page_mode == "📄 GESTION PDC (ARS 1000)":
-    st.title("📄 Système de Gestion PDC (ARS 1000)")
-    
-    # Rendu du tableau et des données spécifiques à la page actuelle
-    st.subheader(f"DOCUMENT ARS 1000 - PAGE {st.session_state.page_actuelle}")
+# 3. Fonction pour la navigation de page (sécurité si non définie)
+def moteur_de_navigation(page):
+    pass
 
-    if f"table_p{st.session_state.page_actuelle}" not in st.session_state.donnees_pdc:
-        df_init = pd.DataFrame([["", ""]], columns=["Description", "Valeur"])
-        st.session_state.donnees_pdc[f"table_p{st.session_state.page_actuelle}"] = df_init
+# ==========================================================
+# FONCTION PRINCIPALE DU MODULE PDC 10
+# ==========================================================
+def afficher():
+    # Initialisations requises du session_state
+    if "page_actuelle" not in st.session_state:
+        st.session_state.page_actuelle = 10
+    if "donnees_pdc" not in st.session_state:
+        st.session_state.donnees_pdc = {}
 
-    edited_df = st.data_editor(
-        st.session_state.donnees_pdc[f"table_p{st.session_state.page_actuelle}"],
-        num_rows="dynamic",
-        width="stretch",
-        key=f"editor_p{st.session_state.page_actuelle}"
-    )
-    st.session_state.donnees_pdc[f"table_p{st.session_state.page_actuelle}"] = edited_df
+    # Application du style visuel
+    appliquer_style_layla()
 
-    if st.button("💾 Synchroniser et Préparer PDF"):
-        st.success("Données synchronisées. Prêt pour l'export.")
-        parler("Données synchronisées. Je prépare le document officiel.")
+    # Barre latérale (Sidebar)
+    with st.sidebar:
+        try:
+            st.image("logo_layla.png", width=150)
+        except Exception:
+            st.header("LAYLA IA")
+        
+        st.write("📍 **ZONE : Soubré**")
+        st.divider()
+        
+        page_mode = st.radio(
+            "NAVIGATION PDC 10",
+            ["🏠 Accueil", "📄 GESTION PDC (ARS 1000)", "📊 STATISTIQUES", "⚙️ CONFIGURATION"],
+            key="radio_pdc10"
+        )
+        st.info("Ingénieur Djè Akadjé")
 
-# NOTE: Suppression du doublon "LAYLA MASTER" qui recréait un second number_input 
-# dans la sidebar et provoquait des conflits de variables avec le reste.
+    # Moteur de navigation
+    moteur_de_navigation(st.session_state.page_actuelle)
+
+    # Contenu principal
+    if page_mode == "📄 GESTION PDC (ARS 1000)":
+        st.title("📄 Système de Gestion PDC (ARS 1000)")
+        
+        st.subheader(f"DOCUMENT ARS 1000 - PAGE {st.session_state.page_actuelle}")
+
+        cle_table = f"table_p{st.session_state.page_actuelle}"
+        if cle_table not in st.session_state.donnees_pdc:
+            df_init = pd.DataFrame([["", ""]], columns=["Description", "Valeur"])
+            st.session_state.donnees_pdc[cle_table] = df_init
+
+        edited_df = st.data_editor(
+            st.session_state.donnees_pdc[cle_table],
+            num_rows="dynamic",
+            use_container_width=True,
+            key=f"editor_p{st.session_state.page_actuelle}"
+        )
+        st.session_state.donnees_pdc[cle_table] = edited_df
+
+        if st.button("💾 Synchroniser et Préparer PDF", key="btn_sync_pdc10"):
+            st.success("Données synchronisées. Prêt pour l'export.")
+            parler("Données synchronisées. Je prépare le document officiel.")
+.
 
 # ==========================================================
 # 8. EXÉCUTION DU CORPS DE PAGE (Placé avant la barre pour cohérence visuelle)
