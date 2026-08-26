@@ -215,7 +215,7 @@ def afficher():
         if st.button("💾 Synchroniser et Préparer PDF", key="btn_sync_pdc10"):
             st.success("Données synchronisées. Prêt pour l'export.")
             parler("Données synchronisées. Je prépare le document officiel.")
-.
+
 
 # ==========================================================
 # 8. EXÉCUTION DU CORPS DE PAGE (Placé avant la barre pour cohérence visuelle)
