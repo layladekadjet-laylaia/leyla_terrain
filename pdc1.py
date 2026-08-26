@@ -95,7 +95,6 @@ def log_action(message):
 # ==========================================================
 def leila_tracker_central():
     """ Écouteur universel protégeant les structures et les modifications de l'application. """
-    # INITIALISATION SANS RETURN BLOQUANT
     if "leila_memoire_tampon" not in st.session_state:
         st.session_state.leila_memoire_tampon = {}
 
@@ -108,17 +107,27 @@ def leila_tracker_central():
         ancienne_valeur = st.session_state.leila_memoire_tampon.get(cle, None)
 
         if ancienne_valeur is not None:
-            if hasattr(valeur_actuelle, "equals"): 
-                if not ancienne_valeur.equals(valeur_actuelle):
-                    memoriser_marche(f"Le tableau élastique [{cle}] a été mis à jour.")
-            elif hasattr(ancienne_valeur, "equals"):
-                memoriser_marche(f"La structure de [{cle}] a changé de format.")
+            # 1. Traitement spécifique si l'un des deux objets est un DataFrame
+            is_actuelle_df = isinstance(valeur_actuelle, pd.DataFrame)
+            is_ancienne_df = isinstance(ancienne_valeur, pd.DataFrame)
+
+            if is_actuelle_df or is_ancienne_df:
+                if is_actuelle_df and is_ancienne_df:
+                    if not ancienne_valeur.equals(valeur_actuelle):
+                        memoriser_marche(f"Le tableau élastique [{cle}] a été mis à jour.")
+                else:
+                    memoriser_marche(f"La structure de [{cle}] a changé de format.")
+            
+            # 2. Traitement pour tous les autres types de données (listes, str, int, float, dict)
             else:
-                if ancienne_valeur != valeur_actuelle:
-                    if isinstance(valeur_actuelle, list) and cle == "arbres_inventoriez":
-                        memoriser_marche(f"L'inventaire global [{cle}] a été mis à jour (Page 45).")
-                    else:
-                        memoriser_marche(f"Le champ [{cle}] a changé : '{ancienne_valeur}' ➡️ '{valeur_actuelle}'")
+                try:
+                    if ancienne_valeur != valeur_actuelle:
+                        if isinstance(valeur_actuelle, list) and cle == "arbres_inventoriez":
+                            memoriser_marche(f"L'inventaire global [{cle}] a été mis à jour.")
+                        else:
+                            memoriser_marche(f"Le champ [{cle}] a changé : '{ancienne_valeur}' ➡️ '{valeur_actuelle}'")
+                except Exception:
+                    pass
 
         # Sauvegarde systématique dans le tampon
         if hasattr(valeur_actuelle, "copy"):
