@@ -1,3 +1,5 @@
+def afficher():
+    st.subheader("Module PDC 2")
 # ==========================================================
 # 4. FONCTIONS DE DESSIN DES PAGES (Contenu réel intégré)
 # ==========================================================
