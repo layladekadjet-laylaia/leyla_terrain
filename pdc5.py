@@ -1,6 +1,5 @@
 
-def afficher():
-    st.subheader("Module PDC 5")
+
 def dessiner_page_21_Finance_Production():
     # --- CONFIGURATION DU DESIGN ET STRUCTURES EN POUPÉES RUSSES ---
     st.markdown("""
