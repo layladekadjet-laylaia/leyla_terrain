@@ -217,27 +217,62 @@ def afficher():
             parler("Données synchronisées. Je prépare le document officiel.")
 
 
-# ==========================================================
-# 8. EXÉCUTION DU CORPS DE PAGE (Placé avant la barre pour cohérence visuelle)
-# ==========================================================
-afficher_contenu()
+import streamlit as st
+import pandas as pd
 
 # ==========================================================
-# 7. BARRE DE NAVIGATION INFÉRIEURE (En bas de page)
+# FONCTIONS UTILITAIRES & LOGIQUE INTERNE
 # ==========================================================
-st.divider()
-col_prev, col_page, col_next = st.columns([1, 2, 1])
+def initialiser_etats():
+    """Initialise les variables globales de session si elles n'existent pas encore."""
+    if "page_actuelle" not in st.session_state:
+        st.session_state.page_actuelle = 1
+    if "donnees_pdc" not in st.session_state:
+        st.session_state.donnees_pdc = {}
 
-with col_prev:
-    # Changement direct via le clic du bouton principal
-    if st.button("⬅️ Précédent", width="stretch", disabled=(st.session_state.page_actuelle <= -1), key="nav_prev_main"): 
-        st.session_state.page_actuelle -= 1
-        st.rerun()
+def afficher_contenu():
+    """Affiche le contenu principal en fonction de la page actuelle."""
+    st.subheader(f"DOCUMENT ARS 1000 - PAGE {st.session_state.page_actuelle} / 49")
+    
+    cle_table = f"table_p{st.session_state.page_actuelle}"
+    if cle_table not in st.session_state.donnees_pdc:
+        df_init = pd.DataFrame([["", ""]], columns=["Description", "Valeur"])
+        st.session_state.donnees_pdc[cle_table] = df_init
 
-with col_page:
-    st.markdown(f"<h3 style='text-align: center; color: #2E7D32;'>📄 PAGE {st.session_state.page_actuelle} / 49</h3>", unsafe_allow_html=True)
+    edited_df = st.data_editor(
+        st.session_state.donnees_pdc[cle_table],
+        num_rows="dynamic",
+        use_container_width=True,
+        key=f"editor_p{st.session_state.page_actuelle}"
+    )
+    st.session_state.donnees_pdc[cle_table] = edited_df
 
-with col_next:
-    if st.button("Suivant ➡️", width="stretch", key="btn_navigation_next", disabled=(st.session_state.page_actuelle >= 49)):
-        st.session_state.page_actuelle += 1
-        st.rerun()
+# ==========================================================
+# FONCTION PRINCIPALE APPELÉE PAR TABLETTE.PY
+# ==========================================================
+def afficher():
+    # 1. Sécuriser le session_state
+    initialiser_etats()
+    
+    st.title("📄 Système de Gestion PDC (ARS 1000) - PDC 10")
+
+    # 2. Exécution du corps de la page
+    afficher_contenu()
+
+    # 3. Barre de navigation inférieure
+    st.divider()
+    col_prev, col_page, col_next = st.columns([1, 2, 1])
+
+    with col_prev:
+        if st.button("⬅️ Précédent", use_container_width=True, disabled=(st.session_state.page_actuelle <= 1), key="nav_prev_pdc10"): 
+            st.session_state.page_actuelle -= 1
+            st.rerun()
+
+    with col_page:
+        st.markdown(f"<h3 style='text-align: center; color: #2E7D32;'>📄 PAGE {st.session_state.page_actuelle} / 49</h3>", unsafe_allow_html=True)
+
+    with col_next:
+        if st.button("Suivant ➡️", use_container_width=True, disabled=(st.session_state.page_actuelle >= 49), key="nav_next_pdc10"):
+            st.session_state.page_actuelle += 1
+            st.rerun()
+
