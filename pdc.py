@@ -12,6 +12,7 @@ from fpdf import FPDF
 import datetime
 
 
+
 def afficher():
     st.title("📋 PDC - Diagnostic & Plan de Développement")
 
@@ -116,7 +117,6 @@ def afficher():
         # 4.1 DONNÉES SUR LES CULTURES (Cacao & Autres Cultures N)
         st.markdown("### 🌾 1. Données sur les cultures")
         
-        # Parcelles de Cacao (Parcelle 1, Parcelle 2, ... Parcelle N)
         st.markdown("**A. Plantation de Cacao**")
         if 'df_cacao' not in st.session_state:
             st.session_state.df_cacao = [
@@ -131,7 +131,6 @@ def afficher():
             use_container_width=True
         )
 
-        # Autres cultures (Hévéa, P. à huile, Vivrier, ... Culture N)
         st.markdown("**B. Autres cultures**")
         if 'df_autres_cultures' not in st.session_state:
             st.session_state.df_autres_cultures = [
@@ -167,12 +166,78 @@ def afficher():
 
         st.markdown("---")
 
-        # 4.3 AUTRES INFORMATIONS COMPLÉMENTAIRES
-        st.markdown("### 🌳 3. Diagnostic des arbres et terres")
-        
+        # 4.3 DIAGNOSTIC DES ARBRES AUTRES QUE LE CACAOYER
+        st.markdown("### 🌳 3. Diagnostic des arbres autres que le cacaoyer")
+        st.info("Recensement et diagnostic des arbres d'ombrage et essences associées dans la cacaoyère.")
+
+        if 'df_arbres_ombrage' not in st.session_state:
+            st.session_state.df_arbres_ombrage = [
+                {
+                    "N°": 1,
+                    "Nom de l'arbre": "Akpi",
+                    "Nombre": 200,
+                    "Latitude": 6.020668,
+                    "Longitude": -4.3571323,
+                    "Statut": "Préservé",
+                    "Avantages cacaoyère": "Ombrage",
+                    "Usage": "Bois d'oeuvre",
+                    "Action": "A maintenir",
+                    "Observations": ""
+                },
+                {
+                    "N°": 2,
+                    "Nom de l'arbre": "Fraqué",
+                    "Nombre": 70,
+                    "Latitude": 6.020664,
+                    "Longitude": -4.3569498,
+                    "Statut": "Préservé",
+                    "Avantages cacaoyère": "Fertilité du sol",
+                    "Usage": "Bois d'oeuvre",
+                    "Action": "A éliminer",
+                    "Observations": "Situé à 1,5 m d'un autre"
+                },
+                {
+                    "N°": 3,
+                    "Nom de l'arbre": "Fromager",
+                    "Nombre": 212,
+                    "Latitude": 6.020614,
+                    "Longitude": -4.3569029,
+                    "Statut": "Préservé",
+                    "Avantages cacaoyère": "Maintien l'humidité",
+                    "Usage": "Bois d'oeuvre",
+                    "Action": "A maintenir",
+                    "Observations": ""
+                }
+            ]
+
+        arbres_ombrage_df = st.data_editor(
+            st.session_state.df_arbres_ombrage,
+            num_rows="dynamic",
+            key="editor_arbres_ombrage",
+            column_config={
+                "Statut": st.column_config.SelectboxColumn("Statut", options=["Préservé", "Introduit", "Régénéré"]),
+                "Avantages cacaoyère": st.column_config.SelectboxColumn("Avantages pour la cacaoyère", options=[
+                    "1. Ombrage",
+                    "2. Fertilité du sol",
+                    "3. Protection contre l'érosion",
+                    "4. Maintien l'humidité",
+                    "5. Lutte contre l'enherbement"
+                ]),
+                "Usage": st.column_config.SelectboxColumn("Usage", options=[
+                    "1. Alimentaire",
+                    "2. Médicinale",
+                    "3. Protection des cacaoyers",
+                    "4. Bois d'oeuvre",
+                    "5. Bois de chauffage"
+                ]),
+                "Action": st.column_config.SelectboxColumn("Action recommandée", options=["A maintenir", "A éliminer", "A élaguer"])
+            },
+            use_container_width=True
+        )
+
+        st.markdown("---")
         terres_disponibles = st.number_input("Terres disponibles non exploitées (ha)", min_value=0.0, step=0.5, value=0.0)
-        autre_speculations = st.text_input("Autres spéculations (Elevage, production halieutique, etc.)")
-        arbres_hors_cacaoyer = st.text_area("Diagnostic des arbres autres que le cacaoyer sur l'exploitation")
+        autre_speculations = st.text_input("Autres spéculations (Élevage, production halieutique, etc.)")
 
         # NAVIGATION ENTRE ÉTAPES
         col1, col2 = st.columns([1, 1])
@@ -186,9 +251,9 @@ def afficher():
                     "parcelles_cacaoyer": cacao_df,
                     "autres_cultures": autres_cultures_df,
                     "equipements": equipements_df,
+                    "arbres_ombrage": arbres_ombrage_df,
                     "terres_disponibles": terres_disponibles,
-                    "autre_speculations": autre_speculations,
-                    "arbres_hors_cacaoyer": arbres_hors_cacaoyer
+                    "autre_speculations": autre_speculations
                 })
                 st.session_state.etape_pdc = 5
                 st.rerun()
@@ -209,6 +274,5 @@ def afficher():
         with col2:
             if st.button("💾 Enregistrer", type="primary", use_container_width=True):
                 st.success("Données enregistrées avec succès !")
-                # Réinitialiser pour une nouvelle saisie
                 st.session_state.etape_pdc = 1
                 st.session_state.reponses_pdc = {}
