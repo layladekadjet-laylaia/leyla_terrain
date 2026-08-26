@@ -4,73 +4,13 @@ import os
 from datetime import datetime
 import requests
 
-# --- IMPORTATION DE TES MODULES ---
+# --- IMPORTATION DES MODULES ---
 
 import diagnostique
 import geolocalisation
 import estimation_de_rendement
-
 import pdc1
-import pdc2
-import pdc3
-import pdc4
-import pdc5
-import pdc6
-import pdc7
-import pdc8
-import pdc9
-import pdc10
 
-# 2. Initialisation de la page actuelle
-if "page_actuelle" not in st.session_state:
-    st.session_state.page_actuelle = 1
-
-# 3. Mappage des pages (1 à 49) vers leurs modules respectifs
-def router_page():
-    page = st.session_state.page_actuelle
-    
-    if 1 <= page <= 5:
-        pdc1.afficher()
-    elif 6 <= page <= 10:
-        pdc2.afficher()
-    elif 11 <= page <= 15:
-        pdc3.afficher()
-    elif 16 <= page <= 20:
-        pdc4.afficher()
-    elif 21 <= page <= 25:
-        pdc5.afficher()
-    elif 26 <= page <= 30:
-        pdc6.afficher()
-    elif 31 <= page <= 35:
-        pdc7.afficher()
-    elif 36 <= page <= 40:
-        pdc8.afficher()
-    elif 41 <= page <= 45:
-        pdc9.afficher()
-    elif 46 <= page <= 49:
-        pdc10.afficher()
-    else:
-        st.error("Page introuvable")
-
-# 4. Appeler le routeur
-router_page()
-
-# 5. Barre de navigation globale
-st.divider()
-col_prev, col_page, col_next = st.columns([1, 2, 1])
-
-with col_prev:
-    if st.button("⬅️ Précédent", use_container_width=True, disabled=(st.session_state.page_actuelle <= 1)):
-        st.session_state.page_actuelle -= 1
-        st.rerun()
-
-with col_page:
-    st.markdown(f"<h3 style='text-align: center; color: #2E7D32;'>PAGE {st.session_state.page_actuelle} / 49</h3>", unsafe_allow_html=True)
-
-with col_next:
-    if st.button("Suivant ➡️", use_container_width=True, disabled=(st.session_state.page_actuelle >= 49)):
-        st.session_state.page_actuelle += 1
-        st.rerun()
 
 
 
