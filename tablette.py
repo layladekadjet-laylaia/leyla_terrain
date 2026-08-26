@@ -154,32 +154,7 @@ else:
     elif choix_module.startswith("4. PDC 1"):
         pdc1.afficher()
 
-    elif choix_module.startswith("5. PDC 2"):
-        pdc2.afficher()
-
-    elif choix_module.startswith("6. PDC 3"):
-        pdc3.afficher()
-
-    elif choix_module.startswith("7. PDC 4"):
-        pdc4.afficher()
-
-    elif choix_module.startswith("8. PDC 5"):
-        pdc5.afficher()
-
-    elif choix_module.startswith("9. PDC 6"):
-        pdc6.afficher()
-
-    elif choix_module.startswith("10. PDC 7"):
-        pdc7.afficher()
-
-    elif choix_module.startswith("11. PDC 8"):
-        pdc8.afficher()
-
-    elif choix_module.startswith("12. PDC 9"):
-        pdc9.afficher()
-
-    elif choix_module.startswith("13. PDC 10"):
-        pdc10.afficher()
+    
 
 
 # --- 4. SYNCHRONISATION / ENVOI AU SERVEUR CENTRAL ---
