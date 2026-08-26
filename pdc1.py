@@ -13,7 +13,7 @@ import datetime
 
 import streamlit as st
 def afficher():
-    st.subheader("Module PDC 1")
+    st.subheader(f"DOCUMENT ARS 1000 - PAGE {st.session_state.page_actuelle}")
 # =========================================================================
 # 🎛️ INITIALISATION CENTRALISÉE DE TOUTES LES PAGES (MÉMOIRE GLOBALE LEILA)
 # =========================================================================
