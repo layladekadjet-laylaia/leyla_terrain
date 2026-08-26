@@ -188,7 +188,6 @@ def composant_tracker_garmin():
             <p id="coords_display" style="font-family: monospace; font-size: 12px; margin: 4px 0; color: #b0bec5;">Lat: -- | Lon: -- (±--m)</p>
             <p id="count_display" style="font-size: 15px; color: #81c784; margin-top: 6px; font-weight: bold;">Points enregistrés : 0</p>
             
-            <!-- Le bouton d'arrêt réintégré -->
             <button id="btn-stop" class="btn-action btn-stop-disabled" disabled type="button">
                 🛑 ARRÊTER ET BOUCLER (0 / 3 PTS MIN)
             </button>
@@ -216,13 +215,11 @@ def composant_tracker_garmin():
             }
         }
 
-        // Action au clic sur le bouton rouge
         document.getElementById("btn-stop").addEventListener("click", function() {
             if (pointsList.length >= 3) {
                 if (watchId !== null) {
                     navigator.geolocation.clearWatch(watchId);
                 }
-                // Envoi des points à Streamlit Python
                 Streamlit.setComponentValue({
                     status: "FINISHED",
                     points: pointsList
@@ -288,158 +285,132 @@ def composant_tracker_garmin():
     </body>
     </html>
     """
-    # Hauteur augmentée à 220px pour afficher le bouton sans rognage
     return components.html(html_code, height=220)
 
-
-
-
-
-import math
-
-def haversine_distance_pts(lat1, lon1, lat2, lon2):
-    """Calcule la distance en mètres entre deux points GPS."""
-    R = 6371000  # Rayon de la Terre en mètres
-    phi1, phi2 = math.radians(lat1), math.radians(lat2)
-    delta_phi = math.radians(lat2 - lat1)
-    delta_lambda = math.radians(lon2 - lon1)
-
-    a = math.sin(delta_phi / 2.0)**2 + \
-        math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0)**2
-    c = 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
-    return R * c
-
-def calculer_superficie_et_perimetre(pts):
-    """
-    Calcule le périmètre (mètres) et la superficie (m² et ha) 
-    d'un polygone à partir d'une liste de dicts [{'lat':..., 'lon':...}].
-    """
-    if not pts or len(pts) < 3:
-        return 0.0, 0.0, 0.0
-
-    # 1. Calcul du périmètre
-    perimetre = 0.0
-    n = len(pts)
-    for i in range(n):
-        p1 = pts[i]
-        p2 = pts[(i + 1) % n] # Bouclage vers le 1er point
-        perimetre += haversine_distance_pts(p1['lat'], p1['lon'], p2['lat'], p2['lon'])
-
-    # 2. Calcul de la superficie (Formule des trapèzes sur coordonnées projetées)
-    # Projection locale en mètres par rapport au centre du polygone
-    lat_center = sum(p['lat'] for p in pts) / n
-    r_earth = 6371000.0
-
-    coords_m = []
-    for p in pts:
-        x = math.radians(p['lon']) * r_earth * math.cos(math.radians(lat_center))
-        y = math.radians(p['lat']) * r_earth
-        coords_m.append((x, y))
-
-    # Formule du lacet (Shoelace formula)
-    area = 0.0
-    for i in range(n):
-        j = (i + 1) % n
-        area += coords_m[i][0] * coords_m[j][1]
-        area -= coords_m[j][0] * coords_m[i][1]
-    
-    sup_m2 = abs(area) / 2.0
-    sup_ha = sup_m2 / 10000.0
-
-    return perimetre, sup_m2, sup_ha
-
 # =========================================================================
-# --- 2. FONCTION AFFICHER ---
+# --- 4. FONCTION PRINCIPALE DE L'APPLICATION ---
 # =========================================================================
 def afficher():
+    # Initialisation sécurisée de toutes les clés de session
     if "etape_module" not in st.session_state:
         st.session_state.etape_module = 1
     if "points_gps" not in st.session_state:
         st.session_state.points_gps = []
     if "nom_producteur" not in st.session_state:
         st.session_state.nom_producteur = ""
+    if "geolocalisation" not in st.session_state:
+        st.session_state.geolocalisation = {}
 
     st.title("🛰️ LEYLA — Cartographie & Topographie Terrain")
 
     # ÉTAPE 1 : Configuration
     if st.session_state.etape_module == 1:
         st.info("💡 **Mode Calcul de Zone Garmin** : Activez le tracé, effectuez le tour complet de la parcelle puis stoppez pour obtenir la superficie exacte.")
-        st.session_state.nom_producteur = st.text_input("Nom du Producteur / Code Parcelle :", placeholder="ex: Kouadio - Parcelle Cocoa A")
+        st.session_state.nom_producteur = st.text_input("Nom du Producteur / Code Parcelle :", value=st.session_state.nom_producteur, placeholder="ex: Kouadio - Parcelle Cocoa A")
         
         if st.button("▶️ Démarrer le Calcul de Zone", type="primary", use_container_width=True):
             if st.session_state.nom_producteur.strip() == "":
-                st.warning("⚠️ Veillez renseigner le nom du producteur avant de démarrer.")
+                st.warning("⚠️ Veuillez renseigner le nom du producteur avant de démarrer.")
             else:
                 st.session_state.points_gps = []
                 st.session_state.etape_module = 2
                 st.rerun()
 
-                    # ÉTAPE 2 : Acquisition GPS
+    # ÉTAPE 2 : Acquisition GPS
     elif st.session_state.etape_module == 2:
-        st.subheader(f"📍 Acquisition Terrain : {st.session_state.nom_producteur}")
-
-        # Appel du composant (renvoie la valeur transmise par Streamlit.setComponentValue)
-        res = composant_tracker_garmin()
-
-        # Interception du clic sur le bouton rouge
-        if isinstance(res, dict) and res.get("status") == "FINISHED":
-            st.session_state.points_gps = res.get("points", [])
+        st.subheader(f"📍 Acquisition GPS pour : {st.session_state.nom_producteur}")
+        
+        gps_data = composant_tracker_garmin()
+        
+        if gps_data and isinstance(gps_data, dict) and gps_data.get("status") == "FINISHED":
+            st.session_state.points_gps = gps_data.get("points", [])
             st.session_state.etape_module = 3
             st.rerun()
 
-        st.markdown("---")
-        if st.button("🔄 Annuler / Réinitialiser la marche", type="secondary", use_container_width=True):
-            st.session_state.points_gps = []
+        if st.button("⬅️ Annuler", use_container_width=True):
             st.session_state.etape_module = 1
             st.rerun()
 
-
-    # ÉTAPE 3 : Synthèse & Cartographie
+    # ÉTAPE 3 : Restitution des résultats
     elif st.session_state.etape_module == 3:
         pts = st.session_state.points_gps
+        perimetre, sup_m2, sup_ha = calculer_superficie_et_perimetre(pts)
         
-        # Sécurité : vérification que la liste de points n'est pas vide
-        if not pts or len(pts) < 3:
-            st.error("⚠️ Aucun point GPS n'a été récupéré. Veuillez recommencer le relevé.")
-            if st.button("⬅️ Retour à l'accueil"):
-                st.session_state.etape_module = 1
-                st.rerun()
+        coords_tuple = [(p['lat'], p['lon']) for p in pts]
+        analyse_statut, conforme = analyser_domaines_etat(coords_tuple)
+        
+        lat_centre = sum(p['lat'] for p in pts) / len(pts)
+        lon_centre = sum(p['lon'] for p in pts) / len(pts)
+        localite = chercher_lieu_excel((lat_centre, lon_centre))
+
+        st.session_state.geolocalisation = {
+            "producteur": st.session_state.nom_producteur,
+            "superficie_ha": round(sup_ha, 3),
+            "superficie_m2": round(sup_m2, 1),
+            "perimetre_m": round(perimetre, 1),
+            "centre": (lat_centre, lon_centre),
+            "localite": localite,
+            "statut_eudr": analyse_statut,
+            "conforme": conforme,
+            "points": pts
+        }
+
+        st.success(f"✅ Relevé terminé pour {st.session_state.nom_producteur}")
+
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Superficie (ha)", f"{sup_ha:.3f} ha")
+        col2.metric("Superficie (m²)", f"{sup_m2:.1f} m²")
+        col3.metric("Périmètre", f"{perimetre:.1f} m")
+
+        st.markdown(f"**Localité estimée :** {localite}")
+        if conforme:
+            st.success(f"🛡️ **Analyse foncière :** {analyse_statut}")
         else:
-            perimetre, sup_m2, sup_ha = calculer_superficie_et_perimetre(pts)
+            st.error(f"⚠️ **Analyse foncière :** {analyse_statut}")
 
-            st.success("🎉 **Calcul de Zone Terminé avec Succès !**")
-            st.subheader(f"📋 Fiche Synthèse : {st.session_state.nom_producteur}")
+        df_pts = pd.DataFrame(pts)
+        polygon_data = [{"polygon": [[p['lon'], p['lat']] for p in pts]}]
+        
+        layer_polygon = pdk.Layer(
+            "PolygonLayer",
+            polygon_data,
+            get_polygon="polygon",
+            get_fill_color=[46, 125, 50, 140] if conforme else [211, 47, 47, 140],
+            get_line_color=[255, 255, 255],
+            get_line_width=2,
+            pickable=True,
+            stroked=True,
+            filled=True,
+        )
 
-            col1, col2, col3 = st.columns(3)
-            col1.metric("Superficie (Ha)", f"{sup_ha:.3f} ha")
-            col2.metric("Superficie (m²)", f"{sup_m2:.1f} m²")
-            col3.metric("Périmètre", f"{perimetre:.1f} m")
+        layer_points = pdk.Layer(
+            "ScatterplotLayer",
+            df_pts,
+            get_position=["lon", "lat"],
+            get_color=[255, 235, 59],
+            get_radius=3,
+            radius_min_pixels=4,
+        )
 
-            tab_2d, tab_3d, tab_data = st.tabs(["🗺️ Maquette 2D", "🧊 Maquette 3D", "📊 Sommets GPS"])
+        view_state = pdk.ViewState(
+            latitude=lat_centre,
+            longitude=lon_centre,
+            zoom=16,
+            pitch=0
+        )
 
-            with tab_2d:
-                st.plotly_chart(generer_maquette_2d(pts), use_container_width=True)
-            with tab_3d:
-                st.plotly_chart(generer_maquette_3d(pts), use_container_width=True)
-            with tab_data:
-                st.dataframe(pd.DataFrame(pts), use_container_width=True)
+        st.pydeck_chart(pdk.Deck(
+            layers=[layer_polygon, layer_points],
+            initial_view_state=view_state,
+            map_style="mapbox://styles/mapbox/satellite-v9"
+        ))
 
-            if st.button("🔄 Nouveau Relevé", use_container_width=True):
-                st.session_state.etape_module = 1
-                st.session_state.points_gps = []
-                st.rerun()
+        if st.button("🔄 Nouveau relevé", type="primary", use_container_width=True):
+            st.session_state.etape_module = 1
+            st.session_state.points_gps = []
+            st.rerun()
 
-
-
-# =========================================================================
-# --- 5. POINT D'ENTRÉE DU SCRIPT ---
-# =========================================================================
 if __name__ == "__main__":
-    st.set_page_config(
-        page_title="LEYLA - Cartographie Terrain",
-        page_icon="🛰️",
-        layout="centered"
-    )
     afficher()
 
 
