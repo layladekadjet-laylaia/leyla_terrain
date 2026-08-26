@@ -9,7 +9,7 @@ import requests
 import diagnostique
 import geolocalisation
 import estimation_de_rendement
-import pdc1
+import pdc
 
 
 
@@ -125,16 +125,7 @@ else:
             "1. Diagnostic Phytosanitaire",
             "2. Géo-intelligence & RDUE",
             "3. Estimation de Rendement",
-            "4. PDC 1 - Informations Générales",
-            "5. PDC 2 - Gestion des Sols & Fertilité",
-            "6. PDC 3 - Taille & Entretien",
-            "7. PDC 4 - Ombrage & Agroforesterie",
-            "8. PDC 5 - Protection des Cultures",
-            "9. PDC 6 - Récolte & Post-Récolte",
-            "10. PDC 7 - Aspects Sociaux & Travail",
-            "11. PDC 8 - Protection de l'Environnement",
-            "12. PDC 9 - Suivi Économique",
-            "13. PDC 10 - Plan d'Action & Synthèse"
+            "4. PDC",            
         ]
     )
 
@@ -150,12 +141,9 @@ else:
     elif choix_module == "3. Estimation de Rendement":
         estimation_de_rendement.afficher()
 
-    # --- BLOC DÉDIÉ AUX 10 MODULES PDC ---
-    elif choix_module.startswith("4. PDC 1"):
-        pdc1.afficher()
-
-    
-
+    elif choix_module == "4.
+PDC":
+pdc.afficher()
 
 # --- 4. SYNCHRONISATION / ENVOI AU SERVEUR CENTRAL ---
 st.markdown("---")
