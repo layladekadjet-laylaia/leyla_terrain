@@ -5,14 +5,10 @@ from datetime import datetime
 import requests
 
 # --- IMPORTATION DES MODULES ---
-
 import diagnostique
 import geolocalisation
 import estimation_de_rendement
 import pdc
-
-
-
 
 # --- CONFIGURATION DE LA TABLETTE ---
 st.set_page_config(page_title="Leyla Agri - Tablette Terrain", page_icon="📱", layout="centered")
@@ -77,15 +73,12 @@ with st.sidebar:
         st.session_state.identifie = False
         st.rerun()
 
-import streamlit as st
-
 # --- 2. FICHE DE SAISIE DU PRODUCTEUR & DE LA PARCELLE ---
 st.header("📋 Fiche Producteur & Parcelle")
 
 col1, col2 = st.columns(2)
 
 with col1:
-    # Le champ avec '*' indique qu'il est obligatoire
     code_producteur = st.text_input("Code du Producteur *", key="code_prod_tab")
     nom_producteur = st.text_input("Nom du Producteur", key="nom_prod_tab")
     localite = st.text_input("Localité", key="localite_prod_tab")
@@ -95,10 +88,8 @@ with col2:
     superficie = st.number_input("Superficie (Hectares)", min_value=0.1, step=0.1, value=1.0, key="sup_prod_tab")
     age_parcelle = st.text_input("Âge de la cacaoyère (ex: 12 ans)", key="age_prod_tab")
 
-# Nettoyage de la valeur du code pour vérifier s'il est rempli
 code_valide = bool(code_producteur and code_producteur.strip())
 
-# Stockage dans le session_state pour accès global par tous les modules
 st.session_state.info_producteur = {
     "code": code_producteur.strip() if code_valide else "",
     "nom": nom_producteur,
@@ -113,11 +104,9 @@ st.markdown("---")
 # --- 3. SÉLECTION ET EXÉCUTION DES MODULES TERRAIN ---
 st.header("🛠️ Modules de Saisie")
 
-# Vérification obligatoire du Code Producteur avant déblocage des modules
 if not code_valide:
     st.warning("⚠️ **Le Code du Producteur est obligatoire.** Veuillez saisir le code du producteur ci-dessus pour pouvoir accéder aux modules de saisie.")
 else:
-    # Si le code est rempli, on affiche le menu et les modules
     choix_module = st.selectbox(
         "Sélectionnez le module à exécuter :",
         [
@@ -141,7 +130,8 @@ else:
     elif choix_module == "3. Estimation de Rendement":
         estimation_de_rendement.afficher()
 
-    else :
+    elif choix_module == "4. PDC":
+        pdc.afficher()
 
 # --- 4. SYNCHRONISATION / ENVOI AU SERVEUR CENTRAL ---
 st.markdown("---")
