@@ -1,3 +1,6 @@
+
+def afficher():
+    st.subheader("Module PDC 3")
 def dessiner_page_10_Donnees_sur_les_cultures():
     # --- STYLE CSS REPRODUCTION PRESTIGE DIAPO ---
     st.markdown("""
