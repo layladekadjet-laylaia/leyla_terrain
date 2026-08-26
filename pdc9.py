@@ -1,6 +1,5 @@
 
-def afficher():
-    st.subheader("Module PDC 9")
+
 def dessiner_page_43_Croquis_Polygone_Parcelle():
     import pandas as pd  # Importation indispensable pour st.map()
     import time  # Sécurité pour le sleep
