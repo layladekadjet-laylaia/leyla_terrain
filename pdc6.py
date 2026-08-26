@@ -1,6 +1,5 @@
 
-def afficher():
-    st.subheader("Module PDC 6")
+
 def dessiner_page_25_Analyse_Problemes():
     # --- 1. STYLES CSS PERSONNALISÉS ---
     st.markdown("""
