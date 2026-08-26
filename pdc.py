@@ -113,39 +113,6 @@ def afficher():
     elif st.session_state.etape_pdc == 4:
         st.subheader("Étape 4/5 : Description de l'Exploitation (Fiche 2)")
 
-        sup_autres_cultures = st.number_input("Superficie des autres cultures (ha)", min_value=0.0, step=0.5)
-        autre_speculations = st.text_input("Autres spéculations (élevage, production halieutique, etc.)")
-        terres_disponibles = st.number_input("Terres disponibles non exploitées (ha)", min_value=0.0, step=0.5)
-        outils_equipements = st.text_area("Outils de travail et équipements de production disponibles")
-        informations_sur_la_plantation_de_cacaoyer = st.text_area("les informations sur l'application de cacaoyer")
-        arbres_hors_cacaoyer = st.text_area("Situation des arbres autres que le cacaoyer dans la cacaoyère")
-
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("⬅️ Retour", use_container_width=True):
-                st.session_state.etape_pdc = 3
-                st.rerun()
-        with col2:
-            if st.button("Suivant ➡️", use_container_width=True):
-                st.session_state.reponses_pdc.update({
-                    "sup_autres_cultures": sup_autres_cultures,
-                    "autre_speculations": autre_speculations,
-                    "terres_disponibles": terres_disponibles,
-                    "outils_equipements": outils_equipements,
-
-"informations_sur_la_plantation_de_cacaoyer": informations_sur_la_plantation_de_cacaoyer,
-                    "arbres_hors_cacaoyer": arbres_hors_cacaoyer
-                })
-                st.session_state.etape_pdc = 5
-                st.rerun()
-
-
-    # ---------------------------------------------------------
-    # ÉTAPE 4 : DESCRIPTION DE L'EXPLOITATION (FICHE 2)
-    # ---------------------------------------------------------
-    elif st.session_state.etape_pdc == 4:
-        st.subheader("Étape 4/5 : Description de l'Exploitation (Fiche 2)")
-
         # 4.1 DONNÉES SUR LES CULTURES (Cacao & Autres Cultures N)
         st.markdown("### 🌾 1. Données sur les cultures")
         
@@ -245,5 +212,3 @@ def afficher():
                 # Réinitialiser pour une nouvelle saisie
                 st.session_state.etape_pdc = 1
                 st.session_state.reponses_pdc = {}
-
-
