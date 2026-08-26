@@ -1,6 +1,5 @@
 
-def afficher():
-    st.subheader("Module PDC 7")
+
 def dessiner_page_31_Programme_Annuel_Activites():
     import time  # 🟢 SÉCURITÉ 1 : Import local pour éviter le plantage du sleep
     
