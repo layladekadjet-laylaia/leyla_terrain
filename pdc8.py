@@ -1,5 +1,4 @@
-def afficher():
-    st.subheader("Module PDC 8")
+
 def dessiner_page_36_Mise_En_Oeuvre_Evaluation():
     # --- STYLE CSS DÉDIÉ SÉCURISÉ (PARTIE V) ---
     st.markdown("""
