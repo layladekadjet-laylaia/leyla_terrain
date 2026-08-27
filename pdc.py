@@ -293,9 +293,7 @@ def afficher():
                 st.session_state.reponses_pdc.update({
                     "donnees_densite": densite_df,
                     "densite_calculee_ha": densite_estimee,
-                    "production_derniere_campagne_kg": prod_derniere_campagne,
-                    "prix_moyen_kg": prix_moyen_kg,
-                    "rendement_kg_ha": rendement_calculer,
+                    
                     "taux_arbres_degrades_pct": toux_degradation
                 })
                 st.session_state.etape_pdc = 6
