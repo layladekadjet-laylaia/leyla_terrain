@@ -497,172 +497,122 @@ def afficher():
                 st.session_state.etape_pdc = 8
                 st.rerun()
 
-            # ---------------------------------------------------------
-    # ÉTAPE 8 : GRILLE DE DÉCISION & SYNTHÈSE FINALE (FICHE 4 - SUITE)
+                # ---------------------------------------------------------
+    # ÉTAPE 9 : PLAN D'ACTION SUR LES 5 PROCHAINES ANNÉES (2.4.3)
     # ---------------------------------------------------------
-    elif st.session_state.etape_pdc == 8:
-        st.subheader("Étape 8/8 : Grille de Décision & Enregistrement Final")
+    elif st.session_state.etape_pdc == 9:
+        st.subheader("Étape 9/9 : Plan d'Action Quinquennal (Sur 5 ans)")
+        st.caption("2.4.3 - Élaboration du plan d'action sur 5 ans")
 
-        # 8.1 GRILLE DE DÉCISION DYNAMIQUE (PAR COCHAGE)
-        st.markdown("### 📊 1. Grille de décision")
-        st.caption("Cochez les critères constatés sur la parcelle pour déterminer le type de décision.")
-
-        # Liste des critères possibles organisés par décision
-        criteres_replantation = [
-            "Plantation âgée de plus de 30 ans",
-            "Densité inférieure à 800 arbres productifs / ha",
-            "Rendement inférieur à 400 kg / ha",
-            "Sol favorable à la culture de cacao",
-            "Présence de foyers de Swollen Shoot"
-        ]
-
-        criteres_rehabilitation = [
-            "Plantation âgée de moins de 30 ans",
-            "Densité : 800 à 1 000 arbres productifs / ha",
-            "Rendement : au moins 400 kg / ha",
-            "Absence de foyers de Swollen Shoot"
-        ]
-
-        criteres_reconversion = [
-            "Pluviométrie inférieure à 1200 mm avec plus de 4 mois de saison sèche",
-            "Présence de cuirasse à moins d'un mètre de profondeur"
-        ]
-
-        # Formulaire de sélection par cases à cocher
-        st.markdown("**Sélectionnez les constats de terrain :**")
-        
-        coche_replantation = []
-        coche_rehabilitation = []
-        coche_reconversion = []
-
-        col_a, col_b = st.columns(2)
-        
-        with col_a:
-            st.markdown("---")
-            st.markdown("**Critères Replantation / Réhabilitation**")
-            for crit in criteres_replantation:
-                if st.checkbox(crit, key=f"crit_{crit}"):
-                    coche_replantation.append(crit)
-
-            for crit in criteres_rehabilitation:
-                if st.checkbox(crit, key=f"crit_{crit}"):
-                    coche_rehabilitation.append(crit)
-
-        with col_b:
-            st.markdown("---")
-            st.markdown("**Critères Reconversion**")
-            for crit in criteres_reconversion:
-                if st.checkbox(crit, key=f"crit_{crit}"):
-                    coche_reconversion.append(crit)
-
-        # MOTEUR DE DÉCISION (CROISEMENT)
-        # La reconversion est prioritaire si ses contraintes de sol/climat sont cochées, 
-        # sinon la replantation l'emporte dès qu'un critère majeur est coché.
-        decision_calculee = "Non déterminée"
-
-        if len(coche_reconversion) > 0:
-            decision_calculee = "Reconversion"
-        elif len(coche_replantation) > 0:
-            decision_calculee = "Replantation"
-        elif len(coche_rehabilitation) > 0:
-            decision_calculee = "Réhabilitation"
-
-        tous_criteres_cochis = coche_replantation + coche_rehabilitation + coche_reconversion
-
-        # Affichage du résultat du croisement
-        st.markdown("---")
-        st.markdown("#### 🎯 Résultat du croisement")
-        if decision_calculee == "Replantation":
-            st.error(f"**Type de décision : {decision_calculee}**")
-        elif decision_calculee == "Reconversion":
-            st.warning(f"**Type de décision : {decision_calculee}**")
-        elif decision_calculee == "Réhabilitation":
-            st.success(f"**Type de décision : {decision_calculee}**")
-        else:
-            st.info("Veuillez cocher au moins un critère pour afficher la décision.")
+        st.markdown(
+            "À l'issue du diagnostic, un plan d'action est élaboré pour une période de 5 ans. "
+            "Définissez ci-dessous les axes stratégiques, les objectifs, les activités, leurs coûts et le calendrier d'exécution."
+        )
 
         st.markdown("---")
+        st.markdown("### 📅 Matrice du Plan d'Action sur 5 Ans")
 
-        # 8.2 TABLEAU D'ANALYSE DES PROBLÈMES
-        st.markdown("### ⚠️ 2. Tableau d'analyse des problèmes")
-        if 'df_analyse_problemes' not in st.session_state:
-            st.session_state.df_analyse_problemes = [
+        # Initialisation de la structure de données par défaut si non présente dans la session
+        if 'df_plan_action_5ans' not in st.session_state:
+            st.session_state.df_plan_action_5ans = [
                 {
-                    "Domaine": "Peuplement du verger",
-                    "Problèmes ou Contraintes": "Forte densité (1500 pieds/ha)",
-                    "Causes": "Non-respect du dispositif de plantation",
-                    "Conséquences": "Prolifération des maladies et insectes",
-                    "Solutions": "Régler la densité"
+                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
+                    "Objectifs": "Remettre la parcelle en bon état de production",
+                    "Activités": "Régler la densité",
+                    "Coût (FCFA)": 200000,
+                    "A1": True, "A2": False, "A3": False, "A4": False, "A5": False,
+                    "Responsable": "Producteur",
+                    "Partenaires": "Coopérative"
                 },
                 {
-                    "Domaine": "Peuplement du verger",
-                    "Problèmes ou Contraintes": "Des plages vides en replantation sous des cacaoyers infectés",
-                    "Causes": "Mortalité due à la maladie du Swollen Shoot",
-                    "Conséquences": "Baisse de la production / L'enherbement",
-                    "Solutions": "Planter les arbres d'ombrages temporaires en vue de redensification"
+                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
+                    "Objectifs": "Remettre la parcelle en bon état de production",
+                    "Activités": "Réaliser la taille des loranthacées",
+                    "Coût (FCFA)": 25000,
+                    "A1": True, "A2": True, "A3": True, "A4": True, "A5": True,
+                    "Responsable": "Producteur",
+                    "Partenaires": "Coopérative"
                 },
                 {
-                    "Domaine": "Entretien du verger",
-                    "Problèmes ou Contraintes": "Présence de nombreux gourmands",
-                    "Causes": "Absence d'entretien",
-                    "Conséquences": "Attire les mirides / Réduit la vigueur du cacaoyer",
-                    "Solutions": "Réaliser la taille d'entretien"
+                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
+                    "Objectifs": "Remettre la parcelle en bon état de production",
+                    "Activités": "Planter les arbres d'ombrages temporaires dans les espaces vides en replantation",
+                    "Coût (FCFA)": 360000,
+                    "A1": True, "A2": True, "A3": False, "A4": False, "A5": False,
+                    "Responsable": "Producteur",
+                    "Partenaires": "Coopérative / ANADER"
                 },
                 {
-                    "Domaine": "Entretien du verger",
-                    "Problèmes ou Contraintes": "Utilisation de fumier de mouton non composté sur les cacaoyers",
-                    "Causes": "Manque de formation",
-                    "Conséquences": "Intoxication des plantes",
-                    "Solutions": "Formation sur la production de compost"
+                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
+                    "Objectifs": "Remettre la parcelle en bon état de production",
+                    "Activités": "Formation du producteur sur la production de compost amélioré à partir des digestions animales et résidus",
+                    "Coût (FCFA)": 0,
+                    "A1": True, "A2": False, "A3": False, "A4": False, "A5": False,
+                    "Responsable": "Producteur",
+                    "Partenaires": "ANADER / Coopérative"
                 }
             ]
 
-        analyse_df = st.data_editor(
-            st.session_state.df_analyse_problemes,
+        # Tableau interactif d'édition du plan d'action
+        plan_edited_df = st.data_editor(
+            st.session_state.df_plan_action_5ans,
             num_rows="dynamic",
-            key="editor_analyse_prob",
+            key="editor_plan_action_5ans",
             column_config={
-                "Domaine": st.column_config.SelectboxColumn(
-                    "Domaine",
-                    options=["Peuplement du verger", "Entretien du verger", "Protection phytosanitaire", "Gestion du sol / Ombrage"],
-                    required=True
+                "Axes stratégiques": st.column_config.SelectboxColumn(
+                    "Axes stratégiques",
+                    options=[
+                        "Axe 1 : Réhabilitation du verger",
+                        "Axe 2 : Replantation du verger",
+                        "Axe 3 : Amélioration de la fertilité des sols",
+                        "Axe 4 : Protection phytosanitaire intégrée"
+                    ],
+                    required=True,
+                    width="medium"
                 ),
-                "Problèmes ou Contraintes": st.column_config.TextColumn("Problèmes / Contraintes", width="medium"),
-                "Causes": st.column_config.TextColumn("Causes", width="medium"),
-                "Conséquences": st.column_config.TextColumn("Conséquences", width="medium"),
-                "Solutions": st.column_config.TextColumn("Solutions préconisées", width="medium")
+                "Objectifs": st.column_config.TextColumn("Objectifs", width="medium"),
+                "Activités": st.column_config.TextColumn("Activités à réaliser", width="large"),
+                "Coût (FCFA)": st.column_config.NumberColumn("Coût (FCFA)", min_value=0, step=5000, format="%d FCFA"),
+                "A1": st.column_config.CheckboxColumn("Année 1"),
+                "A2": st.column_config.CheckboxColumn("Année 2"),
+                "A3": st.column_config.CheckboxColumn("Année 3"),
+                "A4": st.column_config.CheckboxColumn("Année 4"),
+                "A5": st.column_config.CheckboxColumn("Année 5"),
+                "Responsable": st.column_config.SelectboxColumn(
+                    "Responsable",
+                    options=["Producteur", "Manœuvre", "Équipe spécialisée"],
+                    default="Producteur"
+                ),
+                "Partenaires": st.column_config.TextColumn("Partenaires", width="medium")
             },
             use_container_width=True
         )
 
-        st.warning(
-            "NOTE : Les constats et recommandations de l'équipe de diagnostic doivent être portés à la connaissance du producteur. "
-            "Ces constats sont discutés et validés avec le producteur pour la prise de décision finale."
+        # Calcul automatique du budget total prévisionnel du plan d'action
+        total_budget = sum([row.get("Coût (FCFA)", 0) for row in plan_edited_df if row.get("Coût (FCFA)")])
+        
+        st.info(f"💰 **Budget total estimé du plan d'action sur 5 ans :** `{total_budget:,} FCFA`".replace(",", " "))
+
+        st.markdown("---")
+        st.markdown("### 📝 Orientation pour l'élaboration du calendrier annuel (Fiche 7)")
+        st.write(
+            "Les activités à réaliser doivent ensuite être décrites en détail, programmées et intégrées "
+            "dans une matrice de calendrier annuel précisant les indicateurs opérationnels de suivi, les échéances, "
+            "les coûts et les responsabilités de chaque acteur."
         )
 
         st.markdown("---")
 
-        # 8.3 RÉSUMÉ GLOBAL JSON DE LA COLLECTE
-        st.markdown("### 📄 Bilan global des données PDC")
-        with st.expander("Voir le détail des réponses enregistrées"):
-            st.json(st.session_state.reponses_pdc)
-
-        # NAVIGATION ET ENREGISTREMENT FINAL
+        # NAVIGATION ET VALIDATION FINALE D'ÉTAPE
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
-                st.session_state.etape_pdc = 7
+                st.session_state.etape_pdc = 8
                 st.rerun()
         with col2:
-            if st.button("💾 Valider et Enregistrer le PDC", type="primary", use_container_width=True):
-                st.session_state.reponses_pdc.update({
-                    "decision_fiches": decision_calculee,
-                    "criteres_selectionnes": tous_criteres_cochis,
-                    "analyse_problemes": analyse_df
-                })
+            if st.button("💾 Enregistrer le Plan Quinquennal", type="primary", use_container_width=True):
+                st.session_state.reponses_pdc["plan_action_5ans"] = plan_edited_df
+                st.session_state.reponses_pdc["budget_total_5ans"] = total_budget
                 st.balloons()
-                st.success("🎉 Le Diagnostic et Plan de Développement de la Cacaoyère (PDC) a été totalement enregistré !")
-                
-                # Réinitialisation pour un nouveau diagnostic
-                st.session_state.etape_pdc = 1
-                st.session_state.reponses_pdc = {}
+                st.success("🎉 Le Plan d'Action sur 5 ans a été enregistré avec succès dans le PDC !")
+
