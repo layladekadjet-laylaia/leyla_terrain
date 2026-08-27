@@ -321,7 +321,7 @@ def afficher():
         st.markdown("### 🛡️ 5. Produits phytosanitaires utilisés")
         if 'df_phyto' not in st.session_state:
             st.session_state.df_phyto = [
-                {"Nom commercial / Matière active": "Ridomil Gold", "Type": "Fungicide", "Origine": "Acheté", "Dose/ha": "50g/15L", "Superficie (ha)": 2.0, "Fréquence/An": 2, "Période": "Juin-Juillet", "Appareil de traitement": "Pulvérisateur", "Mode": "couronne/follier"}
+                {"Nom commercial / Matière active": "Ridomil Gold", "Type": "Fungicide", "Origine": "Acheté", "Dose/ha": "50g/15L", "Superficie (ha)": 2.0, "Fréquence/An": 2, "Période": "Juin-Juillet", "Appareil de traitement": "Pulvérisateur", "Applicateur": "Applicateur/Producteur", "Mode": "couronne/follier"}
             ]
 
         phyto_df = st.data_editor(
