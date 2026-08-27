@@ -845,22 +845,69 @@ def afficher():
 
         st.markdown("---")
 
-        # --- 8.6 BILAN JSON DES DONNÉES DU PDC ---
-        st.markdown("### 📄 Bilan global des données collectées")
-        with st.expander("Voir le détail complet des réponses enregistrées dans le PDC"):
+         # =========================================================
+        # --- 8.6 PONT DE TRANSITION : AUDIT ET AUDIT BRONZE (1 à 8) ---
+        # =========================================================
+        st.markdown("### 🔄 6. Pont de Transition : Contrôle des Critères (1 à 8)")
+        st.caption("Évaluation de la conformité du diagnostic et du passage en phase d'audit (Schéma Audit Bronze -> Argent -> Or)")
+
+        data = st.session_state.reponses_pdc
+
+        # Vérification dynamique du respect des critères des étapes 1 à 8
+        critere_identite = len(data.get("ville", "")) > 0
+        critere_parcelles = len(data.get("parcelles_cacaoyer", [])) > 0
+        critere_densite = data.get("densite_calculee_ha", 0) > 0
+        critere_sante = len(data.get("sante_cacaoyere", [])) > 0
+        critere_decision = decision_calculee != "Non déterminée"
+        critere_plan5ans = len(plan_edited_df) > 0
+        critere_prog_annuel = len(programme_df) > 0
+
+        score_conformite = sum([
+            critere_identite, critere_parcelles, critere_densite,
+            critere_sante, critere_decision, critere_plan5ans, critere_prog_annuel
+        ])
+        taux_conformite = int((score_conformite / 7) * 100)
+
+        col_t1, col_t2 = st.columns([1, 2])
+        with col_t1:
+            st.metric(label="Score de Conformité (1 à 8)", value=f"{taux_conformite} %")
+            if taux_conformite >= 80:
+                st.success("🟢 Éligible à la certification **Audit BRONZE** (12 Mois)")
+            else:
+                st.warning("🟡 Diagnostic incomplet pour validation BRONZE")
+
+        with col_t2:
+            st.markdown("**Statut des sections 1 à 8 :**")
+            st.write(f"- Identification et Localisation : {'✅ Validé' if critere_identite else '❌ Incomplet'}")
+            st.write(f"- Caractérisation des Parcelles : {'✅ Validé' if critere_parcelles else '❌ Incomplet'}")
+            st.write(f"- Mesure de Densité & Santé : {'✅ Validé' if critere_densite and critere_sante else '❌ Incomplet'}")
+            st.write(f"- Grille de Décision & Matrice 5 ans : {'✅ Validé' if critere_decision and critere_plan5ans else '❌ Incomplet'}")
+
+        # Progression visuelle des jalons (Conforme à la diapositive 52)
+        st.markdown("**Jalons de Suivi du PDC (Audits de Surveillance) :**")
+        col_j1, col_j2, col_j3, col_j4 = st.columns(4)
+        col_j1.progress(1.0 if taux_conformite >= 80 else 0.3, text="12 Mois: Audit BRONZE")
+        col_j2.progress(0.6, text="Année 2: Audit ARGENT (60%)")
+        col_j3.progress(0.8, text="Année 4: Audit ARGENT (80%)")
+        col_j4.progress(1.0, text="Année 5: Audit OR (100%)")
+
+        st.markdown("---")
+
+        # --- 8.7 BILAN JSON COMPLET DES DONNÉES COLLECTÉES ---
+        st.markdown("### 📄 Bilan global des données collectées (1 à 8)")
+        with st.expander("Voir le détail JSON complet transmis au serveur"):
             st.json(st.session_state.reponses_pdc)
 
         st.markdown("---")
 
-        # --- NAVIGATION DE L'ÉTAPE 8 ET ENREGISTREMENT ---
+        # --- NAVIGATION VERS ÉTAPE 9 ---
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
                 st.session_state.etape_pdc = 7
                 st.rerun()
         with col2:
-            if st.button("Suivant ➡️ (Vers Étape 9 : Récapitulatif Final)", type="primary", use_container_width=True):
-                # Sauvegarde globale propre dans session_state
+            if st.button("Suivant ➡️ (Vers Étape 9 : Clôture & Bilan Final)", type="primary", use_container_width=True):
                 st.session_state.reponses_pdc.update({
                     "decision_fiches": decision_calculee,
                     "criteres_selectionnes": tous_criteres_cochis,
@@ -869,7 +916,9 @@ def afficher():
                     "budget_total_5ans": total_budget_5ans,
                     "programme_annuel": programme_df,
                     "budget_annuel_total": total_annuel,
-                    "moyens_pdc": moyens
+                    "moyens_fiche8_details": moyens_cou_df,
+                    "budget_fiche8_total": total_fiche8,
+                    "score_conformite_etape1_8": taux_conformite
                 })
                 st.session_state.etape_pdc = 9
                 st.rerun()
