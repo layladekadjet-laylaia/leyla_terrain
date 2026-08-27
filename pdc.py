@@ -845,111 +845,109 @@ def afficher():
 
         st.markdown("---")
 
-         # =========================================================
+                 
+        # =========================================================
         # --- 8.6 PONT DE TRANSITION : AUDIT ET AUDIT BRONZE (1 à 8) ---
         # =========================================================
         def effectuer_diagnostic_global_json(data):
-    score = 100
-    alertes_critiques = []
-    avertissements = []
-    points_forts = []
+            score = 100
+            alertes_critiques = []
+            avertissements = []
+            points_forts = []
 
-    # 1. ANALYSE IDENTIFICATION & PARCELLES (Étapes 1 & 2)
-    superficie_totale = sum([p.get("Superficie (ha)", 0) for p in data.get("parcelles_cacaoyer", [])])
-    if superficie_totale == 0:
-        alertes_critiques.append("Superficie cacaoyère totale nulle ou non renseignée.")
-        score -= 20
-    else:
-        points_forts.append(f"Superficie cacaoyère caractérisée : {superficie_totale} ha.")
+            # 1. ANALYSE IDENTIFICATION & PARCELLES (Étapes 1 & 2)
+            superficie_totale = sum([p.get("Superficie (ha)", 0) for p in data.get("parcelles_cacaoyer", [])])
+            if superficie_totale == 0:
+                alertes_critiques.append("Superficie cacaoyère totale nulle ou non renseignée.")
+                score -= 20
+            else:
+                points_forts.append(f"Superficie cacaoyère caractérisée : {superficie_totale} ha.")
 
-    # 2. ANALYSE DENSITÉ (Étape 3)
-    densite = data.get("densite_calculee_ha", 0)
-    if densite == 0:
-        alertes_critiques.append("Mesure de densité absente ou égale à 0.")
-        score -= 15
-    elif 1100 <= densite <= 1400:
-        points_forts.append(f"Densité conforme aux normes agronomiques ({densite} pieds/ha).")
-    elif densite < 1100:
-        avertissements.append(f"Sous-densité détectée ({densite} pieds/ha). Risque de sous-rendement.")
-        score -= 10
-    else:
-        avertissements.append(f"Sur-densité détectée ({densite} pieds/ha). Risque sanitaire accru.")
-        score -= 10
+            # 2. ANALYSE DENSITÉ (Étape 3)
+            densite = data.get("densite_calculee_ha", 0)
+            if densite == 0:
+                alertes_critiques.append("Mesure de densité absente ou égale à 0.")
+                score -= 15
+            elif 1100 <= densite <= 1400:
+                points_forts.append(f"Densité conforme aux normes agronomiques ({densite} pieds/ha).")
+            elif densite < 1100:
+                avertissements.append(f"Sous-densité détectée ({densite} pieds/ha). Risque de sous-rendement.")
+                score -= 10
+            else:
+                avertissements.append(f"Sur-densité détectée ({densite} pieds/ha). Risque sanitaire accru.")
+                score -= 10
 
-    # 3. ANALYSE SANITAIRE & SOLS (Étapes 4 & 5)
-    sante = data.get("sante_cacaoyere", [])
-    if not sante:
-        avertissements.append("Évaluation de la santé cacaoyère incomplète.")
-        score -= 5
-    
-    arbres_ombrage = data.get("arbres_ombrage", [])
-    if len(arbres_ombrage) == 0:
-        avertissements.append("Aucun arbre d'ombrage répertorié (Risque de stress hydrique/thermique).")
-        score -= 5
+            # 3. ANALYSE SANITAIRE & SOLS (Étapes 4 & 5)
+            sante = data.get("sante_cacaoyere", [])
+            if not sante:
+                avertissements.append("Évaluation de la santé cacaoyère incomplète.")
+                score -= 5
+            
+            arbres_ombrage = data.get("arbres_ombrage", [])
+            if len(arbres_ombrage) == 0:
+                avertissements.append("Aucun arbre d'ombrage répertorié (Risque de stress hydrique/thermique).")
+                score -= 5
 
-    # 4. ANALYSE ITINÉRAIRE TECHNIQUE & POST-RÉCOLTE (Étape 6)
-    if data.get("methode_sechage") == "1. Sur goudron":
-        alertes_critiques.append("NON-CONFORMITÉ QUALITÉ : Le séchage sur goudron est strictement interdit (contaminations HAP).")
-        score -= 25
-    elif data.get("methode_sechage"):
-        points_forts.append("Méthode de séchage conforme aux normes de qualité.")
+            # 4. ANALYSE ITINÉRAIRE TECHNIQUE & POST-RÉCOLTE (Étape 6)
+            if data.get("methode_sechage") == "1. Sur goudron":
+                alertes_critiques.append("NON-CONFORMITÉ QUALITÉ : Le séchage sur goudron est strictly interdit (contaminations HAP).")
+                score -= 25
+            elif data.get("methode_sechage"):
+                points_forts.append("Méthode de séchage conforme aux normes de qualité.")
 
-    # 5. COHÉRENCE ÉCONOMIQUE & FINANCIÈRE (Étape 7)
-    historique_prod = data.get("prod_historique", [])
-    total_production = sum([p.get("Production (kg)", 0) for p in historique_prod])
-    
-    engrais = data.get("utilisation_engrais", [])
-    phyto = data.get("produits_phytosanitaires", [])
-    
-    # Croisement : Intrants déclarés vs Production déclarée
-    if (len(engrais) > 0 or len(phyto) > 0) and total_production == 0:
-        avertissements.append("Incohérence financière : Des achats d'intrants sont déclarés mais la production historique est à 0 kg.")
-        score -= 10
+            # 5. COHÉRENCE ÉCONOMIQUE & FINANCIÈRE (Étape 7)
+            historique_prod = data.get("prod_historique", [])
+            total_production = sum([p.get("Production (kg)", 0) for p in historique_prod])
+            
+            engrais = data.get("utilisation_engrais", [])
+            phyto = data.get("produits_phytosanitaires", [])
+            
+            # Croisement : Intrants déclarés vs Production déclarée
+            if (len(engrais) > 0 or len(phyto) > 0) and total_production == 0:
+                avertissements.append("Incohérence financière : Des achats d'intrants sont déclarés mais la production historique est à 0 kg.")
+                score -= 10
 
-    # Croisement : Charges du foyer vs Revenus déclarés
-    depenses = data.get("depenses_foyer", [])
-    total_depenses = sum([d.get("Montant moyen (FCFA)", 0) for d in depenses])
-    if total_depenses == 0:
-        avertissements.append("Bilan financier incomplet : Les dépenses du foyer n'ont pas été chiffrées.")
-        score -= 5
+            # Croisement : Charges du foyer vs Revenus déclarés
+            depenses = data.get("depenses_foyer", [])
+            total_depenses = sum([d.get("Montant moyen (FCFA)", 0) for d in depenses])
+            if total_depenses == 0:
+                avertissements.append("Bilan financier incomplet : Les dépenses du foyer n'ont pas été chiffrées.")
+                score -= 5
 
-    # 6. CAPACITÉ OPÉRATIONNELLE (Étape 7)
-    main_oeuvre = data.get("main_oeuvre", [])
-    equipements = data.get("equipements", [])
-    if superficie_totale > 3 and len(main_oeuvre) == 0 and len(equipements) == 0:
-        avertissements.append("Manque de capacité : Surface > 3 ha sans équipement ni main-d'œuvre enregistrés.")
-        score -= 10
+            # 6. CAPACITÉ OPÉRATIONNELLE (Étape 7)
+            main_oeuvre = data.get("main_oeuvre", [])
+            equipements = data.get("equipements", [])
+            if superficie_totale > 3 and len(main_oeuvre) == 0 and len(equipements) == 0:
+                avertissements.append("Manque de capacité : Surface > 3 ha sans équipement ni main-d'œuvre enregistrés.")
+                score -= 10
 
-    score = max(0, score)
-    return score, points_forts, avertissements, alertes_critiques
+            score = max(0, score)
+            return score, points_forts, avertissements, alertes_critiques
 
+        # --- EXÉCUTION DANS STREAMLIT ---
+        st.markdown("### 🔄 6. Pont de Transition : Diagnostic Global Intégré")
+        st.caption("Évaluation croisée de l'ensemble des données du formulaire (Étapes 1 à 8)")
 
-# =========================================================
-# --- INTEGRATION DANS L'ÉTAPE 8.6 STREAMLIT ---
-# =========================================================
-st.markdown("### 🔄 6. Pont de Transition : Diagnostic Global Intégré")
-st.caption("Évaluation croisée de l'ensemble des données du formulaire (Étapes 1 à 8)")
+        score_global, points_forts, avertissements, alertes = effectuer_diagnostic_global_json(st.session_state.reponses_pdc)
 
-score_global, points_forts, avertissements, alertes = effectuer_diagnostic_global_json(st.session_state.reponses_pdc)
+        col_t1, col_t2 = st.columns([1, 2])
+        with col_t1:
+            st.metric(label="Score de Conduite & Cohérence", value=f"{score_global} %")
+            if score_global >= 80 and len(alertes) == 0:
+                st.success("🟢 Éligible à la certification **Audit BRONZE**")
+            elif score_global >= 50:
+                st.warning("🟡 Diagnostic acceptable (Réajustements requis)")
+            else:
+                st.error("🔴 Diagnostic non conforme pour audit")
 
-col_t1, col_t2 = st.columns([1, 2])
-with col_t1:
-    st.metric(label="Score de Conduite & Cohérence", value=f"{score_global} %")
-    if score_global >= 80 and len(alertes) == 0:
-        st.success("🟢 Éligible à la certification **Audit BRONZE**")
-    elif score_global >= 50:
-        st.warning("🟡 Diagnostic acceptable (Réajustements requis)")
-    else:
-        st.error("🔴 Diagnostic non conforme pour audit")
-
-with col_t2:
-    st.markdown("**Synthèse de l'expertise agronomique :**")
-    for pt in points_forts:
-        st.write(f"✅ {pt}")
-    for adv in avertissements:
-        st.write(f"⚠️ {adv}")
-    for alt in alertes:
-        st.write(f"❌ {alt}")
+        with col_t2:
+            st.markdown("**Synthèse de l'expertise agronomique :**")
+            for pt in points_forts:
+                st.write(f"✅ {pt}")
+            for adv in avertissements:
+                st.write(f"⚠️ {adv}")
+            for alt in alertes:
+                st.write(f"❌ {alt}")
 
         st.markdown("---")
 
@@ -978,8 +976,9 @@ with col_t2:
                     "budget_annuel_total": total_annuel,
                     "moyens_fiche8_details": moyens_cou_df,
                     "budget_fiche8_total": total_fiche8,
-                    "score_conformite_etape1_8": taux_conformite
+                    "score_conformite_etape1_8": score_global
                 })
                 st.session_state.etape_pdc = 9
                 st.rerun()
+
 
