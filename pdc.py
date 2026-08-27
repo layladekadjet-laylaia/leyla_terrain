@@ -615,6 +615,256 @@ def afficher():
                 st.session_state.reponses_pdc["budget_total_5ans"] = total_budget
                 st.balloons()
                 st.success("🎉 Le Plan d'Action sur 5 ans a été enregistré avec succès dans le PDC !")
+
+
+    # ---------------------------------------------------------
+    # ÉTAPE 8 (SUITE & FIN) : PROGRAMME ANNUEL & MOYENS (FICHES 7 & 8)
+    # ---------------------------------------------------------
+    elif st.session_state.etape_pdc == 8:
+        st.subheader("Étape 8 : Décision, Programme Annuel & Moyens")
+
+        # --- 8.1 GRILLE DE DÉCISION DYNAMIQUE ---
+        st.markdown("### 📊 1. Grille de décision")
+        st.caption("Cochez les critères constatés sur la parcelle pour déterminer le type de décision.")
+
+        criteres_replantation = [
+            "Plantation âgée de plus de 30 ans",
+            "Densité inférieure à 800 arbres productifs / ha",
+            "Rendement inférieur à 400 kg / ha",
+            "Sol favorable à la culture de cacao",
+            "Présence de foyers de Swollen Shoot"
+        ]
+
+        criteres_rehabilitation = [
+            "Plantation âgée de moins de 30 ans",
+            "Densité : 800 à 1 000 arbres productifs / ha",
+            "Rendement : au moins 400 kg / ha",
+            "Absence de foyers de Swollen Shoot"
+        ]
+
+        criteres_reconversion = [
+            "Pluviométrie inférieure à 1200 mm avec plus de 4 mois de saison sèche",
+            "Présence de cuirasse à moins d'un mètre de profondeur"
+        ]
+
+        coche_replantation = []
+        coche_rehabilitation = []
+        coche_reconversion = []
+
+        col_a, col_b = st.columns(2)
+        with col_a:
+            st.markdown("**Critères Replantation / Réhabilitation**")
+            for crit in criteres_replantation:
+                if st.checkbox(crit, key=f"crit_{crit}"):
+                    coche_replantation.append(crit)
+
+            for crit in criteres_rehabilitation:
+                if st.checkbox(crit, key=f"crit_{crit}"):
+                    coche_rehabilitation.append(crit)
+
+        with col_b:
+            st.markdown("**Critères Reconversion**")
+            for crit in criteres_reconversion:
+                if st.checkbox(crit, key=f"crit_{crit}"):
+                    coche_reconversion.append(crit)
+
+        decision_calculee = "Non déterminée"
+        if len(coche_reconversion) > 0:
+            decision_calculee = "Reconversion"
+        elif len(coche_replantation) > 0:
+            decision_calculee = "Replantation"
+        elif len(coche_rehabilitation) > 0:
+            decision_calculee = "Réhabilitation"
+
+        tous_criteres_cochis = coche_replantation + coche_rehabilitation + coche_reconversion
+
+        if decision_calculee == "Replantation":
+            st.error(f"**Type de décision : {decision_calculee}**")
+        elif decision_calculee == "Reconversion":
+            st.warning(f"**Type de décision : {decision_calculee}**")
+        elif decision_calculee == "Réhabilitation":
+            st.success(f"**Type de décision : {decision_calculee}**")
+        else:
+            st.info("Veuillez cocher au moins un critère pour déterminer la décision.")
+
+        st.markdown("---")
+
+        # --- 8.2 TABLEAU D'ANALYSE DES PROBLÈMES ---
+        st.markdown("### ⚠️ 2. Tableau d'analyse des problèmes")
+        if 'df_analyse_problemes' not in st.session_state:
+            st.session_state.df_analyse_problemes = [
+                {
+                    "Domaine": "Peuplement du verger",
+                    "Problèmes ou Contraintes": "Forte densité (1500 pieds/ha)",
+                    "Causes": "Non-respect du dispositif de plantation",
+                    "Conséquences": "Prolifération des maladies et insectes",
+                    "Solutions": "Régler la densité"
+                },
+                {
+                    "Domaine": "Entretien du verger",
+                    "Problèmes ou Contraintes": "Présence de nombreux gourmands",
+                    "Causes": "Absence d'entretien",
+                    "Conséquences": "Attire les mirides / Réduit la vigueur",
+                    "Solutions": "Réaliser la taille d'entretien"
+                }
+            ]
+
+        analyse_df = st.data_editor(
+            st.session_state.df_analyse_problemes,
+            num_rows="dynamic",
+            key="editor_analyse_prob",
+            column_config={
+                "Domaine": st.column_config.SelectboxColumn(
+                    "Domaine",
+                    options=["Peuplement du verger", "Entretien du verger", "Protection phytosanitaire", "Gestion du sol / Ombrage"],
+                    required=True
+                ),
+                "Problèmes ou Contraintes": st.column_config.TextColumn("Problèmes / Contraintes", width="medium"),
+                "Causes": st.column_config.TextColumn("Causes", width="medium"),
+                "Conséquences": st.column_config.TextColumn("Conséquences", width="medium"),
+                "Solutions": st.column_config.TextColumn("Solutions préconisées", width="medium")
+            },
+            use_container_width=True
+        )
+
+        st.markdown("---")
+
+        # --- 8.3 PROGRAMME ANNUEL D'ACTIVITÉS (FICHE 7) ---
+        st.markdown("### 🗓️ 3. Programme Annuel d'Activités (Fiche 7)")
+        st.caption("Découpage des activités en sous-activités opérationnelles, indicateurs et suivi trimestriel.")
+
+        if 'df_programme_annuel' not in st.session_state:
+            st.session_state.df_programme_annuel = [
+                {
+                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
+                    "Activités": "Régler la densité",
+                    "Sous-activités": "Identifier les pieds à supprimer",
+                    "Indicateurs": "80% des pieds à supprimer identifiés",
+                    "T1": True, "T2": False, "T3": False, "T4": False,
+                    "Responsable d'exécution": "Producteur",
+                    "Responsable suivi": "Coopérative",
+                    "Coût FCFA": 0
+                },
+                {
+                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
+                    "Activités": "Régler la densité",
+                    "Sous-activités": "Supprimer les cacaoyers identifiés",
+                    "Indicateurs": "50% des pieds identifiés sont supprimés",
+                    "T1": False, "T2": False, "T3": True, "T4": True,
+                    "Responsable d'exécution": "Producteur",
+                    "Responsable suivi": "Coopérative",
+                    "Coût FCFA": 50000
+                },
+                {
+                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
+                    "Activités": "Entretenir",
+                    "Sous-activités": "Réaliser la taille des loranthacées",
+                    "Indicateurs": "80% des loranthus sont supprimés",
+                    "T1": False, "T2": True, "T3": True, "T4": False,
+                    "Responsable d'exécution": "Producteur",
+                    "Responsable suivi": "Coopérative",
+                    "Coût FCFA": 25000
+                }
+            ]
+
+        programme_df = st.data_editor(
+            st.session_state.df_programme_annuel,
+            num_rows="dynamic",
+            key="editor_prog_annuel",
+            column_config={
+                "Axes stratégiques": st.column_config.SelectboxColumn(
+                    "Axe stratégique",
+                    options=[
+                        "Axe 1 : Réhabilitation du verger",
+                        "Axe 2 : Replantation du verger",
+                        "Axe 3 : Amélioration de la fertilité des sols",
+                        "Axe 4 : Protection phytosanitaire intégrée"
+                    ],
+                    width="medium"
+                ),
+                "Activités": st.column_config.TextColumn("Activité", width="medium"),
+                "Sous-activités": st.column_config.TextColumn("Sous-activité", width="large"),
+                "Indicateurs": st.column_config.TextColumn("Indicateur de suivi", width="large"),
+                "T1": st.column_config.CheckboxColumn("T1"),
+                "T2": st.column_config.CheckboxColumn("T2"),
+                "T3": st.column_config.CheckboxColumn("T3"),
+                "T4": st.column_config.CheckboxColumn("T4"),
+                "Responsable d'exécution": st.column_config.SelectboxColumn(
+                    "Exécution",
+                    options=["Producteur", "Manœuvre", "Équipe spécialisée"],
+                    default="Producteur"
+                ),
+                "Responsable suivi": st.column_config.SelectboxColumn(
+                    "Suivi",
+                    options=["Coopérative", "ANADER", "Agent terrain"],
+                    default="Coopérative"
+                ),
+                "Coût FCFA": st.column_config.NumberColumn("Coût (FCFA)", min_value=0, step=2500, format="%d FCFA")
+            },
+            use_container_width=True
+        )
+
+        total_annuel = sum([row.get("Coût FCFA", 0) for row in programme_df if row.get("Coût FCFA")])
+        st.info(f"💰 **Budget total du programme annuel :** `{total_annuel:,} FCFA`".replace(",", " "))
+
+        st.markdown("---")
+
+        # --- 8.4 DÉTERMINATION DES MOYENS ET COÛTS (FICHE 8) ---
+        st.markdown("### 🛠️ 4. Détermination des moyens et coûts (Fiche 8)")
+        st.caption("Définition des apports humains, matériels et de fonctionnement nécessaires.")
+
+        if 'moyens_pdc' not in st.session_state.reponses_pdc:
+            st.session_state.reponses_pdc['moyens_pdc'] = {
+                "moyens_humains": "",
+                "moyens_production": "",
+                "moyens_fonctionnement": ""
+            }
+
+        moyens = st.session_state.reponses_pdc['moyens_pdc']
+
+        moyens["moyens_humains"] = st.text_area(
+            "Moyens humains (Qualification, nombre d'hommes/mois, main-d'œuvre) :",
+            value=moyens.get("moyens_humains", ""),
+            placeholder="Ex: 1 producteur + 2 manœuvres temporaires...",
+            height=90
+        )
+
+        moyens["moyens_production"] = st.text_area(
+            "Moyens de production / Investissements (Matériel, outils, durée d'utilisation) :",
+            value=moyens.get("moyens_production", ""),
+            placeholder="Ex: 1 tronçonneuse, 2 émondeurs, 3 machettes...",
+            height=90
+        )
+
+        moyens["moyens_fonctionnement"] = st.text_area(
+            "Moyens de fonctionnement (Inputs, produits, engrais, carburant) :",
+            value=moyens.get("moyens_fonctionnement", ""),
+            placeholder="Ex: Biostimulants, compost, carburant...",
+            height=90
+        )
+
+        st.markdown("---")
+
+        # --- NAVIGATION DE L'ÉTAPE 8 ---
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("⬅️ Retour", use_container_width=True):
+                st.session_state.etape_pdc = 7
+                st.rerun()
+        with col2:
+            if st.button("Suivant ➡️ (Vers Étape 9)", type="primary", use_container_width=True):
+                # Sauvegarde globale dans session_state
+                st.session_state.reponses_pdc.update({
+                    "decision_fiches": decision_calculee,
+                    "criteres_selectionnes": tous_criteres_cochis,
+                    "analyse_problemes": analyse_df,
+                    "programme_annuel": programme_df,
+                    "budget_annuel_total": total_annuel,
+                    "moyens_pdc": moyens
+                })
+                st.session_state.etape_pdc = 10
+                st.rerun()
+
 # Réinitialisation pour un nouveau diagnostic
                 st.session_state.etape_pdc = 1
                 st.session_state.reponses_pdc = {}
