@@ -607,7 +607,7 @@ def afficher():
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
-                st.session_state.etape_pdc = 8
+                st.session_state.etape_pdc = 10
                 st.rerun()
         with col2:
             if st.button("💾 Enregistrer le Plan Quinquennal", type="primary", use_container_width=True):
@@ -615,4 +615,6 @@ def afficher():
                 st.session_state.reponses_pdc["budget_total_5ans"] = total_budget
                 st.balloons()
                 st.success("🎉 Le Plan d'Action sur 5 ans a été enregistré avec succès dans le PDC !")
-
+# Réinitialisation pour un nouveau diagnostic
+                st.session_state.etape_pdc = 1
+                st.session_state.reponses_pdc = {}
