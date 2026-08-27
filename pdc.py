@@ -202,17 +202,7 @@ def afficher():
             densite_estimee = 0
 
         st.markdown("---")
-        st.markdown("### ⚖️ 2. Rendement et Commercialisation")
-        col_r1, col_r2 = st.columns(2)
-        with col_r1:
-            prod_derniere_campagne = st.number_input("Production totale dernière campagne (kg)", min_value=0, step=50, value=1200)
-            prix_moyen_kg = st.number_input("Prix moyen de vente (FCFA/kg)", min_value=0, step=50, value=1500)
-        with col_r2:
-            superficie_prod = st.number_input("Superficie en production (ha)", min_value=0.1, step=0.5, value=2.0)
-            rendement_calculer = prod_derniere_campagne / superficie_prod if superficie_prod > 0 else 0
-            st.metric("Rendement estimé (kg/ha)", f"{rendement_calculer:.1f} kg/ha")
-
-        col1, col2 = st.columns([1, 1])
+        
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
                 st.session_state.etape_pdc = 4
@@ -221,8 +211,7 @@ def afficher():
             if st.button("Suivant ➡️", use_container_width=True):
                 st.session_state.reponses_pdc.update({
                     "donnees_densite": densite_df, "densite_calculee_ha": densite_estimee,
-                    "production_derniere_campagne_kg": prod_derniere_campagne,
-                    "prix_moyen_kg": prix_moyen_kg, "rendement_kg_ha": rendement_calculer
+                    
                 })
                 st.session_state.etape_pdc = 6
                 st.rerun()
@@ -296,11 +285,18 @@ def afficher():
 
         st.markdown("---")
 
-        # 6.4 UTILISATION DES ENGRAIS ET AMENDEMENTS
+                # 6.4 UTILISATION DES ENGRAIS ET AMENDEMENTS
         st.markdown("### 🧪 4. Utilisation des engrais / amendements")
         if 'df_engrais' not in st.session_state:
             st.session_state.df_engrais = [
-                {"Formulation": "NPK 0-23-19", "Origine": "Acheté", "Dose/ha": "200 kg", "Superficie (ha)": 2.0, "Fréquence/An": 1, "Période": "Mai", "Mode d'application": "En couronne"}
+                {
+                    "Type d'engrais": "Minéraux",
+                    "Nom commercial / Formule": "NPK 0-23-19",
+                    "Quantité/an": "200 kg",
+                    "Période d'apport": "Mai",
+                    "Mode d'apport": "Au sol",
+                    "Applicateur": "1. Producteur"
+                }
             ]
 
         engrais_df = st.data_editor(
@@ -308,9 +304,9 @@ def afficher():
             num_rows="dynamic",
             key="editor_engrais",
             column_config={
-                "Origine": st.column_config.SelectboxColumn("Origine", options=["Acheté", "Donation", "Coopérative", "Projet"]),
-                "Applicateur": st.column_config.SelectboxColumn("Applicateur", options=["Producteur", "Applicateur"]),
-                "Mode d'application": st.column_config.SelectboxColumn("Mode d'application", options=["En couronne", "En poquet", "A la volée", "Folier"])
+                "Type d'engrais": st.column_config.SelectboxColumn("Type d'engrais", options=["Minéraux", "Organiques", "Autres"]),
+                "Mode d'apport": st.column_config.SelectboxColumn("Mode d'apport", options=["Foliaire", "Au sol"]),
+                "Applicateur": st.column_config.SelectboxColumn("Applicateur", options=["1. Producteur", "2. Applicateur"])
             },
             use_container_width=True
         )
@@ -321,7 +317,14 @@ def afficher():
         st.markdown("### 🛡️ 5. Produits phytosanitaires utilisés")
         if 'df_phyto' not in st.session_state:
             st.session_state.df_phyto = [
-                {"Nom commercial / Matière active": "Ridomil Gold", "Type": "Fungicide", "Origine": "Acheté", "Dose/ha": "50g/15L", "Superficie (ha)": 2.0, "Fréquence/An": 2, "Période": "Juin-Juillet", "Appareil de traitement": "Pulvérisateur", "Applicateur": "Applicateur/Producteur", "Mode": "couronne/follier"}
+                {
+                    "Type de produits": "Fongicide",
+                    "Nom commercial / Formule": "Ridomil Gold",
+                    "Quantité / traitement": "50g/15L",
+                    "Période de traitement": "Juin-Juillet",
+                    "Mode d'apport": "Pulvérisateur",
+                    "Applicateur": "2. Applicateur"
+                }
             ]
 
         phyto_df = st.data_editor(
@@ -329,10 +332,9 @@ def afficher():
             num_rows="dynamic",
             key="editor_phyto",
             column_config={
-                "Type": st.column_config.SelectboxColumn("Type", options=["Insecticide", "Fungicide", "Herbicide", "Nematicide"]),
-                "Applicateur": st.column_config.SelectboxColumn("Applicateur", options=["Producteur", "Applicateur"]),
-                "Origine": st.column_config.SelectboxColumn("Origine", options=["Acheté", "Donation", "Coopérative", "Projet"]),
-                "Mode d'application": st.column_config.SelectboxColumn("Mode d'application", options=["En couronne", "En poquet", "A la volée", "Folier"])
+                "Type de produits": st.column_config.SelectboxColumn("Type de produits", options=["Insecticide", "Fongicide", "Herbicide", "Nematicide"]),
+                "Mode d'apport": st.column_config.SelectboxColumn("Mode d'apport", options=["Atomiseur", "Pulvérisateur"]),
+                "Applicateur": st.column_config.SelectboxColumn("Applicateur", options=["1. Producteur", "2. Applicateur"])
             },
             use_container_width=True
         )
@@ -342,8 +344,8 @@ def afficher():
         # 6.6 GESTION DES EMBALLAGES VIDES
         st.markdown("### 🗑️ 6. Gestion des emballages vides")
         gestion_emballages = st.text_area(
-            "Que faites-vous des emballages vides de produits phytosanitaires après utilisation ?",
-            placeholder="Exemple : Rincés 3 fois, percés et jetés dans une fosse dédiée / ramenés à la coopérative...",
+            "Que faites-vous des emballages après traitement/application ?",
+            placeholder="Exemple : Rincés 3 fois, percés et ramassés par le programme de collecte de la coopérative...",
             height=100
         )
 
@@ -370,6 +372,7 @@ def afficher():
                 })
                 st.session_state.etape_pdc = 7
                 st.rerun()
+
 
     # ---------------------------------------------------------
     # ÉTAPE 7 : SYNTHÈSE ET ENREGISTREMENT
