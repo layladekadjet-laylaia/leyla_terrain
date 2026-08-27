@@ -23,14 +23,14 @@ def afficher():
     if 'reponses_pdc' not in st.session_state:
         st.session_state.reponses_pdc = {}
 
-    total_etapes = 7
+    total_etapes = 10
     st.progress(st.session_state.etape_pdc / total_etapes)
 
     # ---------------------------------------------------------
     # ÉTAPE 1 : INFORMATIONS GÉNÉRALES
     # ---------------------------------------------------------
     if st.session_state.etape_pdc == 1:
-        st.subheader("Étape 1/7 : Identification du Producteur")
+        st.subheader("Étape 1/10 : Identification du Producteur")
         
         zone = st.selectbox("Zone", ["A", "B", "C", "D", "E"], key="zone_input")
         ville = st.selectbox("Ville", ["Lakota", "Sassandra", "Fresco", "Gbagbam", "Gueyo"])
@@ -52,7 +52,7 @@ def afficher():
     # ÉTAPE 2 : CARACTÉRISTIQUES DE LA PARCELLE
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 2:
-        st.subheader("Étape 2/7 : Données de la Parcelle")
+        st.subheader("Étape 2/10 : Données de la Parcelle")
 
         superficie = st.number_input("Superficie de la plantation (ha)", min_value=0.1, step=0.5)
         annee_creation = st.number_input("Année de création", min_value=1950, max_value=2026, value=2010)
@@ -77,7 +77,7 @@ def afficher():
     # ÉTAPE 3 : DONNÉES SOCIO-DÉMOGRAPHIQUES (FICHE 1)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 3:
-        st.subheader("Étape 3/7 : Données Socio-démographiques (Fiche 1)")
+        st.subheader("Étape 3/10 : Données Socio-démographiques (Fiche 1)")
         st.info("Informations sur les membres du ménage et les actifs familiaux/travailleurs")
 
         nom_membre = st.text_input("Nom et Prénoms du membre du ménage")
@@ -111,7 +111,7 @@ def afficher():
     # ÉTAPE 4 : DESCRIPTION DE L'EXPLOITATION (FICHE 2)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 4:
-        st.subheader("Étape 4/7 : Description de l'Exploitation (Fiche 2)")
+        st.subheader("Étape 4/10 : Description de l'Exploitation (Fiche 2)")
 
         st.markdown("### 🌾 1. Données sur les cultures")
         st.markdown("**A. Plantation de Cacao**")
@@ -180,7 +180,7 @@ def afficher():
     # ÉTAPE 5 : DENSITÉ ET RENDEMENT (FICHE 3 - PARTIE 1)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 5:
-        st.subheader("Étape 5/7 : Densité et Rendement (Fiche 3)")
+        st.subheader("Étape 5/10 : Densité et Rendement (Fiche 3)")
 
         st.markdown("### 📐 1. Densité des cacaoyers")
         if 'df_densite_cacao' not in st.session_state:
@@ -221,7 +221,7 @@ def afficher():
     # ÉTAPE 6 : ÉTAT SANITAIRE, SOL, RÉCOLTE & ENGRAIS (FICHE 3 - PARTIE 2)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 6:
-        st.subheader("Étape 6/7 : État Sanitaire, Sol, Récolte & Engrais (Fiche 3)")
+        st.subheader("Étape 6/10 : État Sanitaire, Sol, Récolte & Engrais (Fiche 3)")
 
         # 6.1 ÉTAT VÉGÉTATIF ET SANITAIRE DES CACAOYERS
         st.markdown("### 🐛 1. État végétatif et sanitaire")
@@ -379,7 +379,7 @@ def afficher():
     # ÉTAPE 7 : PARTIE D - DONNÉES SOCIO-ÉCONOMIQUES (FICHE 4)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 7:
-        st.subheader("Étape 7/8 : Données Socio-économiques (Fiche 4)")
+        st.subheader("Étape 7/10 : Données Socio-économiques (Fiche 4)")
 
         # 1. COMPTE D'ÉPARGNE ET FINANCEMENT
         st.markdown("### 🏦 1. Compte d'épargne et Financement")
@@ -501,7 +501,7 @@ def afficher():
     # ÉTAPE 8 : GRILLE DE DÉCISION & SYNTHÈSE FINALE (FICHE 4 - SUITE)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 8:
-        st.subheader("Étape 8/8 : Grille de Décision & Enregistrement Final")
+        st.subheader("Étape 8/10 : Grille de Décision & Enregistrement Final")
 
         # 8.1 GRILLE DE DÉCISION AUTOMATIQUE
         st.markdown("### 📊 1. Grille de décision issue du diagnostic")
