@@ -486,7 +486,7 @@ def afficher():
                 st.session_state.etape_pdc = 6
                 st.rerun()
         with col2:
-            if st.button("Suivant (Synthèse) ➡️", use_container_width=True):
+            if st.button("Suivant) ➡️", use_container_width=True):
                 st.session_state.reponses_pdc.update({
                     "financement": financement_df,
                     "prod_historique": prod_historique_df,
@@ -501,7 +501,7 @@ def afficher():
     # ÉTAPE 9 : PLAN D'ACTION SUR LES 5 PROCHAINES ANNÉES (2.4.3)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 9:
-        st.subheader("Étape 9/9 : Plan d'Action Quinquennal (Sur 5 ans)")
+        st.subheader("Étape 8/10 : Plan d'Action Quinquennal (Sur 5 ans)")
         st.caption("2.4.3 - Élaboration du plan d'action sur 5 ans")
 
         st.markdown(
