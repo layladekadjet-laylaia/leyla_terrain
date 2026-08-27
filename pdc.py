@@ -357,7 +357,7 @@ def afficher():
                 st.session_state.etape_pdc = 5
                 st.rerun()
         with col2:
-            if st.button("Suivant (Partie D) ➡️", use_container_width=True):
+            if st.button("Suivant) ➡️", use_container_width=True):
                 st.session_state.reponses_pdc.update({
                     "sante_cacaoyere": sante_df,
                     "toposequence": toposequence,
@@ -497,24 +497,128 @@ def afficher():
                 st.session_state.etape_pdc = 8
                 st.rerun()
 
-    # ---------------------------------------------------------
-    # ÉTAPE 8 : SYNTHÈSE TOTALE ET ENREGISTREMENT
+        # ---------------------------------------------------------
+    # ÉTAPE 8 : GRILLE DE DÉCISION & SYNTHÈSE FINALE (FICHE 4 - SUITE)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 8:
-        st.subheader("Étape 8/8 : Validation et Enregistrement Global du PDC")
-        st.info("Résumé de toutes les informations collectées durant les 8 étapes du formulaire PDC.")
+        st.subheader("Étape 8/8 : Grille de Décision & Enregistrement Final")
 
-        st.json(st.session_state.reponses_pdc)
+        # 8.1 GRILLE DE DÉCISION AUTOMATIQUE
+        st.markdown("### 📊 1. Grille de décision issue du diagnostic")
 
+        # Récupération des données saisies dans les étapes précédentes
+        age = st.session_state.reponses_pdc.get("age_plantation", 0)
+        densite = st.session_state.reponses_pdc.get("densite_calculee_ha", 0)
+        rendement = st.session_state.reponses_pdc.get("rendement_estime", 0)
+        swollen_shoot = st.session_state.reponses_pdc.get("presence_swollen_shoot", False)
+
+        decision = "Réhabilitation"
+        criteres = []
+
+        if age > 30 or densite < 800 or rendement < 400 or swollen_shoot:
+            decision = "Replantation"
+            if age > 30: 
+                criteres.append("Plantation âgée de plus de 30 ans")
+            if densite < 800: 
+                criteres.append("Densité inférieure à 800 arbres/ha")
+            if rendement < 400: 
+                criteres.append("Rendement inférieur à 400 kg/ha")
+            if swollen_shoot: 
+                criteres.append("Présence de foyers de Swollen Shoot")
+        else:
+            criteres.append("Plantation âgée de moins de 30 ans")
+            criteres.append("Densité : 800 à 1 000 arbres/ha")
+            criteres.append("Rendement : au moins 400 kg/ha")
+            criteres.append("Absence de foyers de Swollen Shoot")
+
+        st.info(f"**Type de décision préconisé : {decision}**")
+        st.markdown("**Critères de choix validés :**")
+        for critere in criteres:
+            st.write(f"- {critere}")
+
+        st.markdown("---")
+
+        # 8.2 TABLEAU D'ANALYSE DES PROBLÈMES
+        st.markdown("### ⚠️ 2. Tableau d'analyse des problèmes")
+        if 'df_analyse_problemes' not in st.session_state:
+            st.session_state.df_analyse_problemes = [
+                {
+                    "Domaine": "Peuplement du verger",
+                    "Problèmes ou Contraintes": "Forte densité (1500 pieds/ha)",
+                    "Causes": "Non-respect du dispositif de plantation",
+                    "Conséquences": "Prolifération des maladies (pourritures brunes) et insecte",
+                    "Solutions": "Régler la densité"
+                },
+                {
+                    "Domaine": "Peuplement du verger",
+                    "Problèmes ou Contraintes": "Des plages vides en replantation sous des cacaoyers infectés",
+                    "Causes": "Mortalité due à la maladie du Swollen Shoot",
+                    "Conséquences": "Baisse de la production / L'enherbement",
+                    "Solutions": "Planter les arbres d'ombrages temporaires en vue de redensification"
+                },
+                {
+                    "Domaine": "Entretien du verger",
+                    "Problèmes ou Contraintes": "Présence de nombreux gourmands",
+                    "Causes": "Absence d'entretien",
+                    "Conséquences": "Attire les mirides / Réduit la vigueur du cacaoyer",
+                    "Solutions": "Réaliser la taille d'entretien"
+                },
+                {
+                    "Domaine": "Entretien du verger",
+                    "Problèmes ou Contraintes": "Utilisation de fumier de mouton non composté sur les cacaoyers",
+                    "Causes": "Manque de formation",
+                    "Conséquences": "Intoxication des plantes",
+                    "Solutions": "Formation sur la production de compost"
+                }
+            ]
+
+        analyse_df = st.data_editor(
+            st.session_state.df_analyse_problemes,
+            num_rows="dynamic",
+            key="editor_analyse_prob",
+            column_config={
+                "Domaine": st.column_config.SelectboxColumn(
+                    "Domaine",
+                    options=["Peuplement du verger", "Entretien du verger", "Protection phytosanitaire", "Gestion du sol / Ombrage"],
+                    required=True
+                ),
+                "Problèmes ou Contraintes": st.column_config.TextColumn("Problèmes / Contraintes", width="medium"),
+                "Causes": st.column_config.TextColumn("Causes", width="medium"),
+                "Conséquences": st.column_config.TextColumn("Conséquences", width="medium"),
+                "Solutions": st.column_config.TextColumn("Solutions préconisées", width="medium")
+            },
+            use_container_width=True
+        )
+
+        st.warning(
+            "NOTE : Les constats et recommandations de l'équipe de diagnostic doivent être portés à la connaissance du producteur. "
+            "Ces constats sont discutés et validés avec le producteur pour la prise de décision finale."
+        )
+
+        st.markdown("---")
+
+        # 8.3 RÉSUMÉ GLOBAL JSON DE LA COLLECTE
+        st.markdown("### 📄 Bilan global des données PDC")
+        with st.expander("Voir le détail des réponses enregistrées"):
+            st.json(st.session_state.reponses_pdc)
+
+        # NAVIGATION ET ENREGISTREMENT FINAL
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
                 st.session_state.etape_pdc = 7
                 st.rerun()
         with col2:
-            if st.button("💾 Enregistrer le PDC", type="primary", use_container_width=True):
+            if st.button("💾 Valider et Enregistrer le PDC", type="primary", use_container_width=True):
+                st.session_state.reponses_pdc.update({
+                    "decision_fiches": decision,
+                    "criteres_decision": criteres,
+                    "analyse_problemes": analyse_df
+                })
                 st.balloons()
                 st.success("🎉 Le Diagnostic et Plan de Développement de la Cacaoyère (PDC) a été totalement enregistré !")
+                
+                # Réinitialisation pour un nouveau diagnostic
                 st.session_state.etape_pdc = 1
                 st.session_state.reponses_pdc = {}
 
