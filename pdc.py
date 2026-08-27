@@ -309,6 +309,7 @@ def afficher():
             key="editor_engrais",
             column_config={
                 "Origine": st.column_config.SelectboxColumn("Origine", options=["Acheté", "Donation", "Coopérative", "Projet"]),
+                "Applicateur": st.column_config.SelectboxColumn("Applicateur", options=["Producteur", "Applicateur"]),
                 "Mode d'application": st.column_config.SelectboxColumn("Mode d'application", options=["En couronne", "En poquet", "A la volée", "Folier"])
             },
             use_container_width=True
@@ -329,7 +330,9 @@ def afficher():
             key="editor_phyto",
             column_config={
                 "Type": st.column_config.SelectboxColumn("Type", options=["Insecticide", "Fungicide", "Herbicide", "Nematicide"]),
-                "Origine": st.column_config.SelectboxColumn("Origine", options=["Acheté", "Donation", "Coopérative", "Projet"])
+                "Applicateur": st.column_config.SelectboxColumn("Applicateur", options=["Producteur", "Applicateur"]),
+                "Origine": st.column_config.SelectboxColumn("Origine", options=["Acheté", "Donation", "Coopérative", "Projet"]),
+                "Mode d'application": st.column_config.SelectboxColumn("Mode d'application", options=["En couronne", "En poquet", "A la volée", "Folier"])
             },
             use_container_width=True
         )
