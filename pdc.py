@@ -1132,8 +1132,11 @@ st.markdown("---")
 
 # --- 8.7 BILAN JSON COMPLET DES DONNÉES COLLECTÉES ---
 st.markdown("### 📄 Bilan global des données collectées (1 à 8)")
-with st.expander("Voir le détail JSON complet transmitted au serveur"):
-    st.json(st.session_state.reponses_pdc)
+with st.expander("Voir le détail JSON complet transmis au serveur"):
+    # Récupération sécurisée du dictionnaire
+    donnees_collectees = st.session_state.get("reponses_pdc", {})
+    st.json(donnees_collectees)
+
 
 st.markdown("---")
 
