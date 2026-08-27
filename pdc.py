@@ -773,39 +773,75 @@ def afficher():
 
         st.markdown("---")
 
-        # --- 8.5 DÉTERMINATION DES MOYENS ET COÛTS (FICHE 8) ---
-        st.markdown("### 🛠️ 5. Détermination des moyens et coûts (Fiche 8)")
-        st.caption("Définition des apports humains, matériels et de fonctionnement nécessaires.")
+                # --- 8.5 DÉTERMINATION DES MOYENS ET COÛTS (FICHE 8) ---
+        st.markdown("### 🛠️ 5. Détermination des moyens et des coûts (Fiche 8)")
+        st.caption("Évaluation détaillée des coûts d'investissement, intrants et main d'œuvre par activité sur 5 ans.")
 
-        if 'moyens_pdc' not in st.session_state.reponses_pdc:
-            st.session_state.reponses_pdc['moyens_pdc'] = {
-                "moyens_humains": "",
-                "moyens_production": "",
-                "moyens_fonctionnement": ""
-            }
-
-        moyens = st.session_state.reponses_pdc['moyens_pdc']
-
-        moyens["moyens_humains"] = st.text_area(
-            "Moyens humains (Qualification, nombre d'hommes/mois, main-d'œuvre) :",
-            value=moyens.get("moyens_humains", ""),
-            placeholder="Ex: 1 producteur + 2 manœuvres temporaires...",
-            height=90
+        # Sélection de l'activité concernée
+        activite_selectionnee = st.text_input(
+            "Activité concernée :",
+            value="Activité 1 : Traitement phytosanitaire et fertilisation",
+            placeholder="Entrez le nom de l'activité..."
         )
 
-        moyens["moyens_production"] = st.text_area(
-            "Moyens de production / Investissements (Matériel, outils, durée d'utilisation) :",
-            value=moyens.get("moyens_production", ""),
-            placeholder="Ex: 1 tronçonneuse, 2 émondeurs, 3 machettes...",
-            height=90
+        # Initialisation de la structure de la Fiche 8 dans la session
+        if 'df_moyens_cou_fiche8' not in st.session_state:
+            st.session_state.df_moyens_cou_fiche8 = [
+                # --- Investissement ---
+                {"Catégorie": "Investissement", "Moyens spécifiques": "Atomiseur", "Unités": "Nombre", "Qté A1": 1, "Coût A1": 150000, "Qté A2": 0, "Coût A2": 0, "Qté A3": 0, "Coût A3": 0, "Qté A4": 0, "Coût A4": 0, "Qté A5": 0, "Coût A5": 0},
+                {"Catégorie": "Investissement", "Moyens spécifiques": "Machettes / Outils", "Unités": "Nombre", "Qté A1": 3, "Coût A1": 15000, "Qté A2": 0, "Coût A2": 0, "Qté A3": 2, "Coût A3": 10000, "Qté A4": 0, "Coût A4": 0, "Qté A5": 2, "Coût A5": 10000},
+                
+                # --- Intrants ---
+                {"Catégorie": "Intrants", "Moyens spécifiques": "Engrais", "Unités": "kg", "Qté A1": 200, "Coût A1": 70000, "Qté A2": 200, "Coût A2": 70000, "Qté A3": 250, "Coût A3": 87500, "Qté A4": 250, "Coût A4": 87500, "Qté A5": 300, "Coût A5": 105000},
+                {"Catégorie": "Intrants", "Moyens spécifiques": "Insecticide", "Unités": "Litre", "Qté A1": 4, "Coût A1": 24000, "Qté A2": 4, "Coût A2": 24000, "Qté A3": 4, "Coût A3": 24000, "Qté A4": 4, "Coût A4": 24000, "Qté A5": 4, "Coût A5": 24000},
+                {"Catégorie": "Intrants", "Moyens spécifiques": "Fungicide", "Unités": "Sachet/Kg", "Qté A1": 10, "Coût A1": 30000, "Qté A2": 10, "Coût A2": 30000, "Qté A3": 10, "Coût A3": 30000, "Qté A4": 10, "Coût A4": 30000, "Qté A5": 10, "Coût A5": 30000},
+
+                # --- Main d'œuvre ---
+                {"Catégorie": "Main d'œuvre", "Moyens spécifiques": "Taille / Émondage", "Unités": "Hommes/Jour", "Qté A1": 5, "Coût A1": 25000, "Qté A2": 3, "Coût A2": 15000, "Qté A3": 3, "Coût A3": 15000, "Qté A4": 3, "Coût A4": 15000, "Qté A5": 3, "Coût A5": 15000},
+                {"Catégorie": "Main d'œuvre", "Moyens spécifiques": "Application Phyto", "Unités": "Hommes/Jour", "Qté A1": 4, "Coût A1": 20000, "Qté A2": 4, "Coût A2": 20000, "Qté A3": 4, "Coût A3": 20000, "Qté A4": 4, "Coût A4": 20000, "Qté A5": 4, "Coût A5": 20000}
+            ]
+
+        # Editeur de données interactif avec colonnes configurées
+        moyens_cou_df = st.data_editor(
+            st.session_state.df_moyens_cou_fiche8,
+            num_rows="dynamic",
+            key="editor_fiche8_moyens_couts",
+            column_config={
+                "Catégorie": st.column_config.SelectboxColumn(
+                    "Catégorie",
+                    options=["Investissement", "Intrants", "Main d'œuvre", "Activités d'appui/gestion"],
+                    required=True,
+                    width="medium"
+                ),
+                "Moyens spécifiques": st.column_config.TextColumn("Moyens spécifiques", width="medium"),
+                "Unités": st.column_config.TextColumn("Unités", width="small"),
+                
+                "Qté A1": st.column_config.NumberColumn("Qté A1", min_value=0, step=1),
+                "Coût A1": st.column_config.NumberColumn("Coût A1 (FCFA)", min_value=0, step=1000, format="%d FCFA"),
+                
+                "Qté A2": st.column_config.NumberColumn("Qté A2", min_value=0, step=1),
+                "Coût A2": st.column_config.NumberColumn("Coût A2 (FCFA)", min_value=0, step=1000, format="%d FCFA"),
+                
+                "Qté A3": st.column_config.NumberColumn("Qté A3", min_value=0, step=1),
+                "Coût A3": st.column_config.NumberColumn("Coût A3 (FCFA)", min_value=0, step=1000, format="%d FCFA"),
+                
+                "Qté A4": st.column_config.NumberColumn("Qté A4", min_value=0, step=1),
+                "Coût A4": st.column_config.NumberColumn("Coût A4 (FCFA)", min_value=0, step=1000, format="%d FCFA"),
+                
+                "Qté A5": st.column_config.NumberColumn("Qté A5", min_value=0, step=1),
+                "Coût A5": st.column_config.NumberColumn("Coût A5 (FCFA)", min_value=0, step=1000, format="%d FCFA")
+            },
+            use_container_width=True
         )
 
-        moyens["moyens_fonctionnement"] = st.text_area(
-            "Moyens de fonctionnement (Inputs, produits, engrais, carburant) :",
-            value=moyens.get("moyens_fonctionnement", ""),
-            placeholder="Ex: Biostimulants, compost, carburant...",
-            height=90
+        # Calcul automatique du coût global calculé dans le tableau Fiche 8
+        total_fiche8 = sum(
+            row.get("Coût A1", 0) + row.get("Coût A2", 0) + row.get("Coût A3", 0) + row.get("Coût A4", 0) + row.get("Coût A5", 0)
+            for row in moyens_cou_df if isinstance(row, dict)
         )
+
+        st.info(f"💵 **Coût global estimé des moyens (Fiche 8) sur 5 ans :** `{total_fiche8:,} FCFA`".replace(",", " "))
+
 
         st.markdown("---")
 
