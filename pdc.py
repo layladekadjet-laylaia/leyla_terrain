@@ -1,5 +1,15 @@
 import streamlit as st
+import os
+import time
+import numpy as np
 import pandas as pd
+import streamlit.components.v1 as components
+import urllib.parse
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
+from PIL import Image
+from shapely.geometry import Point, Polygon
+from fpdf import FPDF
+import datetimed
 
 def afficher():
     st.title("📋 PDC - Diagnostic & Plan de Développement")
