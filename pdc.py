@@ -9,7 +9,7 @@ from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode
 from PIL import Image
 from shapely.geometry import Point, Polygon
 from fpdf import FPDF
-import datetimed
+import datetime
 
 def afficher():
     st.title("📋 PDC - Diagnostic & Plan de Développement")
