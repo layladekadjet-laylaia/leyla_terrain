@@ -296,13 +296,11 @@ def afficher():
 
         st.markdown("---")
 
-        # 6.4 PRATIQUES D'APPLICATION D'ENGRAIS
-        st.markdown("### 🧪 4. Pratiques d'application d'engrais")
-
+        # 6.4 UTILISATION DES ENGRAIS ET AMENDEMENTS
+        st.markdown("### 🧪 4. Utilisation des engrais / amendements")
         if 'df_engrais' not in st.session_state:
             st.session_state.df_engrais = [
-                {"Type d'engrais": "Engrais minéral", "Formulation / Composition": "NPK 0-23-19", "Période d'application": "Mai - Juin", "Dose appliquée / pied (g)": 200, "Quantité totale / ha (kg)": 250},
-                {"Type d'engrais": "Engrais biologique", "Formulation / Composition": "Compost", "Période d'application": "Avril", "Dose appliquée / pied (g)": 500, "Quantité totale / ha (kg)": 600}
+                {"Formulation": "NPK 0-23-19", "Origine": "Acheté", "Dose/ha": "200 kg", "Superficie (ha)": 2.0, "Fréquence/An": 1, "Période": "Mai", "Mode d'application": "En couronne"}
             ]
 
         engrais_df = st.data_editor(
@@ -310,20 +308,50 @@ def afficher():
             num_rows="dynamic",
             key="editor_engrais",
             column_config={
-                "Type d'engrais": st.column_config.SelectboxColumn("Type d'engrais", options=["Engrais minéral", "Engrais biologique", "Amendement organique", "Autre"])
+                "Origine": st.column_config.SelectboxColumn("Origine", options=["Acheté", "Donation", "Coopérative", "Projet"]),
+                "Mode d'application": st.column_config.SelectboxColumn("Mode d'application", options=["En couronne", "En poquet", "A la volée", "Folier"])
             },
             use_container_width=True
         )
 
-        presence_compostiere = st.radio("Présence d'une compostière sur l'exploitation ?", ["Oui", "Non"], horizontal=True)
+        st.markdown("---")
 
+        # 6.5 UTILISATION DES PRODUITS PHYTOSANITAIRES
+        st.markdown("### 🛡️ 5. Produits phytosanitaires utilisés")
+        if 'df_phyto' not in st.session_state:
+            st.session_state.df_phyto = [
+                {"Nom commercial / Matière active": "Ridomil Gold", "Type": "Fungicide", "Origine": "Acheté", "Dose/ha": "50g/15L", "Superficie (ha)": 2.0, "Fréquence/An": 2, "Période": "Juin-Juillet", "Appareil de traitement": "Pulvérisateur"}
+            ]
+
+        phyto_df = st.data_editor(
+            st.session_state.df_phyto,
+            num_rows="dynamic",
+            key="editor_phyto",
+            column_config={
+                "Type": st.column_config.SelectboxColumn("Type", options=["Insecticide", "Fungicide", "Herbicide", "Nematicide"]),
+                "Origine": st.column_config.SelectboxColumn("Origine", options=["Acheté", "Donation", "Coopérative", "Projet"])
+            },
+            use_container_width=True
+        )
+
+        st.markdown("---")
+
+        # 6.6 GESTION DES EMBALLAGES VIDES
+        st.markdown("### 🗑️ 6. Gestion des emballages vides")
+        gestion_emballages = st.text_area(
+            "Que faites-vous des emballages vides de produits phytosanitaires après utilisation ?",
+            placeholder="Exemple : Rincés 3 fois, percés et jetés dans une fosse dédiée / ramenés à la coopérative...",
+            height=100
+        )
+
+        # NAVIGATION ENTRE ÉTAPES
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
                 st.session_state.etape_pdc = 5
                 st.rerun()
         with col2:
-            if st.button("Suivant ➡️", use_container_width=True):
+            if st.button("Suivant (Partie D) ➡️", use_container_width=True):
                 st.session_state.reponses_pdc.update({
                     "sante_cacaoyere": sante_df,
                     "toposequence": toposequence,
@@ -333,8 +361,9 @@ def afficher():
                     "duree_fermentation_jours": duree_fermentation,
                     "mode_fermentation": mode_fermentation,
                     "methode_sechage": methode_sechage,
-                    "pratiques_engrais": engrais_df,
-                    "presence_compostiere": presence_compostiere
+                    "utilisation_engrais": engrais_df,
+                    "produits_phytosanitaires": phyto_df,
+                    "gestion_emballages": gestion_emballages
                 })
                 st.session_state.etape_pdc = 7
                 st.rerun()
