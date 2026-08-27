@@ -375,21 +375,146 @@ def afficher():
                 st.rerun()
 
 
-    # ---------------------------------------------------------
-    # ÉTAPE 7 : SYNTHÈSE ET ENREGISTREMENT
+        # ---------------------------------------------------------
+    # ÉTAPE 7 : PARTIE D - DONNÉES SOCIO-ÉCONOMIQUES (FICHE 4)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 7:
-        st.subheader("Étape 7/7 : Validation et Enregistrement du Diagnostic")
-        
-        st.json(st.session_state.reponses_pdc)
+        st.subheader("Étape 7/8 : Données Socio-économiques (Fiche 4)")
 
+        # 1. COMPTE D'ÉPARGNE ET FINANCEMENT
+        st.markdown("### 🏦 1. Compte d'épargne et Financement")
+        if 'df_financement' not in st.session_state:
+            st.session_state.df_financement = [
+                {"Service": "Mobile Money", "Compte d'épargne (Oui/Non)": "Oui", "Demande de crédit (Oui/Non)": "Non", "Crédit obtenu (Oui/Non)": "Non", "Montant (FCFA)": 0},
+                {"Service": "Microfinance", "Compte d'épargne (Oui/Non)": "Non", "Demande de crédit (Oui/Non)": "Non", "Crédit obtenu (Oui/Non)": "Non", "Montant (FCFA)": 0},
+                {"Service": "Banque", "Compte d'épargne (Oui/Non)": "Non", "Demande de crédit (Oui/Non)": "Non", "Crédit obtenu (Oui/Non)": "Non", "Montant (FCFA)": 0}
+            ]
+
+        financement_df = st.data_editor(
+            st.session_state.df_financement,
+            num_rows="dynamic",
+            key="editor_financement",
+            column_config={
+                "Compte d'épargne (Oui/Non)": st.column_config.SelectboxColumn("Compte d'épargne", options=["Oui", "Non"]),
+                "Demande de crédit (Oui/Non)": st.column_config.SelectboxColumn("Demande de crédit", options=["Oui", "Non"]),
+                "Crédit obtenu (Oui/Non)": st.column_config.SelectboxColumn("Crédit obtenu", options=["Oui", "Non"])
+            },
+            use_container_width=True
+        )
+
+        st.markdown("---")
+
+        # 2. PRODUCTION DE CACAO DES 3 DERNIÈRES ANNÉES
+        st.markdown("### 📦 2. Production de cacao des trois (3) dernières années")
+        if 'df_prod_historique' not in st.session_state:
+            st.session_state.df_prod_historique = [
+                {"Campagne": "Année N-1", "Production (kg)": 0, "Prix moyen (FCFA/kg)": 1500},
+                {"Campagne": "Année N-2", "Production (kg)": 0, "Prix moyen (FCFA/kg)": 1000},
+                {"Campagne": "Année N-3", "Production (kg)": 0, "Prix moyen (FCFA/kg)": 900}
+            ]
+
+        prod_historique_df = st.data_editor(
+            st.session_state.df_prod_historique,
+            num_rows="dynamic",
+            key="editor_prod_historique",
+            use_container_width=True
+        )
+
+        st.markdown("---")
+
+        # 3. SOURCES DE REVENUS AUTRES QUE LE CACAO
+        st.markdown("### 💰 3. Sources de revenus autres que le cacao")
+        if 'df_autres_revenus' not in st.session_state:
+            st.session_state.df_autres_revenus = [
+                {"Source de revenu / Activité": "Vente de vivriers", "Montant estimé/an (FCFA)": 0, "Observations": ""},
+                {"Source de revenu / Activité": "Elevage", "Montant estimé/an (FCFA)": 0, "Observations": ""}
+            ]
+
+        autres_revenus_df = st.data_editor(
+            st.session_state.df_autres_revenus,
+            num_rows="dynamic",
+            key="editor_autres_revenus",
+            use_container_width=True
+        )
+
+        st.markdown("---")
+
+        # 4. DÉPENSES COURANTES DU FOYER
+        st.markdown("### 🛒 4. Dépenses courantes du foyer")
+        if 'df_depenses' not in st.session_state:
+            st.session_state.df_depenses = [
+                {"Dépenses": "Scolarité", "Périodicité": "Année", "Montant moyen (FCFA)": 0},
+                {"Dépenses": "Nourriture", "Périodicité": "Mois", "Montant moyen (FCFA)": 0},
+                {"Dépenses": "Santé", "Périodicité": "Année", "Montant moyen (FCFA)": 0},
+                {"Dépenses": "Électricité", "Périodicité": "2 mois", "Montant moyen (FCFA)": 0},
+                {"Dépenses": "Eau courante", "Périodicité": "Mois", "Montant moyen (FCFA)": 0},
+                {"Dépenses": "Charges sociales (Funérailles, fêtes...)", "Périodicité": "Année", "Montant moyen (FCFA)": 0}
+            ]
+
+        depenses_df = st.data_editor(
+            st.session_state.df_depenses,
+            num_rows="dynamic",
+            key="editor_depenses",
+            use_container_width=True
+        )
+
+        st.markdown("---")
+
+        # 5. COÛT DE LA MAIN D'ŒUVRE
+        st.markdown("### 👥 5. Coût et gestion de la main d'œuvre")
+        if 'df_main_oeuvre' not in st.session_state:
+            st.session_state.df_main_oeuvre = [
+                {"Travailleur": "Travailleur 1", "Statut": "MO permanente", "Sexe": "M", "Coût annuel (FCFA)": 0, "Temps de travail / an (jours)": 0},
+                {"Travailleur": "Groupe de travail (Entraide)", "Statut": "Non rémunérée (familiale)", "Sexe": "M", "Coût annuel (FCFA)": 0, "Temps de travail / an (jours)": 0}
+            ]
+
+        main_oeuvre_df = st.data_editor(
+            st.session_state.df_main_oeuvre,
+            num_rows="dynamic",
+            key="editor_main_oeuvre",
+            column_config={
+                "Statut": st.column_config.SelectboxColumn("Statut de la main d'œuvre", options=["MO permanente", "MO occasionnelle", "Non rémunérée (familiale)"]),
+                "Sexe": st.column_config.SelectboxColumn("Sexe", options=["M", "F"])
+            },
+            use_container_width=True
+        )
+
+        # NAVIGATION ENTRE ÉTAPES
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
                 st.session_state.etape_pdc = 6
                 st.rerun()
         with col2:
-            if st.button("💾 Enregistrer", type="primary", use_container_width=True):
-                st.success("Données du diagnostic PDC enregistrées avec succès !")
+            if st.button("Suivant (Synthèse) ➡️", use_container_width=True):
+                st.session_state.reponses_pdc.update({
+                    "financement": financement_df,
+                    "prod_historique": prod_historique_df,
+                    "autres_revenus": autres_revenus_df,
+                    "depenses_foyer": depenses_df,
+                    "main_oeuvre": main_oeuvre_df
+                })
+                st.session_state.etape_pdc = 8
+                st.rerun()
+
+    # ---------------------------------------------------------
+    # ÉTAPE 8 : SYNTHÈSE TOTALE ET ENREGISTREMENT
+    # ---------------------------------------------------------
+    elif st.session_state.etape_pdc == 8:
+        st.subheader("Étape 8/8 : Validation et Enregistrement Global du PDC")
+        st.info("Résumé de toutes les informations collectées durant les 8 étapes du formulaire PDC.")
+
+        st.json(st.session_state.reponses_pdc)
+
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("⬅️ Retour", use_container_width=True):
+                st.session_state.etape_pdc = 7
+                st.rerun()
+        with col2:
+            if st.button("💾 Enregistrer le PDC", type="primary", use_container_width=True):
+                st.balloons()
+                st.success("🎉 Le Diagnostic et Plan de Développement de la Cacaoyère (PDC) a été totalement enregistré !")
                 st.session_state.etape_pdc = 1
                 st.session_state.reponses_pdc = {}
+
