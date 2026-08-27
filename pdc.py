@@ -202,7 +202,8 @@ def afficher():
             densite_estimee = 0
 
         st.markdown("---")
-        
+
+        col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
                 st.session_state.etape_pdc = 4
