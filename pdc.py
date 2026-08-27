@@ -255,20 +255,7 @@ def afficher():
 
         st.markdown("---")
 
-        # 5.2 RENDEMENT & HISTORIQUE DE COMMERCIALISATION
-        st.markdown("### ⚖️ 2. Rendement et Commercialisation")
-        st.caption("Collecter les données de commercialisation avec le producteur sur au moins la dernière campagne.")
-
-        col_r1, col_r2 = st.columns(2)
-        with col_r1:
-            prod_derniere_campagne = st.number_input("Production totale dernière campagne (kg)", min_value=0, step=50, value=1200)
-            prix_moyen_kg = st.number_input("Prix moyen de vente (FCFA/kg)", min_value=0, step=50, value=1500)
-        with col_r2:
-            superficie_prod = st.number_input("Superficie en production (ha)", min_value=0.1, step=0.5, value=2.0)
-            rendement_calculer = prod_derniere_campagne / superficie_prod if superficie_prod > 0 else 0
-            st.metric("Rendement estimé (kg/ha)", f"{rendement_calculer:.1f} kg/ha")
-
-        st.markdown("---")
+        
 
         # 5.3 ARBRES DÉGRADÉS ET NON PRODUCTIFS
         st.markdown("### ⚠️ 3. Critères d'identification des arbres dégradés")
