@@ -500,7 +500,7 @@ def afficher():
                 # ---------------------------------------------------------
     # ÉTAPE 9 : PLAN D'ACTION SUR LES 5 PROCHAINES ANNÉES (2.4.3)
     # ---------------------------------------------------------
-    elif st.session_state.etape_pdc == 9:
+    elif st.session_state.etape_pdc == 8:
         st.subheader("Étape 8/10 : Plan d'Action Quinquennal (Sur 5 ans)")
         st.caption("2.4.3 - Élaboration du plan d'action sur 5 ans")
 
