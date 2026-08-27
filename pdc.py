@@ -11,6 +11,7 @@ from shapely.geometry import Point, Polygon
 from fpdf import FPDF
 import datetime
 
+
 def afficher():
     st.title("📋 PDC - Diagnostic & Plan de Développement")
 
@@ -22,14 +23,14 @@ def afficher():
     if 'reponses_pdc' not in st.session_state:
         st.session_state.reponses_pdc = {}
 
-    total_etapes = 6
+    total_etapes = 7
     st.progress(st.session_state.etape_pdc / total_etapes)
 
     # ---------------------------------------------------------
     # ÉTAPE 1 : INFORMATIONS GÉNÉRALES
     # ---------------------------------------------------------
     if st.session_state.etape_pdc == 1:
-        st.subheader("Étape 1/6 : Identification du Producteur")
+        st.subheader("Étape 1/7 : Identification du Producteur")
         
         zone = st.selectbox("Zone", ["A", "B", "C", "D", "E"], key="zone_input")
         ville = st.selectbox("Ville", ["Lakota", "Sassandra", "Fresco", "Gbagbam", "Gueyo"])
@@ -51,7 +52,7 @@ def afficher():
     # ÉTAPE 2 : CARACTÉRISTIQUES DE LA PARCELLE
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 2:
-        st.subheader("Étape 2/6 : Données de la Parcelle")
+        st.subheader("Étape 2/7 : Données de la Parcelle")
 
         superficie = st.number_input("Superficie de la plantation (ha)", min_value=0.1, step=0.5)
         annee_creation = st.number_input("Année de création", min_value=1950, max_value=2026, value=2010)
@@ -76,7 +77,7 @@ def afficher():
     # ÉTAPE 3 : DONNÉES SOCIO-DÉMOGRAPHIQUES (FICHE 1)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 3:
-        st.subheader("Étape 3/6 : Données Socio-démographiques (Fiche 1)")
+        st.subheader("Étape 3/7 : Données Socio-démographiques (Fiche 1)")
         st.info("Informations sur les membres du ménage et les actifs familiaux/travailleurs")
 
         nom_membre = st.text_input("Nom et Prénoms du membre du ménage")
@@ -110,82 +111,47 @@ def afficher():
     # ÉTAPE 4 : DESCRIPTION DE L'EXPLOITATION (FICHE 2)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 4:
-        st.subheader("Étape 4/6 : Description de l'Exploitation (Fiche 2)")
+        st.subheader("Étape 4/7 : Description de l'Exploitation (Fiche 2)")
 
-        # 4.1 DONNÉES SUR LES CULTURES
         st.markdown("### 🌾 1. Données sur les cultures")
-        
         st.markdown("**A. Plantation de Cacao**")
         if 'df_cacao' not in st.session_state:
             st.session_state.df_cacao = [
                 {"Parcelle": "Parcelle 1", "Superficie (ha)": 1.5, "Année création": 2010, "Précédent cultural": "Forêt", "Origine matériel végétal": "CNRA", "En production (OUI/NON)": "OUI"},
                 {"Parcelle": "Parcelle 2", "Superficie (ha)": 2.0, "Année création": 2015, "Précédent cultural": "Jachère", "Origine matériel végétal": "Tout venant", "En production (OUI/NON)": "OUI"}
             ]
-        
-        cacao_df = st.data_editor(
-            st.session_state.df_cacao,
-            num_rows="dynamic",
-            key="editor_cacao",
-            use_container_width=True
-        )
+        cacao_df = st.data_editor(st.session_state.df_cacao, num_rows="dynamic", key="editor_cacao", use_container_width=True)
 
         st.markdown("**B. Autres cultures**")
         if 'df_autres_cultures' not in st.session_state:
             st.session_state.df_autres_cultures = [
                 {"Culture": "Hévéa", "Superficie (ha)": 1.0, "Année création": 2018, "Précédent cultural": "Jachère", "Origine matériel végétal": "Vulgarisé", "En production (OUI/NON)": "NON"},
-                {"Culture": "P. à huile", "Superficie (ha)": 0.5, "Année création": 2020, "Précédent cultural": "Savane", "Origine matériel végétal": "Sélectionné", "En production (OUI/NON)": "NON"},
-                {"Culture": "Vivrier", "Superficie (ha)": 0.25, "Année création": 2025, "Précédent cultural": "Friche", "Origine matériel végétal": "Local", "En production (OUI/NON)": "OUI"}
+                {"Culture": "P. à huile", "Superficie (ha)": 0.5, "Année création": 2020, "Précédent cultural": "Savane", "Origine matériel végétal": "Sélectionné", "En production (OUI/NON)": "NON"}
             ]
-
-        autres_cultures_df = st.data_editor(
-            st.session_state.df_autres_cultures,
-            num_rows="dynamic",
-            key="editor_autres_cultures",
-            use_container_width=True
-        )
+        autres_cultures_df = st.data_editor(st.session_state.df_autres_cultures, num_rows="dynamic", key="editor_autres_cultures", use_container_width=True)
 
         st.markdown("---")
-
-        # 4.2 MATÉRIEL AGRICOLE ET ÉQUIPEMENTS
         st.markdown("### 🚜 2. Matériel agricole et équipements")
         if 'df_equipements' not in st.session_state:
             st.session_state.df_equipements = [
-                {"Type": "Matériel de traitement", "Désignation": "Pulvérisateur", "Quantité": 1, "Année d'acquisition": 2021, "Coût (FCFA)": 35000, "État": "Bon"},
-                {"Type": "Matériel de traitement", "Désignation": "Atomiseur", "Quantité": 1, "Année d'acquisition": 2023, "Coût (FCFA)": 150000, "État": "Acceptable"},
-                {"Type": "Matériel de transport", "Désignation": "Charette / Tricycle", "Quantité": 1, "Année d'acquisition": 2022, "Coût (FCFA)": 450000, "État": "Bon"}
+                {"Type": "Matériel de traitement", "Désignation": "Pulvérisateur", "Quantité": 1, "Année d'acquisition": 2021, "Coût (FCFA)": 35000, "État": "Bon"}
             ]
-
-        equipements_df = st.data_editor(
-            st.session_state.df_equipements,
-            num_rows="dynamic",
-            key="editor_equipements",
-            use_container_width=True
-        )
+        equipements_df = st.data_editor(st.session_state.df_equipements, num_rows="dynamic", key="editor_equipements", use_container_width=True)
 
         st.markdown("---")
-
-        # 4.3 DIAGNOSTIC DES ARBRES AUTRES QUE LE CACAOYER
         st.markdown("### 🌳 3. Diagnostic des arbres autres que le cacaoyer")
-        
         if 'df_arbres_ombrage' not in st.session_state:
             st.session_state.df_arbres_ombrage = [
-                {"N°": 1, "Nom de l'arbre": "Akpi", "Nombre": 200, "Latitude": 6.020668, "Longitude": -4.3571323, "Statut": "Préservé", "Avantages cacaoyère": "1. Ombrage", "Usage": "4. Bois d'oeuvre", "Action": "A maintenir", "Observations": ""},
-                {"N°": 2, "Nom de l'arbre": "Fraqué", "Nombre": 70, "Latitude": 6.020664, "Longitude": -4.3569498, "Statut": "Préservé", "Avantages cacaoyère": "2. Fertilité du sol", "Usage": "4. Bois d'oeuvre", "Action": "A éliminer", "Observations": "Situé à 1,5 m d'un autre"},
-                {"N°": 3, "Nom de l'arbre": "Fromager", "Nombre": 212, "Latitude": 6.020614, "Longitude": -4.3569029, "Statut": "Préservé", "Avantages cacaoyère": "4. Maintien l'humidité", "Usage": "4. Bois d'oeuvre", "Action": "A maintenir", "Observations": ""}
+                {"N°": 1, "Nom de l'arbre": "Akpi", "Nombre": 200, "Latitude": 6.020668, "Longitude": -4.3571323, "Statut": "Préservé", "Avantages cacaoyère": "1. Ombrage", "Usage": "4. Bois d'oeuvre", "Action": "A maintenir", "Observations": ""}
             ]
-
         arbres_ombrage_df = st.data_editor(
             st.session_state.df_arbres_ombrage,
             num_rows="dynamic",
             key="editor_arbres_ombrage",
             column_config={
                 "Statut": st.column_config.SelectboxColumn("Statut", options=["Préservé", "Introduit", "Régénéré"]),
-                "Avantages cacaoyère": st.column_config.SelectboxColumn("Avantages pour la cacaoyère", options=[
-                    "1. Ombrage", "2. Fertilité du sol", "3. Protection contre l'érosion", "4. Maintien l'humidité", "5. Lutte contre l'enherbement"
-                ]),
-                "Usage": st.column_config.SelectboxColumn("Usage", options=[
-                    "1. Alimentaire", "2. Médicinale", "3. Protection des cacaoyers", "4. Bois d'oeuvre", "5. Bois de chauffage"
-                ]),
+                "Avantages cacaoyère": st.column_config.SelectboxColumn("Avantages pour la cacaoyère", options=["1. Ombrage", "2. Fertilité du sol", "3. Protection contre l'érosion", "4. Maintien l'humidité", "5. Lutte contre l'enherbement"]),
+                "Usage": st.column_config.SelectboxColumn("Usage", options=["1. Alimentaire", "2. Médicinale", "3. Protection des cacaoyers", "4. Bois d'oeuvre", "5. Bois de chauffage"]),
                 "Action": st.column_config.SelectboxColumn("Action recommandée", options=["A maintenir", "A éliminer", "A élaguer"])
             },
             use_container_width=True
@@ -203,32 +169,20 @@ def afficher():
         with col2:
             if st.button("Suivant ➡️", use_container_width=True):
                 st.session_state.reponses_pdc.update({
-                    "parcelles_cacaoyer": cacao_df,
-                    "autres_cultures": autres_cultures_df,
-                    "equipements": equipements_df,
-                    "arbres_ombrage": arbres_ombrage_df,
-                    "terres_disponibles": terres_disponibles,
-                    "autre_speculations": autre_speculations
+                    "parcelles_cacaoyer": cacao_df, "autres_cultures": autres_cultures_df,
+                    "equipements": equipements_df, "arbres_ombrage": arbres_ombrage_df,
+                    "terres_disponibles": terres_disponibles, "autre_speculations": autre_speculations
                 })
                 st.session_state.etape_pdc = 5
                 st.rerun()
 
     # ---------------------------------------------------------
-    # ÉTAPE 5 : DONNÉES AGRONOMIQUES (FICHE 3)
+    # ÉTAPE 5 : DENSITÉ ET RENDEMENT (FICHE 3 - PARTIE 1)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 5:
-        st.subheader("Étape 5/6 : C - Données Agronomiques (Fiche 3)")
+        st.subheader("Étape 5/7 : Densité et Rendement (Fiche 3)")
 
-        # 5.1 DENSITÉ DES CACAOYERS
         st.markdown("### 📐 1. Densité des cacaoyers")
-        st.info(
-            " Méthodologie :\n"
-            "- Poser des carrés de densité de 10 m × 10 m sur la parcelle.\n"
-            "- Choisir les carrés par la méthode des diagonales.\n"
-            "- Dans chaque carré, compter les arbres productifs et noter le nombre de tiges par cacaoyer.\n"
-            "- Multiplier le nombre moyen d'arbres par carré par 100 pour obtenir la densité moyenne par hectare."
-        )
-
         if 'df_densite_cacao' not in st.session_state:
             st.session_state.df_densite_cacao = [
                 {"Carré": "Carré 1", "Nombre cacaoyers": 12, "Nb moyen de tiges/cacaoyer": 1.0},
@@ -237,39 +191,27 @@ def afficher():
                 {"Carré": "Carré 4", "Nombre cacaoyers": 10, "Nb moyen de tiges/cacaoyer": 1.1}
             ]
 
-        densite_df = st.data_editor(
-            st.session_state.df_densite_cacao,
-            num_rows="dynamic",
-            key="editor_densite",
-            use_container_width=True
-        )
+        densite_df = st.data_editor(st.session_state.df_densite_cacao, num_rows="dynamic", key="editor_densite", use_container_width=True)
 
-        # Calcul automatique de la densité
         if len(densite_df) > 0:
             df_temp = pd.DataFrame(densite_df)
             moyenne_arbres_carre = df_temp["Nombre cacaoyers"].mean() if "Nombre cacaoyers" in df_temp else 0
             densite_estimee = moyenne_arbres_carre * 100
-            st.success(f"📊 **Densité estimée :** `{densite_estimee:.0f} cacaoyers / ha` (Moyenne par carré de 100m² : `{moyenne_arbres_carre:.2f}`)")
+            st.success(f"📊 **Densité estimée :** `{densite_estimee:.0f} cacaoyers / ha`")
         else:
             densite_estimee = 0
 
         st.markdown("---")
+        st.markdown("### ⚖️ 2. Rendement et Commercialisation")
+        col_r1, col_r2 = st.columns(2)
+        with col_r1:
+            prod_derniere_campagne = st.number_input("Production totale dernière campagne (kg)", min_value=0, step=50, value=1200)
+            prix_moyen_kg = st.number_input("Prix moyen de vente (FCFA/kg)", min_value=0, step=50, value=1500)
+        with col_r2:
+            superficie_prod = st.number_input("Superficie en production (ha)", min_value=0.1, step=0.5, value=2.0)
+            rendement_calculer = prod_derniere_campagne / superficie_prod if superficie_prod > 0 else 0
+            st.metric("Rendement estimé (kg/ha)", f"{rendement_calculer:.1f} kg/ha")
 
-        
-
-        # 5.3 ARBRES DÉGRADÉS ET NON PRODUCTIFS
-        st.markdown("### ⚠️ 3. Critères d'identification des arbres dégradés")
-        st.warning(
-            "Un arbre est considéré comme dégradé et non productif s'il présente au moins l'une des caractéristiques suivantes :\n"
-            "1. La frondaison est ouverte et si dégradée qu'aucune action technique ne peut permettre de la corriger ;\n"
-            "2. L'attaque de loranthus (plantes parasites) est si forte qu'aucune taille ne permet de redonner de la vigueur aux arbres ;\n"
-            "3. Le tronc est si dégradé que l'arbre n'a plus la possibilité de porter des cabosses ;\n"
-            "4. Les arbres chétifs ne pouvant plus produire de cabosses."
-        )
-
-        toux_degradation = st.slider("Pourcentage estimé d'arbres dégradés sur la parcelle (%)", min_value=0, max_value=100, value=15)
-
-        # NAVIGATION ENTRE ÉTAPES
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
@@ -278,26 +220,112 @@ def afficher():
         with col2:
             if st.button("Suivant ➡️", use_container_width=True):
                 st.session_state.reponses_pdc.update({
-                    "donnees_densite": densite_df,
-                    "densite_calculee_ha": densite_estimee,
-                    
-                    "taux_arbres_degrades_pct": toux_degradation
+                    "donnees_densite": densite_df, "densite_calculee_ha": densite_estimee,
+                    "production_derniere_campagne_kg": prod_derniere_campagne,
+                    "prix_moyen_kg": prix_moyen_kg, "rendement_kg_ha": rendement_calculer
                 })
                 st.session_state.etape_pdc = 6
                 st.rerun()
 
     # ---------------------------------------------------------
-    # ÉTAPE 6 : SYNTHÈSE ET ENREGISTREMENT
+    # ÉTAPE 6 : ÉTAT SANITAIRE, SOL ET PRATIQUES (FICHE 3 - PARTIE 2)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 6:
-        st.subheader("Étape 6/6 : Validation et Enregistrement du Diagnostic")
+        st.subheader("Étape 6/7 : État Sanitaire, Sol & Récolte (Fiche 3)")
+
+        # 6.1 ÉTAT VÉGÉTATIF ET SANITAIRE DES CACAOYERS
+        st.markdown("### 🐛 1. État végétatif et sanitaire")
+        if 'df_sante_cacao' not in st.session_state:
+            st.session_state.df_sante_cacao = [
+                {"Maladies / Ravageurs": "Attaques de mirides", "Sévérité": "1. Aucun", "Observations": "", "Paramètres": "Présence de gourmands", "Valeur": "1. Aucun", "Observations P.": ""},
+                {"Maladies / Ravageurs": "Attaques de Pourriture Brune", "Sévérité": "2. Faible", "Observations": "", "Paramètres": "Présence de cabosses momifiées", "Valeur": "2. Faible", "Observations P.": ""},
+                {"Maladies / Ravageurs": "Présence de plantes épiphytes", "Sévérité": "1. Aucun", "Observations": "", "Paramètres": "Présence de loranthus", "Valeur": "1. Aucun", "Observations P.": ""},
+                {"Maladies / Ravageurs": "Attaque Foreurs", "Sévérité": "1. Aucun", "Observations": "", "Paramètres": "Enherbedement", "Valeur": "3. moyen", "Observations P.": ""},
+                {"Maladies / Ravageurs": "Attaque CSSVD", "Sévérité": "1. Aucun", "Observations": "", "Paramètres": "", "Valeur": "", "Observations P.": ""}
+            ]
+
+        sante_df = st.data_editor(
+            st.session_state.df_sante_cacao,
+            num_rows="dynamic",
+            key="editor_sante",
+            column_config={
+                "Sévérité": st.column_config.SelectboxColumn("Sévérité", options=["1. Aucun", "2. Faible", "3. Moyen", "4. Fort"]),
+                "Valeur": st.column_config.SelectboxColumn("Valeur", options=["1. Aucun", "2. Faible", "3. moyen", "4. Fort"])
+            },
+            use_container_width=True
+        )
+
+        st.markdown("---")
+
+        # 6.2 CARACTÉRISTIQUES PHYSIQUES DU SOL
+        st.markdown("### 🏔️ 2. État et caractéristiques du sol")
+        toposequence = st.selectbox("Positionnement dans la toposéquence", ["Plateau", "Haut de versant", "Mi-versant", "Bas de versant", "Bas-fond"])
+
+        if 'df_sol_caract' not in st.session_state:
+            st.session_state.df_sol_caract = [
+                {"Éléments d'observation (A)": "Couvert végétal", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "Existence de zones érodées", "Valeur B": "2. Non", "Obs B": "Ravinements..."},
+                {"Éléments d'observation (A)": "Présence de Matière organique", "Valeur A": "1. beaucoup", "Obs A": "", "Éléments d'observation (B)": "Existence de zones à risque d'érosion", "Valeur B": "2. Non", "Obs B": "Pente..."},
+                {"Éléments d'observation (A)": "Profondeur", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "", "Valeur B": "", "Obs B": ""},
+                {"Éléments d'observation (A)": "Texture", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "", "Valeur B": "", "Obs B": ""}
+            ]
+
+        sol_df = st.data_editor(
+            st.session_state.df_sol_caract,
+            num_rows="dynamic",
+            key="editor_sol",
+            column_config={
+                "Valeur A": st.column_config.SelectboxColumn("Valeur (A)", options=["1. beaucoup", "2. moyen", "3. Faible"]),
+                "Valeur B": st.column_config.SelectboxColumn("Valeur (B)", options=["1. Oui", "2. Non"])
+            },
+            use_container_width=True
+        )
+
+        st.markdown("---")
+
+        # 6.3 PRATIQUES DE RÉCOLTE ET POST-RÉCOLTE
+        st.markdown("### 🧺 3. Pratiques de récolte et post-récolte")
+        
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
+            freq_recolte = st.number_input("Fréquence des récoltes (jours entre 2 récoltes)", min_value=1, max_value=60, value=14)
+            temps_ecabossage = st.number_input("Temps entre récolte et écabossage (jours)", min_value=0, max_value=15, value=2)
+            duree_fermentation = st.number_input("Durée de la fermentation (jours)", min_value=1, max_value=10, value=6)
+        with col_p2:
+            mode_fermentation = st.selectbox("Mode de fermentation", ["1. Bâche en plastique", "2. Feuilles de bananier", "3. Bac de fermentation", "4. Autre (à préciser)"])
+            methode_sechage = st.selectbox("Méthodes de séchage", ["1. Sur goudron", "2. Sur aire cimentée", "3. Sur bâche en plastique à terre", "4. Sur claie", "5. Autre (à préciser)"])
+
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("⬅️ Retour", use_container_width=True):
+                st.session_state.etape_pdc = 5
+                st.rerun()
+        with col2:
+            if st.button("Suivant ➡️", use_container_width=True):
+                st.session_state.reponses_pdc.update({
+                    "sante_cacaoyere": sante_df,
+                    "toposequence": toposequence,
+                    "caracteristiques_sol": sol_df,
+                    "frequence_recolte_jours": freq_recolte,
+                    "temps_ecabossage_jours": temps_ecabossage,
+                    "duree_fermentation_jours": duree_fermentation,
+                    "mode_fermentation": mode_fermentation,
+                    "methode_sechage": methode_sechage
+                })
+                st.session_state.etape_pdc = 7
+                st.rerun()
+
+    # ---------------------------------------------------------
+    # ÉTAPE 7 : SYNTHÈSE ET ENREGISTREMENT
+    # ---------------------------------------------------------
+    elif st.session_state.etape_pdc == 7:
+        st.subheader("Étape 7/7 : Validation et Enregistrement du Diagnostic")
         
         st.json(st.session_state.reponses_pdc)
 
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
-                st.session_state.etape_pdc = 5
+                st.session_state.etape_pdc = 6
                 st.rerun()
         with col2:
             if st.button("💾 Enregistrer", type="primary", use_container_width=True):
