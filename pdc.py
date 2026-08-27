@@ -497,132 +497,12 @@ def afficher():
                 st.session_state.etape_pdc = 8
                 st.rerun()
 
-                # ---------------------------------------------------------
-    # ÉTAPE 9 : PLAN D'ACTION SUR LES 5 PROCHAINES ANNÉES (2.4.3)
+                    # ---------------------------------------------------------
+    # ÉTAPE 8 : PLANIFICATION COMPLÈTE & DÉCISION (FICHES 7 & 8 + PLAN 5 ANS)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 8:
-        st.subheader("Étape 8/10 : Plan d'Action Quinquennal (Sur 5 ans)")
-        st.caption("2.4.3 - Élaboration du plan d'action sur 5 ans")
-
-        st.markdown(
-            "À l'issue du diagnostic, un plan d'action est élaboré pour une période de 5 ans. "
-            "Définissez ci-dessous les axes stratégiques, les objectifs, les activités, leurs coûts et le calendrier d'exécution."
-        )
-
-        st.markdown("---")
-        st.markdown("### 📅 Matrice du Plan d'Action sur 5 Ans")
-
-        # Initialisation de la structure de données par défaut si non présente dans la session
-        if 'df_plan_action_5ans' not in st.session_state:
-            st.session_state.df_plan_action_5ans = [
-                {
-                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
-                    "Objectifs": "Remettre la parcelle en bon état de production",
-                    "Activités": "Régler la densité",
-                    "Coût (FCFA)": 200000,
-                    "A1": True, "A2": False, "A3": False, "A4": False, "A5": False,
-                    "Responsable": "Producteur",
-                    "Partenaires": "Coopérative"
-                },
-                {
-                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
-                    "Objectifs": "Remettre la parcelle en bon état de production",
-                    "Activités": "Réaliser la taille des loranthacées",
-                    "Coût (FCFA)": 25000,
-                    "A1": True, "A2": True, "A3": True, "A4": True, "A5": True,
-                    "Responsable": "Producteur",
-                    "Partenaires": "Coopérative"
-                },
-                {
-                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
-                    "Objectifs": "Remettre la parcelle en bon état de production",
-                    "Activités": "Planter les arbres d'ombrages temporaires dans les espaces vides en replantation",
-                    "Coût (FCFA)": 360000,
-                    "A1": True, "A2": True, "A3": False, "A4": False, "A5": False,
-                    "Responsable": "Producteur",
-                    "Partenaires": "Coopérative / ANADER"
-                },
-                {
-                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
-                    "Objectifs": "Remettre la parcelle en bon état de production",
-                    "Activités": "Formation du producteur sur la production de compost amélioré à partir des digestions animales et résidus",
-                    "Coût (FCFA)": 0,
-                    "A1": True, "A2": False, "A3": False, "A4": False, "A5": False,
-                    "Responsable": "Producteur",
-                    "Partenaires": "ANADER / Coopérative"
-                }
-            ]
-
-        # Tableau interactif d'édition du plan d'action
-        plan_edited_df = st.data_editor(
-            st.session_state.df_plan_action_5ans,
-            num_rows="dynamic",
-            key="editor_plan_action_5ans",
-            column_config={
-                "Axes stratégiques": st.column_config.SelectboxColumn(
-                    "Axes stratégiques",
-                    options=[
-                        "Axe 1 : Réhabilitation du verger",
-                        "Axe 2 : Replantation du verger",
-                        "Axe 3 : Amélioration de la fertilité des sols",
-                        "Axe 4 : Protection phytosanitaire intégrée"
-                    ],
-                    required=True,
-                    width="medium"
-                ),
-                "Objectifs": st.column_config.TextColumn("Objectifs", width="medium"),
-                "Activités": st.column_config.TextColumn("Activités à réaliser", width="large"),
-                "Coût (FCFA)": st.column_config.NumberColumn("Coût (FCFA)", min_value=0, step=5000, format="%d FCFA"),
-                "A1": st.column_config.CheckboxColumn("Année 1"),
-                "A2": st.column_config.CheckboxColumn("Année 2"),
-                "A3": st.column_config.CheckboxColumn("Année 3"),
-                "A4": st.column_config.CheckboxColumn("Année 4"),
-                "A5": st.column_config.CheckboxColumn("Année 5"),
-                "Responsable": st.column_config.SelectboxColumn(
-                    "Responsable",
-                    options=["Producteur", "Manœuvre", "Équipe spécialisée"],
-                    default="Producteur"
-                ),
-                "Partenaires": st.column_config.TextColumn("Partenaires", width="medium")
-            },
-            use_container_width=True
-        )
-
-        # Calcul automatique du budget total prévisionnel du plan d'action
-        total_budget = sum([row.get("Coût (FCFA)", 0) for row in plan_edited_df if row.get("Coût (FCFA)")])
-        
-        st.info(f"💰 **Budget total estimé du plan d'action sur 5 ans :** `{total_budget:,} FCFA`".replace(",", " "))
-
-        st.markdown("---")
-        st.markdown("### 📝 Orientation pour l'élaboration du calendrier annuel (Fiche 7)")
-        st.write(
-            "Les activités à réaliser doivent ensuite être décrites en détail, programmées et intégrées "
-            "dans une matrice de calendrier annuel précisant les indicateurs opérationnels de suivi, les échéances, "
-            "les coûts et les responsabilités de chaque acteur."
-        )
-
-        st.markdown("---")
-
-        # NAVIGATION ET VALIDATION FINALE D'ÉTAPE
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("⬅️ Retour", use_container_width=True):
-                st.session_state.etape_pdc = 10
-                st.rerun()
-        with col2:
-            if st.button("Suivant) ➡️", use_container_width=True):
-                st.session_state.reponses_pdc["plan_action_5ans"] = plan_edited_df
-                st.session_state.reponses_pdc["budget_total_5ans"] = total_budget
-                st.balloons()
-                st.success("🎉 Le Plan d'Action sur 5 ans a été enregistré avec succès dans le PDC !")
-
-
-        # ---------------------------------------------------------
-    # ÉTAPE 8 : DÉCISION, PLAN QUINQUENNAL, PROGRAMME ANNUEL & MOYENS
-    # ---------------------------------------------------------
-    elif st.session_state.etape_pdc == 8:
-        st.subheader("Étape 8/9 : Décision, Planification Quinquennale & Moyens")
-        st.caption("2.4.3 - Élaboration des décisions, plan d'action sur 5 ans et programme annuel")
+        st.subheader("Étape 8/9 : Plan d'Action, Programme Annuel & Moyens")
+        st.caption("Planification globale, matrice quinquennale, calendrier d'exécution et moyens")
 
         # --- 8.1 GRILLE DE DÉCISION DYNAMIQUE ---
         st.markdown("### 📊 1. Grille de décision")
@@ -730,9 +610,9 @@ def afficher():
 
         st.markdown("---")
 
-        # --- 8.3 PLAN D'ACTION QUINQUENNAL SUR 5 ANS (2.4.3) ---
-        st.markdown("### 📅 3. Matrice du Plan d'Action sur 5 Ans (2.4.3)")
-        st.caption("Définissez les axes stratégiques, les objectifs, les activités, leurs coûts et le calendrier d'exécution.")
+        # --- 8.3 PLAN D'ACTION SUR 5 ANS (2.4.3) ---
+        st.markdown("### 📅 3. Plan d'Action Quinquennal (Sur 5 ans)")
+        st.caption("2.4.3 - Élaboration du plan d'action stratégique sur 5 ans")
 
         if 'df_plan_action_5ans' not in st.session_state:
             st.session_state.df_plan_action_5ans = [
@@ -793,11 +673,11 @@ def afficher():
                 "Objectifs": st.column_config.TextColumn("Objectifs", width="medium"),
                 "Activités": st.column_config.TextColumn("Activités à réaliser", width="large"),
                 "Coût (FCFA)": st.column_config.NumberColumn("Coût (FCFA)", min_value=0, step=5000, format="%d FCFA"),
-                "A1": st.column_config.CheckboxColumn("Année 1"),
-                "A2": st.column_config.CheckboxColumn("Année 2"),
-                "A3": st.column_config.CheckboxColumn("Année 3"),
-                "A4": st.column_config.CheckboxColumn("Année 4"),
-                "A5": st.column_config.CheckboxColumn("Année 5"),
+                "A1": st.column_config.CheckboxColumn("A1"),
+                "A2": st.column_config.CheckboxColumn("A2"),
+                "A3": st.column_config.CheckboxColumn("A3"),
+                "A4": st.column_config.CheckboxColumn("A4"),
+                "A5": st.column_config.CheckboxColumn("A5"),
                 "Responsable": st.column_config.SelectboxColumn(
                     "Responsable",
                     options=["Producteur", "Manœuvre", "Équipe spécialisée"],
@@ -815,7 +695,7 @@ def afficher():
 
         # --- 8.4 PROGRAMME ANNUEL D'ACTIVITÉS (FICHE 7) ---
         st.markdown("### 🗓️ 4. Programme Annuel d'Activités (Fiche 7)")
-        st.caption("Découpage des activités de l'année en sous-activités opérationnelles, indicateurs et suivi trimestriel.")
+        st.caption("Découpage des activités opérationnelles de l'Année 1, indicateurs et suivi trimestriel.")
 
         if 'df_programme_annuel' not in st.session_state:
             st.session_state.df_programme_annuel = [
@@ -929,21 +809,22 @@ def afficher():
 
         st.markdown("---")
 
-        # --- 8.6 BILAN EN DIRECT DE LA SAISIE ---
-        st.markdown("### 📄 Bilan des données PDC enregistrées")
-        with st.expander("Voir le détail des réponses actuellement enregistrées"):
+        # --- 8.6 BILAN JSON DES DONNÉES DU PDC ---
+        st.markdown("### 📄 Bilan global des données collectées")
+        with st.expander("Voir le détail complet des réponses enregistrées dans le PDC"):
             st.json(st.session_state.reponses_pdc)
 
         st.markdown("---")
 
-        # --- NAVIGATION DE L'ÉTAPE 8 ---
+        # --- NAVIGATION DE L'ÉTAPE 8 ET ENREGISTREMENT ---
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
                 st.session_state.etape_pdc = 7
                 st.rerun()
         with col2:
-            if st.button("Suivant ➡️ (Vers Étape 9)", type="primary", use_container_width=True):
+            if st.button("Suivant ➡️ (Vers Étape 9 : Récapitulatif Final)", type="primary", use_container_width=True):
+                # Sauvegarde globale propre dans session_state
                 st.session_state.reponses_pdc.update({
                     "decision_fiches": decision_calculee,
                     "criteres_selectionnes": tous_criteres_cochis,
@@ -956,3 +837,4 @@ def afficher():
                 })
                 st.session_state.etape_pdc = 9
                 st.rerun()
+
