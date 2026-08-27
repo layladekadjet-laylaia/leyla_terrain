@@ -228,10 +228,10 @@ def afficher():
                 st.rerun()
 
     # ---------------------------------------------------------
-    # ÉTAPE 6 : ÉTAT SANITAIRE, SOL ET PRATIQUES (FICHE 3 - PARTIE 2)
+    # ÉTAPE 6 : ÉTAT SANITAIRE, SOL, RÉCOLTE & ENGRAIS (FICHE 3 - PARTIE 2)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 6:
-        st.subheader("Étape 6/7 : État Sanitaire, Sol & Récolte (Fiche 3)")
+        st.subheader("Étape 6/7 : État Sanitaire, Sol, Récolte & Engrais (Fiche 3)")
 
         # 6.1 ÉTAT VÉGÉTATIF ET SANITAIRE DES CACAOYERS
         st.markdown("### 🐛 1. État végétatif et sanitaire")
@@ -294,6 +294,29 @@ def afficher():
             mode_fermentation = st.selectbox("Mode de fermentation", ["1. Bâche en plastique", "2. Feuilles de bananier", "3. Bac de fermentation", "4. Autre (à préciser)"])
             methode_sechage = st.selectbox("Méthodes de séchage", ["1. Sur goudron", "2. Sur aire cimentée", "3. Sur bâche en plastique à terre", "4. Sur claie", "5. Autre (à préciser)"])
 
+        st.markdown("---")
+
+        # 6.4 PRATIQUES D'APPLICATION D'ENGRAIS
+        st.markdown("### 🧪 4. Pratiques d'application d'engrais")
+
+        if 'df_engrais' not in st.session_state:
+            st.session_state.df_engrais = [
+                {"Type d'engrais": "Engrais minéral", "Formulation / Composition": "NPK 0-23-19", "Période d'application": "Mai - Juin", "Dose appliquée / pied (g)": 200, "Quantité totale / ha (kg)": 250},
+                {"Type d'engrais": "Engrais biologique", "Formulation / Composition": "Compost", "Période d'application": "Avril", "Dose appliquée / pied (g)": 500, "Quantité totale / ha (kg)": 600}
+            ]
+
+        engrais_df = st.data_editor(
+            st.session_state.df_engrais,
+            num_rows="dynamic",
+            key="editor_engrais",
+            column_config={
+                "Type d'engrais": st.column_config.SelectboxColumn("Type d'engrais", options=["Engrais minéral", "Engrais biologique", "Amendement organique", "Autre"])
+            },
+            use_container_width=True
+        )
+
+        presence_compostiere = st.radio("Présence d'une compostière sur l'exploitation ?", ["Oui", "Non"], horizontal=True)
+
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
@@ -309,7 +332,9 @@ def afficher():
                     "temps_ecabossage_jours": temps_ecabossage,
                     "duree_fermentation_jours": duree_fermentation,
                     "mode_fermentation": mode_fermentation,
-                    "methode_sechage": methode_sechage
+                    "methode_sechage": methode_sechage,
+                    "pratiques_engrais": engrais_df,
+                    "presence_compostiere": presence_compostiere
                 })
                 st.session_state.etape_pdc = 7
                 st.rerun()
