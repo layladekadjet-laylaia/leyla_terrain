@@ -610,7 +610,7 @@ def afficher():
                 st.session_state.etape_pdc = 10
                 st.rerun()
         with col2:
-            if st.button("💾 Enregistrer le Plan Quinquennal", type="primary", use_container_width=True):
+            if st.button("Suivant) ➡️", use_container_width=True):
                 st.session_state.reponses_pdc["plan_action_5ans"] = plan_edited_df
                 st.session_state.reponses_pdc["budget_total_5ans"] = total_budget
                 st.balloons()
@@ -864,6 +864,13 @@ def afficher():
                 })
                 st.session_state.etape_pdc = 10
                 st.rerun()
+
+
+# 8.3 RÉSUMÉ GLOBAL JSON DE LA COLLECTE
+        st.markdown("### 📄 Bilan global des données PDC")
+        with st.expander("Voir le détail des réponses enregistrées"):
+            st.json(st.session_state.reponses_pdc)
+
 
 # Réinitialisation pour un nouveau diagnostic
                 st.session_state.etape_pdc = 1
