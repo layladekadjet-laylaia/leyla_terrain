@@ -497,44 +497,89 @@ def afficher():
                 st.session_state.etape_pdc = 8
                 st.rerun()
 
-        # ---------------------------------------------------------
+            # ---------------------------------------------------------
     # ÉTAPE 8 : GRILLE DE DÉCISION & SYNTHÈSE FINALE (FICHE 4 - SUITE)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 8:
-        st.subheader("Étape 8/10 : Grille de Décision & Enregistrement Final")
+        st.subheader("Étape 8/8 : Grille de Décision & Enregistrement Final")
 
-        # 8.1 GRILLE DE DÉCISION AUTOMATIQUE
-        st.markdown("### 📊 1. Grille de décision issue du diagnostic")
+        # 8.1 GRILLE DE DÉCISION DYNAMIQUE (PAR COCHAGE)
+        st.markdown("### 📊 1. Grille de décision")
+        st.caption("Cochez les critères constatés sur la parcelle pour déterminer le type de décision.")
 
-        # Récupération des données saisies dans les étapes précédentes
-        age = st.session_state.reponses_pdc.get("age_plantation", 0)
-        densite = st.session_state.reponses_pdc.get("densite_calculee_ha", 0)
-        rendement = st.session_state.reponses_pdc.get("rendement_estime", 0)
-        swollen_shoot = st.session_state.reponses_pdc.get("presence_swollen_shoot", False)
+        # Liste des critères possibles organisés par décision
+        criteres_replantation = [
+            "Plantation âgée de plus de 30 ans",
+            "Densité inférieure à 800 arbres productifs / ha",
+            "Rendement inférieur à 400 kg / ha",
+            "Sol favorable à la culture de cacao",
+            "Présence de foyers de Swollen Shoot"
+        ]
 
-        decision = "Réhabilitation"
-        criteres = []
+        criteres_rehabilitation = [
+            "Plantation âgée de moins de 30 ans",
+            "Densité : 800 à 1 000 arbres productifs / ha",
+            "Rendement : au moins 400 kg / ha",
+            "Absence de foyers de Swollen Shoot"
+        ]
 
-        if age > 30 or densite < 800 or rendement < 400 or swollen_shoot:
-            decision = "Replantation"
-            if age > 30: 
-                criteres.append("Plantation âgée de plus de 30 ans")
-            if densite < 800: 
-                criteres.append("Densité inférieure à 800 arbres/ha")
-            if rendement < 400: 
-                criteres.append("Rendement inférieur à 400 kg/ha")
-            if swollen_shoot: 
-                criteres.append("Présence de foyers de Swollen Shoot")
+        criteres_reconversion = [
+            "Pluviométrie inférieure à 1200 mm avec plus de 4 mois de saison sèche",
+            "Présence de cuirasse à moins d'un mètre de profondeur"
+        ]
+
+        # Formulaire de sélection par cases à cocher
+        st.markdown("**Sélectionnez les constats de terrain :**")
+        
+        coche_replantation = []
+        coche_rehabilitation = []
+        coche_reconversion = []
+
+        col_a, col_b = st.columns(2)
+        
+        with col_a:
+            st.markdown("---")
+            st.markdown("**Critères Replantation / Réhabilitation**")
+            for crit in criteres_replantation:
+                if st.checkbox(crit, key=f"crit_{crit}"):
+                    coche_replantation.append(crit)
+
+            for crit in criteres_rehabilitation:
+                if st.checkbox(crit, key=f"crit_{crit}"):
+                    coche_rehabilitation.append(crit)
+
+        with col_b:
+            st.markdown("---")
+            st.markdown("**Critères Reconversion**")
+            for crit in criteres_reconversion:
+                if st.checkbox(crit, key=f"crit_{crit}"):
+                    coche_reconversion.append(crit)
+
+        # MOTEUR DE DÉCISION (CROISEMENT)
+        # La reconversion est prioritaire si ses contraintes de sol/climat sont cochées, 
+        # sinon la replantation l'emporte dès qu'un critère majeur est coché.
+        decision_calculee = "Non déterminée"
+
+        if len(coche_reconversion) > 0:
+            decision_calculee = "Reconversion"
+        elif len(coche_replantation) > 0:
+            decision_calculee = "Replantation"
+        elif len(coche_rehabilitation) > 0:
+            decision_calculee = "Réhabilitation"
+
+        tous_criteres_cochis = coche_replantation + coche_rehabilitation + coche_reconversion
+
+        # Affichage du résultat du croisement
+        st.markdown("---")
+        st.markdown("#### 🎯 Résultat du croisement")
+        if decision_calculee == "Replantation":
+            st.error(f"**Type de décision : {decision_calculee}**")
+        elif decision_calculee == "Reconversion":
+            st.warning(f"**Type de décision : {decision_calculee}**")
+        elif decision_calculee == "Réhabilitation":
+            st.success(f"**Type de décision : {decision_calculee}**")
         else:
-            criteres.append("Plantation âgée de moins de 30 ans")
-            criteres.append("Densité : 800 à 1 000 arbres/ha")
-            criteres.append("Rendement : au moins 400 kg/ha")
-            criteres.append("Absence de foyers de Swollen Shoot")
-
-        st.info(f"**Type de décision préconisé : {decision}**")
-        st.markdown("**Critères de choix validés :**")
-        for critere in criteres:
-            st.write(f"- {critere}")
+            st.info("Veuillez cocher au moins un critère pour afficher la décision.")
 
         st.markdown("---")
 
@@ -546,7 +591,7 @@ def afficher():
                     "Domaine": "Peuplement du verger",
                     "Problèmes ou Contraintes": "Forte densité (1500 pieds/ha)",
                     "Causes": "Non-respect du dispositif de plantation",
-                    "Conséquences": "Prolifération des maladies (pourritures brunes) et insecte",
+                    "Conséquences": "Prolifération des maladies et insectes",
                     "Solutions": "Régler la densité"
                 },
                 {
@@ -611,8 +656,8 @@ def afficher():
         with col2:
             if st.button("💾 Valider et Enregistrer le PDC", type="primary", use_container_width=True):
                 st.session_state.reponses_pdc.update({
-                    "decision_fiches": decision,
-                    "criteres_decision": criteres,
+                    "decision_fiches": decision_calculee,
+                    "criteres_selectionnes": tous_criteres_cochis,
                     "analyse_problemes": analyse_df
                 })
                 st.balloons()
@@ -621,4 +666,3 @@ def afficher():
                 # Réinitialisation pour un nouveau diagnostic
                 st.session_state.etape_pdc = 1
                 st.session_state.reponses_pdc = {}
-
