@@ -1127,57 +1127,58 @@ def afficher():
 
                          
 # =========================================================
-# --- 8.6 PONT DE TRANSITION : AUDIT ET AUDIT BRONZE (1 à 8) ---
-# =========================================================
-
-
-        st.markdown("---")
-
-# =========================================================
-# 2. AFFICHAGE RENDER DANS L'INTERFACE (Section 8.6)
+# 8.6 AUDIT ET DIAGNOSTIC QUALITÉ DU PDC
 # =========================================================
 st.markdown("---")
 st.markdown("### 📊 8.6 Audit & Diagnostic Qualité du PDC")
 
-# Récupération des données actuelles
+# Récupération sécurisée du dictionnaire principal
 donnees_pdc = st.session_state.get("reponses_pdc", {})
 
 # Exécution explicite du diagnostic
 score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees_pdc)
 
-# Affichage du Score
+# 1. Affichage du score principal
 st.metric(label="Score de Conformité Global (Étapes 1 à 8)", value=f"{score_global} / 100")
 
-# Affichage des alertes critiques (s'il y en a)
+# 2. Affichage des alertes critiques
 if alertes:
     st.error("🚨 **Alertes Critiques / Non-Conformités Majeures :**")
     for alerte in alertes:
         st.write(f"- {alerte}")
 
-# Affichage des avertissements (s'il y en a)
+# 3. Affichage des avertissements
 if avert:
     st.warning("⚠️ **Avertissements & Points d'attention :**")
     for av in avert:
         st.write(f"- {av}")
 
-# Affichage des points forts dans un conteneur pliable
+# 4. Affichage des points forts validés
 with st.expander("✅ Voir les Points Forts validés"):
-    for pf in pts_forts:
-        st.write(f"- {pf}")
+    if pts_forts:
+        for pf in pts_forts:
+            st.write(f"- {pf}")
+    else:
+        st.write("Aucun point fort enregistré pour le moment.")
 
 st.markdown("---")
 
 
-        # --- 8.7 BILAN JSON COMPLET ---
+# =========================================================
+# 8.7 BILAN JSON COMPLET
+# =========================================================
 st.markdown("### 📄 Bilan global des données collectées (1 à 8)")
 with st.expander("Voir le détail JSON complet transmis au serveur"):
-    donnees_pdc = st.session_state.get("reponses_pdc", {})
     st.json(donnees_pdc)
 
 st.markdown("---")
 
-# --- NAVIGATION VERS ÉTAPE 9 ---
+
+# =========================================================
+# NAVIGATION VERS ÉTAPE 9
+# =========================================================
 col1, col2 = st.columns([1, 1])
+
 with col1:
     if st.button("⬅️ Retour", use_container_width=True):
         st.session_state.etape_pdc = 7
@@ -1185,21 +1186,25 @@ with col1:
 
 with col2:
     if st.button("Suivant ➡️ (Vers Étape 9 : Clôture & Bilan Final)", type="primary", use_container_width=True):
+        # Récupération sécurisée de l'ensemble des données
         donnees_pdc = st.session_state.get("reponses_pdc", {})
         score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees_pdc)
         
+        # Mise à jour sans risque d'erreur NameError
         donnees_pdc.update({
-            "decision_fiches": decision_calculee,
-            "criteres_selectionnes": tous_criteres_cochis,
-            "analyse_problemes": analyse_df,
-            "plan_action_5ans": plan_edited_df,
-            "budget_total_5ans": total_budget_5ans,
-            "programme_annuel": programme_df,
-            "budget_annuel_total": total_annuel,
-            "moyens_fiche8_details": moyens_cou_df,
-            "budget_fiche8_total": total_fiche8,
+            "decision_fiches": st.session_state.get("decision_calculee", ""),
+            "criteres_selectionnes": st.session_state.get("tous_criteres_cochis", []),
+            "analyse_problemes": st.session_state.get("analyse_df", []),
+            "plan_action_5ans": st.session_state.get("plan_edited_df", []),
+            "budget_total_5ans": st.session_state.get("total_budget_5ans", 0),
+            "programme_annuel": st.session_state.get("programme_df", []),
+            "budget_annuel_total": st.session_state.get("total_annuel", 0),
+            "moyens_fiche8_details": st.session_state.get("editor_fiche8_moyens_couts", []),
+            "budget_fiche8_total": st.session_state.get("total_fiche8", 0),
             "score_conformite_etape1_8": score_global
         })
+        
         st.session_state.reponses_pdc = donnees_pdc
         st.session_state.etape_pdc = 9
         st.rerun()
+
