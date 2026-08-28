@@ -1130,11 +1130,45 @@ def afficher():
 
         st.markdown("---")
 
-        # --- 8.7 BILAN JSON COMPLET DES DONNÉES COLLECTÉES ---
-        st.markdown("### 📄 Bilan global des données collectées (1 à 8)")
-        with st.expander("Voir le détail JSON complet transmis au serveur"):
-            donnees_collectees = st.session_state.get("reponses_pdc", {})
-            st.json(donnees_collectees)
+# =========================================================
+# 2. AFFICHAGE RENDER DANS L'INTERFACE (Section 8.6)
+# =========================================================
+st.markdown("---")
+st.markdown("### 📊 8.6 Audit & Diagnostic Qualité du PDC")
+
+# Récupération des données actuelles
+donnees_pdc = st.session_state.get("reponses_pdc", {})
+
+# Exécution explicite du diagnostic
+score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees_pdc)
+
+# Affichage du Score
+st.metric(label="Score de Conformité Global (Étapes 1 à 8)", value=f"{score_global} / 100")
+
+# Affichage des alertes critiques (s'il y en a)
+if alertes:
+    st.error("🚨 **Alertes Critiques / Non-Conformités Majeures :**")
+    for alerte in alertes:
+        st.write(f"- {alerte}")
+
+# Affichage des avertissements (s'il y en a)
+if avert:
+    st.warning("⚠️ **Avertissements & Points d'attention :**")
+    for av in avert:
+        st.write(f"- {av}")
+
+# Affichage des points forts dans un conteneur pliable
+with st.expander("✅ Voir les Points Forts validés"):
+    for pf in pts_forts:
+        st.write(f"- {pf}")
+
+st.markdown("---")
+
+
+        # --- 8.7 BILAN JSON COMPLET ---
+st.markdown("### 📄 Bilan global des données collectées (1 à 8)")
+with st.expander("Voir le détail JSON complet transmis au serveur"):
+    st.json(donnees_pdc)
 
         st.markdown("---")
 
