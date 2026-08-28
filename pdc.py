@@ -1035,7 +1035,7 @@ def effectuer_diagnostic_exhaustif_json(data):
     # Critère 20 : Méthode de séchage (RÈGLE CRITIQUE QUALITÉ)
     sechage = data.get("methode_sechage", "")
     if "goudron" in sechage.lower():
-        alertes_critiques.append("NON-CONFORMITÉ QUALITÉ : Le séchage sur goudron est strictly interdit (risques HAP).")
+        alertes_critiques.append("NON-CONFORMITÉ QUALITÉ : Le séchage sur goudron est strictement interdit (risques HAP).")
         score -= 25
     elif sechage:
         points_forts.append("Méthode de séchage conforme aux exigences de qualité.")
@@ -1137,7 +1137,6 @@ with st.expander("Voir le détail JSON complet transmis au serveur"):
     donnees_collectees = st.session_state.get("reponses_pdc", {})
     st.json(donnees_collectees)
 
-
 st.markdown("---")
 
 # --- NAVIGATION VERS ÉTAPE 9 ---
@@ -1148,9 +1147,12 @@ with col1:
         st.rerun()
 with col2:
     if st.button("Suivant ➡️ (Vers Étape 9 : Clôture & Bilan Final)", type="primary", use_container_width=True):
-        # Exécution de l'analyse avant l'enregistrement
-        score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(st.session_state.reponses_pdc)
-        st.session_state.reponses_pdc.update({
+        # Exécution de l'analyse avant l'enregistrement (accès sécurisé)
+        donnees_pdc = st.session_state.get("reponses_pdc", {})
+        score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees_pdc)
+        
+        # Mise à jour du dictionnaire de session
+        donnees_pdc.update({
             "decision_fiches": decision_calculee,
             "criteres_selectionnes": tous_criteres_cochis,
             "analyse_problemes": analyse_df,
@@ -1162,8 +1164,10 @@ with col2:
             "budget_fiche8_total": total_fiche8,
             "score_conformite_etape1_8": score_global
         })
+        st.session_state.reponses_pdc = donnees_pdc
         st.session_state.etape_pdc = 9
         st.rerun()
+
 
 
 
