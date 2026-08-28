@@ -1168,39 +1168,35 @@ st.markdown("---")
         # --- 8.7 BILAN JSON COMPLET ---
 st.markdown("### 📄 Bilan global des données collectées (1 à 8)")
 with st.expander("Voir le détail JSON complet transmis au serveur"):
+    donnees_pdc = st.session_state.get("reponses_pdc", {})
     st.json(donnees_pdc)
 
 st.markdown("---")
 
-        # --- NAVIGATION VERS ÉTAPE 9 ---
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("⬅️ Retour", use_container_width=True):
-                st.session_state.etape_pdc = 7
-                st.rerun()
-        with col2:
-            if st.button("Suivant ➡️ (Vers Étape 9 : Clôture & Bilan Final)", type="primary", use_container_width=True):
-                donnees_pdc = st.session_state.get("reponses_pdc", {})
-                score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees_pdc)
-                
-                donnees_pdc.update({
-                    "decision_fiches": decision_calculee,
-                    "criteres_selectionnes": tous_criteres_cochis,
-                    "analyse_problemes": analyse_df,
-                    "plan_action_5ans": plan_edited_df,
-                    "budget_total_5ans": total_budget_5ans,
-                    "programme_annuel": programme_df,
-                    "budget_annuel_total": total_annuel,
-                    "moyens_fiche8_details": moyens_cou_df,
-                    "budget_fiche8_total": total_fiche8,
-                    "score_conformite_etape1_8": score_global
-                })
-                st.session_state.reponses_pdc = donnees_pdc
-                st.session_state.etape_pdc = 9
-                st.rerun()
+# --- NAVIGATION VERS ÉTAPE 9 ---
+col1, col2 = st.columns([1, 1])
+with col1:
+    if st.button("⬅️ Retour", use_container_width=True):
+        st.session_state.etape_pdc = 7
+        st.rerun()
 
-
-
-
-
-
+with col2:
+    if st.button("Suivant ➡️ (Vers Étape 9 : Clôture & Bilan Final)", type="primary", use_container_width=True):
+        donnees_pdc = st.session_state.get("reponses_pdc", {})
+        score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees_pdc)
+        
+        donnees_pdc.update({
+            "decision_fiches": decision_calculee,
+            "criteres_selectionnes": tous_criteres_cochis,
+            "analyse_problemes": analyse_df,
+            "plan_action_5ans": plan_edited_df,
+            "budget_total_5ans": total_budget_5ans,
+            "programme_annuel": programme_df,
+            "budget_annuel_total": total_annuel,
+            "moyens_fiche8_details": moyens_cou_df,
+            "budget_fiche8_total": total_fiche8,
+            "score_conformite_etape1_8": score_global
+        })
+        st.session_state.reponses_pdc = donnees_pdc
+        st.session_state.etape_pdc = 9
+        st.rerun()
