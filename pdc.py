@@ -1170,7 +1170,7 @@ st.markdown("### 📄 Bilan global des données collectées (1 à 8)")
 with st.expander("Voir le détail JSON complet transmis au serveur"):
     st.json(donnees_pdc)
 
-        st.markdown("---")
+st.markdown("---")
 
         # --- NAVIGATION VERS ÉTAPE 9 ---
         col1, col2 = st.columns([1, 1])
