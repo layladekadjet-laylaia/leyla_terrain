@@ -12,6 +12,286 @@ from fpdf import FPDF
 import datetime
 
 
+def effectuer_diagnostic_exhaustif_json(data):
+    score = 100
+    alertes_critiques = []
+    avertissements = []
+    points_forts = []
+
+    # =========================================================
+    # 1. IDENTIFICATION, MÉNAGE & LOCALISATION (5 critères)
+    # =========================================================
+    # Critère 1 : Zone géographique
+    zone = data.get("zone", "")
+    if zone:
+        points_forts.append(f"Zone d'intervention identifiée : Zone {zone}.")
+    else:
+        avertissements.append("Zone géographique non spécifiée.")
+        score -= 2
+
+    # Critère 2 : Ville / Localité
+    ville = data.get("ville", "")
+    if ville:
+        points_forts.append(f"Localisation renseignée : {ville}.")
+    else:
+        avertissements.append("Localité/Ville non renseignée.")
+        score -= 2
+
+    # Critère 3 : Coordonnées GPS
+    lat = data.get("lat", 0)
+    lon = data.get("lon", 0)
+    if lat != 0 and lon != 0:
+        points_forts.append(f"Géolocalisation valide ({lat}, {lon}).")
+    else:
+        avertissements.append("Coordonnées GPS absentes ou nulles.")
+        score -= 3
+
+    # Critère 4 : Statut du membre & Ménage
+    statut_fam = data.get("statut_famille", "")
+    annee_naiss = data.get("annee_naissance", 0)
+    if statut_fam and annee_naiss > 0:
+        points_forts.append(f"Profil membre renseigné ({statut_fam}, Né(e) en {annee_naiss}).")
+    else:
+        avertissements.append("Profil du membre/ménage incomplet.")
+        score -= 2
+
+    # Critère 5 : Niveau d'instruction & Catégorie
+    niveau_inst = data.get("niveau_instruction", "")
+    if niveau_inst:
+        points_forts.append(f"Niveau d'instruction caractérisé : {niveau_inst}.")
+    else:
+        avertissements.append("Niveau d'instruction non renseigné.")
+        score -= 1
+
+
+    # =========================================================
+    # 2. STRUCTURE FONCIÈRE & DIVERSIFICATION (4 critères)
+    # =========================================================
+    # Critère 6 : Parcelles cacaoyères
+    parcelles = data.get("parcelles_cacaoyer", [])
+    superficie_totale = sum([p.get("Superficie (ha)", 0) for p in parcelles])
+    if superficie_totale > 0:
+        points_forts.append(f"Superficie cacaoyère caractérisée : {superficie_totale} ha sur {len(parcelles)} parcelle(s).")
+    else:
+        alertes_critiques.append("Superficie cacaoyère totale nulle ou non renseignée.")
+        score -= 15
+
+    # Critère 7 : Historique cultural & Matériel végétal
+    parcelles_sans_origen = [p for p in parcelles if not p.get("Origine matériel végétal") or p.get("Origine matériel végétal") == "Tout venant"]
+    if parcelles_sans_origen:
+        avertissements.append(f"{len(parcelles_sans_origen)} parcelle(s) avec matériel végétal 'Tout venant' ou non certifié.")
+        score -= 3
+
+    # Critère 8 : Diversification agricole (Autres cultures)
+    autres_cultures = data.get("autres_cultures", [])
+    if len(autres_cultures) > 0:
+        points_forts.append(f"Diversification agricole effective : {len(autres_cultures)} autre(s) culture(s) déclarée(s).")
+    else:
+        avertissements.append("Aucune culture de diversification enregistrée (Mono-culture cacaoyère).")
+
+    # Critère 9 : Réserve foncière disponible
+    terres_disp = data.get("terres_disponibles", 0)
+    if terres_disp > 0:
+        points_forts.append(f"Réserve foncière disponible pour extension : {terres_disp} ha.")
+
+
+    # =========================================================
+    # 3. DENSITÉ & AGROFORESTERIE (3 critères)
+    # =========================================================
+    # Critère 10 : Relevé des carrés de densité
+    donnees_densite = data.get("donnees_densite", [])
+    if len(donnees_densite) >= 4:
+        points_forts.append(f"Comptage de densité conforme ({len(donnees_densite)} carrés renseignés).")
+    else:
+        avertissements.append("Comptage de densité partiel (moins de 4 carrés).")
+        score -= 3
+
+    # Critère 11 : Densité calculée à l'hectare
+    densite = data.get("densite_calculee_ha", 0)
+    if 1100 <= densite <= 1400:
+        points_forts.append(f"Densité conforme aux normes agronomiques ({densite} pieds/ha).")
+    elif 0 < densite < 1100:
+        avertissements.append(f"Sous-densité détectée ({densite} pieds/ha). Risque de sous-rendement.")
+        score -= 5
+    elif densite > 1400:
+        avertissements.append(f"Sur-densité détectée ({densite} pieds/ha). Risque d'étiolement et compétition.")
+        score -= 5
+    else:
+        alertes_critiques.append("Densité globale nulle ou invalide.")
+        score -= 10
+
+    # Critère 12 : Arbres d'ombrage & Agroforesterie
+    arbres = data.get("arbres_ombrage", [])
+    total_arbres = sum([a.get("Nombre", 0) for a in arbres])
+    if total_arbres > 0:
+        points_forts.append(f"Agroforesterie active : {total_arbres} arbre(s) d'ombrage répertorié(s).")
+    else:
+        avertissements.append("Absence totale d'arbres d'ombrage (Stress thermique/hydrique élevé).")
+        score -= 5
+
+
+    # =========================================================
+    # 4. DIAGNOSTICS PÉDOLOGIQUE & SANITAIRE (3 critères)
+    # =========================================================
+    # Critère 13 : Suivi de la santé cacaoyère
+    sante = data.get("sante_cacaoyere", [])
+    if sante:
+        attaques_graves = [s for s in sante if "3." in str(s.get("Sévérité", "")) or "Élevé" in str(s.get("Sévérité", ""))]
+        if attaques_graves:
+            avertissements.append(f"Pression sanitaire élevée détectée ({len(attaques_graves)} problème(s) sévère(s)).")
+            score -= 5
+        else:
+            points_forts.append("Suivi sanitaire de la cacaoyère enregistré (Pression modérée).")
+    else:
+        avertissements.append("Évaluation sanitaire de la plantation absente.")
+        score -= 5
+
+    # Critère 14 : Relief & Toposéquence
+    toposequence = data.get("toposequence", "")
+    if toposequence:
+        points_forts.append(f"Toposéquence identifiée : {toposequence}.")
+    else:
+        avertissements.append("Toposéquence non précisée.")
+        score -= 2
+
+    # Critère 15 : Caractéristiques du sol
+    sols = data.get("caracteristiques_sol", [])
+    if len(sols) >= 3:
+        points_forts.append(f"Profil Pédologique analysé ({len(sols)} paramètres renseignés).")
+    else:
+        avertissements.append("Analyse visuelle du sol incomplète.")
+        score -= 3
+
+
+    # =========================================================
+    # 5. ITINÉRAIRE TECHNIQUE & QUALITÉ POST-RÉCOLTE (5 critères)
+    # =========================================================
+    # Critère 16 : Fréquence de récolte
+    freq_recolte = data.get("frequence_recolte_jours", 0)
+    if 10 <= freq_recolte <= 15:
+        points_forts.append(f"Fréquence de récolte optimale ({freq_recolte} jours).")
+    elif freq_recolte > 15:
+        avertissements.append(f"Fréquence de récolte espacée ({freq_recolte} jours) : Risque de sur-maturation/germination.")
+        score -= 3
+
+    # Critère 17 : Temps d'écabossage
+    temps_ecab = data.get("temps_ecabossage_jours", 0)
+    if 1 <= temps_ecab <= 3:
+        points_forts.append(f"Délai d'écabossage conforme ({temps_ecab} jour(s)).")
+    elif temps_ecab > 3:
+        avertissements.append(f"Délai d'écabossage trop long ({temps_ecab} jours) : Risque de moisissures.")
+        score -= 3
+
+    # Critère 18 : Durée de fermentation
+    duree_ferm = data.get("duree_fermentation_jours", 0)
+    if 5 <= duree_ferm <= 6:
+        points_forts.append(f"Durée de fermentation conforme ({duree_ferm} jours).")
+    else:
+        avertissements.append(f"Durée de fermentation atypique ({duree_ferm} jours).")
+        score -= 3
+
+    # Critère 19 : Mode de fermentation
+    mode_ferm = data.get("mode_fermentation", "")
+    if mode_ferm:
+        points_forts.append(f"Mode de fermentation spécifié ({mode_ferm}).")
+
+    # Critère 20 : Méthode de séchage (RÈGLE CRITIQUE QUALITÉ)
+    sechage = data.get("methode_sechage", "")
+    if "goudron" in sechage.lower():
+        alertes_critiques.append("NON-CONFORMITÉ QUALITÉ : Le séchage sur goudron est strictement interdit (risques HAP).")
+        score -= 25
+    elif sechage:
+        points_forts.append("Méthode de séchage conforme aux exigences de qualité.")
+
+
+    # =========================================================
+    # 6. INTRANTS, ÉQUIPEMENTS & MAIN-D'ŒUVRE (4 critères)
+    # =========================================================
+    # Critère 21 : Utilisation d'engrais
+    engrais = data.get("utilisation_engrais", [])
+    if len(engrais) > 0:
+        points_forts.append(f"Programme de fertilisation renseigné ({len(engrais)} type(s) d'engrais).")
+
+    # Critère 22 : Produits phytosanitaires
+    phyto = data.get("produits_phytosanitaires", [])
+    if len(phyto) > 0:
+        points_forts.append(f"Protection phytosanitaire renseignée ({len(phyto)} produit(s)).")
+
+    # Critère 23 : Gestion des emballages
+    emb = data.get("gestion_emballages", "")
+    if emb:
+        points_forts.append("Mode de gestion des emballages de produits renseigné.")
+    else:
+        avertissements.append("Gestion des emballages vides non renseignée (Risque environnemental).")
+        score -= 2
+
+    # Critère 24 : Matériel & Équipements
+    equipements = data.get("equipements", [])
+    if len(equipements) > 0:
+        points_forts.append(f"Équipements et matériels répertoriés ({len(equipements)} équipement(s)).")
+    elif superficie_totale > 2:
+        avertissements.append("Aucun équipement enregistré pour la superficie exploitée.")
+        score -= 3
+
+
+    # =========================================================
+    # 7. BILAN ÉCONOMIQUE, FINANCIER & FOYER (14 critères)
+    # =========================================================
+    # Critère 25, 26, 27 : Inclusion financière (Services, Épargne, Crédit)
+    financements = data.get("financement", [])
+    comptes_epargne = [f for f in financements if f.get("Compte d'épargne (Oui/Non)") == "Oui"]
+    if comptes_epargne:
+        points_forts.append(f"Inclusion financière effective : Compte d'épargne actif ({len(comptes_epargne)} service(s)).")
+    else:
+        avertissements.append("Absence de compte d'épargne formel déclaré.")
+        score -= 2
+
+    demandes_credit = [f for f in financements if f.get("Demande de crédit (Oui/Non)") == "Oui"]
+    if demandes_credit:
+        points_forts.append("Accès au crédit sollicité/obtenu auprès des institutions.")
+
+    # Critères 28, 29, 30 : Production historique (Années N-1, N-2, N-3)
+    prod_historique = data.get("prod_historique", [])
+    total_prod = sum([p.get("Production (kg)", 0) for p in prod_historique])
+    if total_prod > 0:
+        points_forts.append(f"Historique de production renseigné ({total_prod} kg enregistrés au total).")
+    else:
+        avertissements.append("Historique de production nul ou non renseigné (0 kg).")
+        score -= 5
+
+    # Croisement Intrants vs Production
+    if (len(engrais) > 0 or len(phyto) > 0) and total_prod == 0:
+        avertissements.append("Incohérence : Intrants/Engrais déclarés alors que la production historique affichée est 0 kg.")
+        score -= 5
+
+    # Critères 31, 32 : Autres revenus du foyer
+    autres_rev = data.get("autres_revenus", [])
+    total_rev_annexes = sum([r.get("Montant estimé/an (FCFA)", 0) for r in autres_rev])
+    if total_rev_annexes > 0:
+        points_forts.append(f"Revenus complémentaires du foyer enregistrés ({total_rev_annexes:,} FCFA/an).".replace(",", " "))
+
+    # Critères 33 à 38 : Dépenses du foyer (Scolarité, Nourriture, Santé, Électricité, Eau, Charges sociales)
+    depenses = data.get("depenses_foyer", [])
+    total_depenses = sum([d.get("Montant moyen (FCFA)", 0) for d in depenses])
+    if total_depenses > 0:
+        points_forts.append(f"Charges du foyer chiffrées : {total_depenses:,} FCFA.".replace(",", " "))
+    else:
+        avertissements.append("Bilan financier du foyer incomplet : Dépenses non chiffrées (0 FCFA).")
+        score -= 5
+
+    # Main-d'œuvre & Coûts
+    main_oeuvre = data.get("main_oeuvre", [])
+    if len(main_oeuvre) > 0:
+        points_forts.append(f"Main-d'œuvre identifiée ({len(main_oeuvre)} intervenant(s)/groupe(s)).")
+    else:
+        avertissements.append("Aucun détail renseigné sur la main-d'œuvre.")
+        score -= 3
+
+    # Ajustement final du score
+    score = max(0, score)
+    return score, points_forts, avertissements, alertes_critiques
+
+
 def afficher():
     st.title("📋 PDC - Diagnostic & Plan de Développement")
 
@@ -849,284 +1129,7 @@ def afficher():
 # =========================================================
 # --- 8.6 PONT DE TRANSITION : AUDIT ET AUDIT BRONZE (1 à 8) ---
 # =========================================================
-        def effectuer_diagnostic_exhaustif_json(data):
-            score = 100
-            alertes_critiques = []
-            avertissements = []
-            points_forts = []
 
-            # =========================================================
-            # 1. IDENTIFICATION, MÉNAGE & LOCALISATION (5 critères)
-            # =========================================================
-            # Critère 1 : Zone géographique
-            zone = data.get("zone", "")
-            if zone:
-                points_forts.append(f"Zone d'intervention identifiée : Zone {zone}.")
-            else:
-                avertissements.append("Zone géographique non spécifiée.")
-                score -= 2
-
-            # Critère 2 : Ville / Localité
-            ville = data.get("ville", "")
-            if ville:
-                points_forts.append(f"Localisation renseignée : {ville}.")
-            else:
-                avertissements.append("Localité/Ville non renseignée.")
-                score -= 2
-
-            # Critère 3 : Coordonnées GPS
-            lat = data.get("lat", 0)
-            lon = data.get("lon", 0)
-            if lat != 0 and lon != 0:
-                points_forts.append(f"Géolocalisation valide ({lat}, {lon}).")
-            else:
-                avertissements.append("Coordonnées GPS absentes ou nulles.")
-                score -= 3
-
-            # Critère 4 : Statut du membre & Ménage
-            statut_fam = data.get("statut_famille", "")
-            annee_naiss = data.get("annee_naissance", 0)
-            if statut_fam and annee_naiss > 0:
-                points_forts.append(f"Profil membre renseigné ({statut_fam}, Né(e) en {annee_naiss}).")
-            else:
-                avertissements.append("Profil du membre/ménage incomplet.")
-                score -= 2
-
-            # Critère 5 : Niveau d'instruction & Catégorie
-            niveau_inst = data.get("niveau_instruction", "")
-            if niveau_inst:
-                points_forts.append(f"Niveau d'instruction caractérisé : {niveau_inst}.")
-            else:
-                avertissements.append("Niveau d'instruction non renseigné.")
-                score -= 1
-
-
-            # =========================================================
-            # 2. STRUCTURE FONCIÈRE & DIVERSIFICATION (4 critères)
-            # =========================================================
-            # Critère 6 : Parcelles cacaoyères
-            parcelles = data.get("parcelles_cacaoyer", [])
-            superficie_totale = sum([p.get("Superficie (ha)", 0) for p in parcelles])
-            if superficie_totale > 0:
-                points_forts.append(f"Superficie cacaoyère caractérisée : {superficie_totale} ha sur {len(parcelles)} parcelle(s).")
-            else:
-                alertes_critiques.append("Superficie cacaoyère totale nulle ou non renseignée.")
-                score -= 15
-
-            # Critère 7 : Historique cultural & Matériel végétal
-            parcelles_sans_origen = [p for p in parcelles if not p.get("Origine matériel végétal") or p.get("Origine matériel végétal") == "Tout venant"]
-            if parcelles_sans_origen:
-                avertissements.append(f"{len(parcelles_sans_origen)} parcelle(s) avec matériel végétal 'Tout venant' ou non certifié.")
-                score -= 3
-
-            # Critère 8 : Diversification agricole (Autres cultures)
-            autres_cultures = data.get("autres_cultures", [])
-            if len(autres_cultures) > 0:
-                points_forts.append(f"Diversification agricole effective : {len(autres_cultures)} autre(s) culture(s) déclarée(s).")
-            else:
-                avertissements.append("Aucune culture de diversification enregistrée (Mono-culture cacaoyère).")
-
-            # Critère 9 : Réserve foncière disponible
-            terres_disp = data.get("terres_disponibles", 0)
-            if terres_disp > 0:
-                points_forts.append(f"Réserve foncière disponible pour extension : {terres_disp} ha.")
-
-
-            # =========================================================
-            # 3. DENSITÉ & AGROFORESTERIE (3 critères)
-            # =========================================================
-            # Critère 10 : Relevé des carrés de densité
-            donnees_densite = data.get("donnees_densite", [])
-            if len(donnees_densite) >= 4:
-                points_forts.append(f"Comptage de densité conforme ({len(donnees_densite)} carrés renseignés).")
-            else:
-                avertissements.append("Comptage de densité partiel (moins de 4 carrés).")
-                score -= 3
-
-            # Critère 11 : Densité calculée à l'hectare
-            densite = data.get("densite_calculee_ha", 0)
-            if 1100 <= densite <= 1400:
-                points_forts.append(f"Densité conforme aux normes agronomiques ({densite} pieds/ha).")
-            elif 0 < densite < 1100:
-                avertissements.append(f"Sous-densité détectée ({densite} pieds/ha). Risque de sous-rendement.")
-                score -= 5
-            elif densite > 1400:
-                avertissements.append(f"Sur-densité détectée ({densite} pieds/ha). Risque d'étiolement et compétition.")
-                score -= 5
-            else:
-                alertes_critiques.append("Densité globale nulle ou invalide.")
-                score -= 10
-
-            # Critère 12 : Arbres d'ombrage & Agroforesterie
-            arbres = data.get("arbres_ombrage", [])
-            total_arbres = sum([a.get("Nombre", 0) for a in arbres])
-            if total_arbres > 0:
-                points_forts.append(f"Agroforesterie active : {total_arbres} arbre(s) d'ombrage répertorié(s).")
-            else:
-                avertissements.append("Absence totale d'arbres d'ombrage (Stress thermique/hydrique élevé).")
-                score -= 5
-
-
-            # =========================================================
-            # 4. DIAGNOSTICS PÉDOLOGIQUE & SANITAIRE (3 critères)
-            # =========================================================
-            # Critère 13 : Suivi de la santé cacaoyère
-            sante = data.get("sante_cacaoyere", [])
-            if sante:
-                attaques_graves = [s for s in sante if "3." in str(s.get("Sévérité", "")) or "Élevé" in str(s.get("Sévérité", ""))]
-                if attaques_graves:
-                    avertissements.append(f"Pression sanitaire élevée détectée ({len(attaques_graves)} problème(s) sévère(s)).")
-                    score -= 5
-                else:
-                    points_forts.append("Suivi sanitaire de la cacaoyère enregistré (Pression modérée).")
-            else:
-                avertissements.append("Évaluation sanitaire de la plantation absente.")
-                score -= 5
-
-            # Critère 14 : Relief & Toposéquence
-            toposequence = data.get("toposequence", "")
-            if toposequence:
-                points_forts.append(f"Toposéquence identifiée : {toposequence}.")
-            else:
-                avertissements.append("Toposéquence non précisée.")
-                score -= 2
-
-            # Critère 15 : Caractéristiques du sol
-            sols = data.get("caracteristiques_sol", [])
-            if len(sols) >= 3:
-                points_forts.append(f"Profil Pédologique analysé ({len(sols)} paramètres renseignés).")
-            else:
-                avertissements.append("Analyse visuelle du sol incomplète.")
-                score -= 3
-
-
-            # =========================================================
-            # 5. ITINÉRAIRE TECHNIQUE & QUALITÉ POST-RÉCOLTE (5 critères)
-            # =========================================================
-            # Critère 16 : Fréquence de récolte
-            freq_recolte = data.get("frequence_recolte_jours", 0)
-            if 10 <= freq_recolte <= 15:
-                points_forts.append(f"Fréquence de récolte optimale ({freq_recolte} jours).")
-            elif freq_recolte > 15:
-                avertissements.append(f"Fréquence de récolte espacée ({freq_recolte} jours) : Risque de sur-maturation/germination.")
-                score -= 3
-
-            # Critère 17 : Temps d'écabossage
-            temps_ecab = data.get("temps_ecabossage_jours", 0)
-            if 1 <= temps_ecab <= 3:
-                points_forts.append(f"Délai d'écabossage conforme ({temps_ecab} jour(s)).")
-            elif temps_ecab > 3:
-                avertissements.append(f"Délai d'écabossage trop long ({temps_ecab} jours) : Risque de moisissures.")
-                score -= 3
-
-            # Critère 18 : Durée de fermentation
-            duree_ferm = data.get("duree_fermentation_jours", 0)
-            if 5 <= duree_ferm <= 6:
-                points_forts.append(f"Durée de fermentation conforme ({duree_ferm} jours).")
-            else:
-                avertissements.append(f"Durée de fermentation atypique ({duree_ferm} jours).")
-                score -= 3
-
-            # Critère 19 : Mode de fermentation
-            mode_ferm = data.get("mode_fermentation", "")
-            if mode_ferm:
-                points_forts.append(f"Mode de fermentation spécifié ({mode_ferm}).")
-
-            # Critère 20 : Méthode de séchage (RÈGLE CRITIQUE QUALITÉ)
-            sechage = data.get("methode_sechage", "")
-            if "goudron" in sechage.lower():
-                alertes_critiques.append("NON-CONFORMITÉ QUALITÉ : Le séchage sur goudron est strictly interdit (risques HAP).")
-                score -= 25
-            elif sechage:
-                points_forts.append("Méthode de séchage conforme aux exigences de qualité.")
-
-
-            # =========================================================
-            # 6. INTRANTS, ÉQUIPEMENTS & MAIN-D'ŒUVRE (4 critères)
-            # =========================================================
-            # Critère 21 : Utilisation d'engrais
-            engrais = data.get("utilisation_engrais", [])
-            if len(engrais) > 0:
-                points_forts.append(f"Programme de fertilisation renseigné ({len(engrais)} type(s) d'engrais).")
-
-            # Critère 22 : Produits phytosanitaires
-            phyto = data.get("produits_phytosanitaires", [])
-            if len(phyto) > 0:
-                points_forts.append(f"Protection phytosanitaire renseignée ({len(phyto)} produit(s)).")
-
-            # Critère 23 : Gestion des emballages
-            emb = data.get("gestion_emballages", "")
-            if emb:
-                points_forts.append("Mode de gestion des emballages de produits renseigné.")
-            else:
-                avertissements.append("Gestion des emballages vides non renseignée (Risque environnemental).")
-                score -= 2
-
-            # Critère 24 : Matériel & Équipements
-            equipements = data.get("equipements", [])
-            if len(equipements) > 0:
-                points_forts.append(f"Équipements et matériels répertoriés ({len(equipements)} équipement(s)).")
-            elif superficie_totale > 2:
-                avertissements.append("Aucun équipement enregistré pour la superficie exploitée.")
-                score -= 3
-
-
-            # =========================================================
-            # 7. BILAN ÉCONOMIQUE, FINANCIER & FOYER (14 critères)
-            # =========================================================
-            # Critère 25, 26, 27 : Inclusion financière (Services, Épargne, Crédit)
-            financements = data.get("financement", [])
-            comptes_epargne = [f for f in financements if f.get("Compte d'épargne (Oui/Non)") == "Oui"]
-            if comptes_epargne:
-                points_forts.append(f"Inclusion financière effective : Compte d'épargne actif ({len(comptes_epargne)} service(s)).")
-            else:
-                avertissements.append("Absence de compte d'épargne formel déclaré.")
-                score -= 2
-
-            demandes_credit = [f for f in financements if f.get("Demande de crédit (Oui/Non)") == "Oui"]
-            if demandes_credit:
-                points_forts.append("Accès au crédit sollicité/obtenu auprès des institutions.")
-
-            # Critères 28, 29, 30 : Production historique (Années N-1, N-2, N-3)
-            prod_historique = data.get("prod_historique", [])
-            total_prod = sum([p.get("Production (kg)", 0) for p in prod_historique])
-            if total_prod > 0:
-                points_forts.append(f"Historique de production renseigné ({total_prod} kg enregistrés au total).")
-            else:
-                avertissements.append("Historique de production nul ou non renseigné (0 kg).")
-                score -= 5
-
-            # Croisement Intrants vs Production
-            if (len(engrais) > 0 or len(phyto) > 0) and total_prod == 0:
-                avertissements.append("Incohérence : Intrants/Engrais déclarés alors que la production historique affichée est 0 kg.")
-                score -= 5
-
-            # Critères 31, 32 : Autres revenus du foyer
-            autres_rev = data.get("autres_revenus", [])
-            total_rev_annexes = sum([r.get("Montant estimé/an (FCFA)", 0) for r in autres_rev])
-            if total_rev_annexes > 0:
-                points_forts.append(f"Revenus complémentaires du foyer enregistrés ({total_rev_annexes:,} FCFA/an).".replace(",", " "))
-
-            # Critères 33 à 38 : Dépenses du foyer (Scolarité, Nourriture, Santé, Électricité, Eau, Charges sociales)
-            depenses = data.get("depenses_foyer", [])
-            total_depenses = sum([d.get("Montant moyen (FCFA)", 0) for d in depenses])
-            if total_depenses > 0:
-                points_forts.append(f"Charges du foyer chiffrées : {total_depenses:,} FCFA.".replace(",", " "))
-            else:
-                avertissements.append("Bilan financier du foyer incomplet : Dépenses non chiffrées (0 FCFA).")
-                score -= 5
-
-            # Main-d'œuvre & Coûts
-            main_oeuvre = data.get("main_oeuvre", [])
-            if len(main_oeuvre) > 0:
-                points_forts.append(f"Main-d'œuvre identifiée ({len(main_oeuvre)} intervenant(s)/groupe(s)).")
-            else:
-                avertissements.append("Aucun détail renseigné sur la main-d'œuvre.")
-                score -= 3
-
-            # Ajustement final du score
-            score = max(0, score)
-            return score, points_forts, avertissements, alertes_critiques
 
         st.markdown("---")
 
