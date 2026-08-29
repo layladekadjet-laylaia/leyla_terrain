@@ -1053,7 +1053,7 @@ def afficher():
 
         st.markdown("---")
 
-                    # ---------------------------------------------------------
+                        # ---------------------------------------------------------
     # ÉTAPE 8 : DÉTERMINATION DES MOYENS ET COÛTS (FICHE 8)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 8:
@@ -1099,10 +1099,15 @@ def afficher():
             use_container_width=True
         )
 
-        total_fiche8 = sum(
-            row.get("Coût A1", 0) + row.get("Coût A2", 0) + row.get("Coût A3", 0) + row.get("Coût A4", 0) + row.get("Coût A5", 0)
-            for row in moyens_cou_df if isinstance(row, dict)
-        )
+        # Calcul dynamique sur les données éditées
+        total_fiche8 = 0
+        if isinstance(moyens_cou_df, list):
+            for row in moyens_cou_df:
+                if isinstance(row, dict):
+                    total_fiche8 += (row.get("Coût A1", 0) or 0) + (row.get("Coût A2", 0) or 0) + (row.get("Coût A3", 0) or 0) + (row.get("Coût A4", 0) or 0) + (row.get("Coût A5", 0) or 0)
+        elif hasattr(moyens_cou_df, 'to_dict'):
+            for row in moyens_cou_df.to_dict(orient="records"):
+                total_fiche8 += (row.get("Coût A1", 0) or 0) + (row.get("Coût A2", 0) or 0) + (row.get("Coût A3", 0) or 0) + (row.get("Coût A4", 0) or 0) + (row.get("Coût A5", 0) or 0)
 
         st.info(f"💵 **Coût global estimé des moyens (Fiche 8) sur 5 ans :** `{total_fiche8:,} FCFA`".replace(",", " "))
 
@@ -1110,13 +1115,20 @@ def afficher():
 
         col1, col2 = st.columns([1, 1])
         with col1:
-            if st.button("⬅️ Retour", use_container_width=True):
+            if st.button("⬅️ Retour", key="btn_retour_e8", use_container_width=True):
                 st.session_state.etape_pdc = 7
                 st.rerun()
         with col2:
-            if st.button("Suivant ➡️ (Vers Diagnostic & Audit)", type="primary", use_container_width=True):
+            if st.button("Suivant ➡️ (Vers Diagnostic & Audit)", key="btn_suivant_e8", type="primary", use_container_width=True):
+                # Conversion sécurisée pour session_state et JSON
+                data_moyens = moyens_cou_df.to_dict(orient="records") if hasattr(moyens_cou_df, 'to_dict') else moyens_cou_df
+                
+                if "reponses_pdc" not in st.session_state:
+                    st.session_state.reponses_pdc = {}
+
                 st.session_state.reponses_pdc.update({
-                    "moyens_fiche8_details": moyens_cou_df,
+                    "activite_fiche8": activite_selectionnee,
+                    "moyens_fiche8_details": data_moyens,
                     "budget_fiche8_total": total_fiche8
                 })
                 st.session_state.etape_pdc = 9
@@ -1149,25 +1161,26 @@ def afficher():
                 for pf in pts_forts:
                     st.write(f"- {pf}")
             else:
-                st.write("Aucun point fort enregistré.")
+                st.write("Aucun point fort enregistré pour le moment.")
 
         st.markdown("---")
         st.markdown("### 📄 Bilan global des données collectées")
-        with st.expander("Voir le détail JSON complet transmis au serveur"):
+        with st.expander("Voir le détail JSON complet transmis au serveur", expanded=True):
             st.json(donnees_pdc)
 
         st.markdown("---")
 
         col1, col2 = st.columns([1, 1])
         with col1:
-            if st.button("⬅️ Retour (Moyens Fiche 8)", use_container_width=True):
+            if st.button("⬅️ Retour (Moyens Fiche 8)", key="btn_retour_e9", use_container_width=True):
                 st.session_state.etape_pdc = 8
                 st.rerun()
         with col2:
-            if st.button("Suivant ➡️ (Vers Étape 10 : Clôture)", type="primary", use_container_width=True):
+            if st.button("Suivant ➡️ (Vers Étape 10 : Clôture)", key="btn_suivant_e9", type="primary", use_container_width=True):
                 st.session_state.reponses_pdc["score_conformite_etape1_8"] = score_global
                 st.session_state.etape_pdc = 10
                 st.rerun()
+
 
 
     
