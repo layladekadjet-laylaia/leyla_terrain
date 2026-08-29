@@ -303,14 +303,14 @@ def afficher():
     if 'reponses_pdc' not in st.session_state:
         st.session_state.reponses_pdc = {}
 
-    total_etapes = 10
+    total_etapes = 15
     st.progress(st.session_state.etape_pdc / total_etapes)
 
     # ---------------------------------------------------------
     # ÉTAPE 1 : INFORMATIONS GÉNÉRALES
     # ---------------------------------------------------------
     if st.session_state.etape_pdc == 1:
-        st.subheader("Étape 1/10 : Identification du Producteur")
+        st.subheader("Étape 1/15 : Identification du Producteur")
         
         zone = st.selectbox("Zone", ["A", "B", "C", "D", "E"], key="zone_input")
         ville = st.selectbox("Ville", ["Lakota", "Sassandra", "Fresco", "Gbagbam", "Gueyo"])
@@ -332,7 +332,7 @@ def afficher():
     # ÉTAPE 2 : CARACTÉRISTIQUES DE LA PARCELLE
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 2:
-        st.subheader("Étape 2/10 : Données de la Parcelle")
+        st.subheader("Étape 2/15 : Données de la Parcelle")
 
         superficie = st.number_input("Superficie de la plantation (ha)", min_value=0.1, step=0.5)
         annee_creation = st.number_input("Année de création", min_value=1950, max_value=2026, value=2010)
@@ -357,7 +357,7 @@ def afficher():
     # ÉTAPE 3 : DONNÉES SOCIO-DÉMOGRAPHIQUES (FICHE 1)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 3:
-        st.subheader("Étape 3/10 : Données Socio-démographiques (Fiche 1)")
+        st.subheader("Étape 3/15 : Données Socio-démographiques (Fiche 1)")
         st.info("Informations sur les membres du ménage et les actifs familiaux/travailleurs")
 
         nom_membre = st.text_input("Nom et Prénoms du membre du ménage")
@@ -391,7 +391,7 @@ def afficher():
     # ÉTAPE 4 : DESCRIPTION DE L'EXPLOITATION (FICHE 2)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 4:
-        st.subheader("Étape 4/10 : Description de l'Exploitation (Fiche 2)")
+        st.subheader("Étape 4/15 : Description de l'Exploitation (Fiche 2)")
 
         st.markdown("### 🌾 1. Données sur les cultures")
         st.markdown("**A. Plantation de Cacao**")
@@ -460,7 +460,7 @@ def afficher():
     # ÉTAPE 5 : DENSITÉ ET RENDEMENT (FICHE 3 - PARTIE 1)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 5:
-        st.subheader("Étape 5/10 : Densité et Rendement (Fiche 3)")
+        st.subheader("Étape 5/15 : Densité et Rendement (Fiche 3)")
 
         st.markdown("### 📐 1. Densité des cacaoyers")
         if 'df_densite_cacao' not in st.session_state:
@@ -501,7 +501,7 @@ def afficher():
     # ÉTAPE 6 : ÉTAT SANITAIRE, SOL, RÉCOLTE & ENGRAIS (FICHE 3 - PARTIE 2)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 6:
-        st.subheader("Étape 6/10 : État Sanitaire, Sol, Récolte & Engrais (Fiche 3)")
+        st.subheader("Étape 6/15 : État Sanitaire, Sol, Récolte & Engrais (Fiche 3)")
 
         # 6.1 ÉTAT VÉGÉTATIF ET SANITAIRE DES CACAOYERS
         st.markdown("### 🐛 1. État végétatif et sanitaire")
@@ -659,7 +659,7 @@ def afficher():
     # ÉTAPE 7 : PARTIE D - DONNÉES SOCIO-ÉCONOMIQUES (FICHE 4)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 7:
-        st.subheader("Étape 7/10 : Données Socio-économiques (Fiche 4)")
+        st.subheader("Étape 7/15 : Données Socio-économiques (Fiche 4)")
 
         # 1. COMPTE D'ÉPARGNE ET FINANCEMENT
         st.markdown("### 🏦 1. Compte d'épargne et Financement")
@@ -777,12 +777,12 @@ def afficher():
                 st.session_state.etape_pdc = 8
                 st.rerun()
 
-                    # ---------------------------------------------------------
-    # ÉTAPE 8 : PLANIFICATION COMPLÈTE & DÉCISION (FICHES 7 & 8 + PLAN 5 ANS)
+                        # ---------------------------------------------------------
+    # ÉTAPE 8 : PLANIFICATION COMPLÈTE (PLAN 5 ANS & FICHE 7)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 8:
-        st.subheader("Étape 8/9 : Plan d'Action, Programme Annuel & Moyens")
-        st.caption("Planification globale, matrice quinquennale, calendrier d'exécution et moyens")
+        st.subheader("Étape 8/10 : Plan d'Action & Programme Annuel (Fiche 7)")
+        st.caption("Planification globale, matrice quinquennale, calendrier d'exécution")
 
         # --- 8.1 GRILLE DE DÉCISION DYNAMIQUE ---
         st.markdown("### 📊 1. Grille de décision")
@@ -837,8 +837,6 @@ def afficher():
         elif len(coche_rehabilitation) > 0:
             decision_calculee = "Réhabilitation"
 
-        tous_criteres_cochis = coche_replantation + coche_rehabilitation + coche_reconversion
-
         if decision_calculee == "Replantation":
             st.error(f"**Type de décision : {decision_calculee}**")
         elif decision_calculee == "Reconversion":
@@ -890,10 +888,8 @@ def afficher():
 
         st.markdown("---")
 
-        # --- 8.3 PLAN D'ACTION SUR 5 ANS (2.4.3) ---
+        # --- 8.3 PLAN D'ACTION SUR 5 ANS ---
         st.markdown("### 📅 3. Plan d'Action Quinquennal (Sur 5 ans)")
-        st.caption("2.4.3 - Élaboration du plan d'action stratégique sur 5 ans")
-
         if 'df_plan_action_5ans' not in st.session_state:
             st.session_state.df_plan_action_5ans = [
                 {
@@ -904,33 +900,6 @@ def afficher():
                     "A1": True, "A2": False, "A3": False, "A4": False, "A5": False,
                     "Responsable": "Producteur",
                     "Partenaires": "Coopérative"
-                },
-                {
-                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
-                    "Objectifs": "Remettre la parcelle en bon état de production",
-                    "Activités": "Réaliser la taille des loranthacées",
-                    "Coût (FCFA)": 25000,
-                    "A1": True, "A2": True, "A3": True, "A4": True, "A5": True,
-                    "Responsable": "Producteur",
-                    "Partenaires": "Coopérative"
-                },
-                {
-                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
-                    "Objectifs": "Remettre la parcelle en bon état de production",
-                    "Activités": "Planter les arbres d'ombrages temporaires dans les espaces vides en replantation",
-                    "Coût (FCFA)": 360000,
-                    "A1": True, "A2": True, "A3": False, "A4": False, "A5": False,
-                    "Responsable": "Producteur",
-                    "Partenaires": "Coopérative / ANADER"
-                },
-                {
-                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
-                    "Objectifs": "Remettre la parcelle en bon état de production",
-                    "Activités": "Formation du producteur sur la production de compost amélioré",
-                    "Coût (FCFA)": 0,
-                    "A1": True, "A2": False, "A3": False, "A4": False, "A5": False,
-                    "Responsable": "Producteur",
-                    "Partenaires": "ANADER / Coopérative"
                 }
             ]
 
@@ -958,25 +927,19 @@ def afficher():
                 "A3": st.column_config.CheckboxColumn("A3"),
                 "A4": st.column_config.CheckboxColumn("A4"),
                 "A5": st.column_config.CheckboxColumn("A5"),
-                "Responsable": st.column_config.SelectboxColumn(
-                    "Responsable",
-                    options=["Producteur", "Manœuvre", "Équipe spécialisée"],
-                    default="Producteur"
-                ),
+                "Responsable": st.column_config.SelectboxColumn("Responsable", options=["Producteur", "Manœuvre", "Équipe spécialisée"], default="Producteur"),
                 "Partenaires": st.column_config.TextColumn("Partenaires", width="medium")
             },
             use_container_width=True
         )
 
-        total_budget_5ans = sum([row.get("Coût (FCFA)", 0) for row in plan_edited_df if row.get("Coût (FCFA)")])
+        total_budget_5ans = sum([row.get("Coût (FCFA)", 0) for row in plan_edited_df if isinstance(row, dict) and row.get("Coût (FCFA)")])
         st.info(f"💰 **Budget total estimé du plan d'action sur 5 ans :** `{total_budget_5ans:,} FCFA`".replace(",", " "))
 
         st.markdown("---")
 
         # --- 8.4 PROGRAMME ANNUEL D'ACTIVITÉS (FICHE 7) ---
         st.markdown("### 🗓️ 4. Programme Annuel d'Activités (Fiche 7)")
-        st.caption("Découpage des activités opérationnelles de l'Année 1, indicateurs et suivi trimestriel.")
-
         if 'df_programme_annuel' not in st.session_state:
             st.session_state.df_programme_annuel = [
                 {
@@ -988,26 +951,6 @@ def afficher():
                     "Responsable d'exécution": "Producteur",
                     "Responsable suivi": "Coopérative",
                     "Coût FCFA": 0
-                },
-                {
-                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
-                    "Activités": "Régler la densité",
-                    "Sous-activités": "Supprimer les cacaoyers identifiés",
-                    "Indicateurs": "50% des pieds identifiés sont supprimés",
-                    "T1": False, "T2": False, "T3": True, "T4": True,
-                    "Responsable d'exécution": "Producteur",
-                    "Responsable suivi": "Coopérative",
-                    "Coût FCFA": 50000
-                },
-                {
-                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
-                    "Activités": "Entretenir",
-                    "Sous-activités": "Réaliser la taille des loranthacées",
-                    "Indicateurs": "80% des loranthus sont supprimés",
-                    "T1": False, "T2": True, "T3": True, "T4": False,
-                    "Responsable d'exécution": "Producteur",
-                    "Responsable suivi": "Coopérative",
-                    "Coût FCFA": 25000
                 }
             ]
 
@@ -1016,16 +959,7 @@ def afficher():
             num_rows="dynamic",
             key="editor_prog_annuel",
             column_config={
-                "Axes stratégiques": st.column_config.SelectboxColumn(
-                    "Axe stratégique",
-                    options=[
-                        "Axe 1 : Réhabilitation du verger",
-                        "Axe 2 : Replantation du verger",
-                        "Axe 3 : Amélioration de la fertilité des sols",
-                        "Axe 4 : Protection phytosanitaire intégrée"
-                    ],
-                    width="medium"
-                ),
+                "Axes stratégiques": st.column_config.SelectboxColumn("Axe stratégique", options=["Axe 1 : Réhabilitation du verger", "Axe 2 : Replantation du verger"], width="medium"),
                 "Activités": st.column_config.TextColumn("Activité", width="medium"),
                 "Sous-activités": st.column_config.TextColumn("Sous-activité", width="large"),
                 "Indicateurs": st.column_config.TextColumn("Indicateur de suivi", width="large"),
@@ -1033,31 +967,43 @@ def afficher():
                 "T2": st.column_config.CheckboxColumn("T2"),
                 "T3": st.column_config.CheckboxColumn("T3"),
                 "T4": st.column_config.CheckboxColumn("T4"),
-                "Responsable d'exécution": st.column_config.SelectboxColumn(
-                    "Exécution",
-                    options=["Producteur", "Manœuvre", "Équipe spécialisée"],
-                    default="Producteur"
-                ),
-                "Responsable suivi": st.column_config.SelectboxColumn(
-                    "Suivi",
-                    options=["Coopérative", "ANADER", "Agent terrain"],
-                    default="Coopérative"
-                ),
+                "Responsable d'exécution": st.column_config.SelectboxColumn("Exécution", options=["Producteur", "Manœuvre", "Équipe spécialisée"], default="Producteur"),
+                "Responsable suivi": st.column_config.SelectboxColumn("Suivi", options=["Coopérative", "ANADER", "Agent terrain"], default="Coopérative"),
                 "Coût FCFA": st.column_config.NumberColumn("Coût (FCFA)", min_value=0, step=2500, format="%d FCFA")
             },
             use_container_width=True
         )
 
-        total_annuel = sum([row.get("Coût FCFA", 0) for row in programme_df if row.get("Coût FCFA")])
+        total_annuel = sum([row.get("Coût FCFA", 0) for row in programme_df if isinstance(row, dict) and row.get("Coût FCFA")])
         st.info(f"💰 **Budget total du programme annuel :** `{total_annuel:,} FCFA`".replace(",", " "))
 
         st.markdown("---")
 
-# ---------------------------------------------------------
-    # ÉTAPE 8 : DÉTERMINATION DES MOYENS ET COÛTS (FICHE 8)
+        # BOUTONS DE NAVIGATION ÉTAPE 8
+        col_e8_1, col_e8_2 = st.columns([1, 1])
+        with col_e8_1:
+            if st.button("⬅️ Retour (Étape 7)", key="btn_retour_etape8", use_container_width=True):
+                st.session_state.etape_pdc = 7
+                st.rerun()
+
+        with col_e8_2:
+            if st.button("Suivant ➡️ (Vers Moyens & Coûts - Fiche 8)", key="btn_suivant_etape8", type="primary", use_container_width=True):
+                if "reponses_pdc" not in st.session_state:
+                    st.session_state.reponses_pdc = {}
+                
+                st.session_state.reponses_pdc["decision_retenue"] = decision_calculee
+                st.session_state.reponses_pdc["budget_total_5ans"] = total_budget_5ans
+                st.session_state.reponses_pdc["budget_annuel_total"] = total_annuel
+                
+                # Passage à l'étape 9
+                st.session_state.etape_pdc = 9
+                st.rerun()
+
     # ---------------------------------------------------------
-    elif st.session_state.etape_pdc == 8:
-        st.subheader("Étape 8/10 : Détermination des moyens et des coûts (Fiche 8)")
+    # ÉTAPE 9 : DÉTERMINATION DES MOYENS ET COÛTS (FICHE 8)
+    # ---------------------------------------------------------
+    elif st.session_state.etape_pdc == 9:
+        st.subheader("Étape 9/10 : Détermination des moyens et des coûts (Fiche 8)")
         st.caption("Évaluation détaillée des coûts d'investissement, intrants et main d'œuvre par activité sur 5 ans.")
 
         activite_selectionnee = st.text_input(
@@ -1070,12 +1016,7 @@ def afficher():
         if 'df_moyens_cou_fiche8' not in st.session_state:
             st.session_state.df_moyens_cou_fiche8 = [
                 {"Catégorie": "Investissement", "Moyens spécifiques": "Atomiseur", "Unités": "Nombre", "Qté A1": 1, "Coût A1": 150000, "Qté A2": 0, "Coût A2": 0, "Qté A3": 0, "Coût A3": 0, "Qté A4": 0, "Coût A4": 0, "Qté A5": 0, "Coût A5": 0},
-                {"Catégorie": "Investissement", "Moyens spécifiques": "Machettes / Outils", "Unités": "Nombre", "Qté A1": 3, "Coût A1": 15000, "Qté A2": 0, "Coût A2": 0, "Qté A3": 2, "Coût A3": 10000, "Qté A4": 0, "Coût A4": 0, "Qté A5": 2, "Coût A5": 10000},
-                {"Catégorie": "Intrants", "Moyens spécifiques": "Engrais", "Unités": "kg", "Qté A1": 200, "Coût A1": 70000, "Qté A2": 200, "Coût A2": 70000, "Qté A3": 250, "Coût A3": 87500, "Qté A4": 250, "Coût A4": 87500, "Qté A5": 300, "Coût A5": 105000},
-                {"Catégorie": "Intrants", "Moyens spécifiques": "Insecticide", "Unités": "Litre", "Qté A1": 4, "Coût A1": 24000, "Qté A2": 4, "Coût A2": 24000, "Qté A3": 4, "Coût A3": 24000, "Qté A4": 4, "Coût A4": 24000, "Qté A5": 4, "Coût A5": 24000},
-                {"Catégorie": "Intrants", "Moyens spécifiques": "Fungicide", "Unités": "Sachet/Kg", "Qté A1": 10, "Coût A1": 30000, "Qté A2": 10, "Coût A2": 30000, "Qté A3": 10, "Coût A3": 30000, "Qté A4": 10, "Coût A4": 30000, "Qté A5": 10, "Coût A5": 30000},
-                {"Catégorie": "Main d'œuvre", "Moyens spécifiques": "Taille / Émondage", "Unités": "Hommes/Jour", "Qté A1": 5, "Coût A1": 25000, "Qté A2": 3, "Coût A2": 15000, "Qté A3": 3, "Coût A3": 15000, "Qté A4": 3, "Coût A4": 15000, "Qté A5": 3, "Coût A5": 15000},
-                {"Catégorie": "Main d'œuvre", "Moyens spécifiques": "Application Phyto", "Unités": "Hommes/Jour", "Qté A1": 4, "Coût A1": 20000, "Qté A2": 4, "Coût A2": 20000, "Qté A3": 4, "Coût A3": 20000, "Qté A4": 4, "Coût A4": 20000, "Qté A5": 4, "Coût A5": 20000}
+                {"Catégorie": "Intrants", "Moyens spécifiques": "Engrais", "Unités": "kg", "Qté A1": 200, "Coût A1": 70000, "Qté A2": 200, "Coût A2": 70000, "Qté A3": 250, "Coût A3": 87500, "Qté A4": 250, "Coût A4": 87500, "Qté A5": 300, "Coût A5": 105000}
             ]
 
         moyens_cou_df = st.data_editor(
@@ -1109,14 +1050,15 @@ def afficher():
 
         st.markdown("---")
 
-        col_e8_1, col_e8_2 = st.columns([1, 1])
-        with col_e8_1:
-            if st.button("⬅️ Retour", key="btn_retour_etape8", use_container_width=True):
-                st.session_state.etape_pdc = 7
+        # BOUTONS DE NAVIGATION ÉTAPE 9
+        col_e9_1, col_e9_2 = st.columns([1, 1])
+        with col_e9_1:
+            if st.button("⬅️ Retour (Étape 8)", key="btn_retour_etape9", use_container_width=True):
+                st.session_state.etape_pdc = 8
                 st.rerun()
 
-        with col_e8_2:
-            if st.button("Suivant ➡️ (Vers Diagnostic & Audit)", key="btn_suivant_etape8", type="primary", use_container_width=True):
+        with col_e9_2:
+            if st.button("Suivant ➡️ (Vers Diagnostic & Audit)", key="btn_suivant_etape9", type="primary", use_container_width=True):
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
                 
@@ -1124,112 +1066,142 @@ def afficher():
                 st.session_state.reponses_pdc["moyens_fiche8_details"] = moyens_cou_df
                 st.session_state.reponses_pdc["budget_fiche8_total"] = total_fiche8
                 
-                # CHANGER L'ÉTAPE VERS 9
-                st.session_state.etape_pdc = 9
+                # Passage à l'étape 10 (Audit)
+                st.session_state.etape_pdc = 10
                 st.rerun()
 
-        # ---------------------------------------------------------
-    # ÉTAPE 9 : CLÔTURE & BILAN FINAL DU PDC
+
+    # ---------------------------------------------------------
+    # ÉTAPE 9 : AUDIT & DIAGNOSTIC QUALITÉ ET BILAN JSON
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 9:
-        st.subheader("Étape 9/10 : Clôture & Bilan Final du PDC")
-        st.caption("Synthèse globale du plan de développement et validation des engagements.")
+        st.subheader("Étape 9/10 : Audit & Diagnostic Qualité du PDC")
+        st.caption("Évaluation de la conformité globale des données collectées")
+
+        donnees_pdc = st.session_state.get("reponses_pdc", {})
+        
+        # Diagnostic et calcul de conformité
+        score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees_pdc)
+
+        st.metric(label="Score de Conformité Global (Étapes 1 à 8)", value=f"{score_global} / 100")
+
+        if alertes:
+            st.error("🚨 **Alertes Critiques / Non-Conformités Majeures :**")
+            for alerte in alertes:
+                st.write(f"- {alerte}")
+
+        if avert:
+            st.warning("⚠️ **Avertissements & Points d'attention :**")
+            for av in avert:
+                st.write(f"- {av}")
+
+        with st.expander("✅ Voir les Points Forts validés"):
+            if pts_forts:
+                for pf in pts_forts:
+                    st.write(f"- {pf}")
+            else:
+                st.write("Aucun point fort enregistré pour le moment.")
+
+        st.markdown("---")
+        st.markdown("### 📄 Bilan global des données collectées (JSON)")
+        st.json(donnees_pdc)
+
+        st.markdown("---")
+
+        col_e9_1, col_e9_2 = st.columns([1, 1])
+        with col_e9_1:
+            if st.button("⬅️ Retour (Moyens Fiche 8)", key="btn_retour_etape9", use_container_width=True):
+                st.session_state.etape_pdc = 8
+                st.rerun()
+
+        with col_e9_2:
+            if st.button("Suivant ➡️ (Vers Clôture & Validation)", key="btn_suivant_etape9", type="primary", use_container_width=True):
+                st.session_state.reponses_pdc["score_conformite_etape1_8"] = score_global
+                st.session_state.etape_pdc = 10
+                st.rerun()
+
+    # ---------------------------------------------------------
+    # ÉTAPE 10 : AUDIT, DIAGNOSTIC, CLÔTURE & EXPORTATION
+    # ---------------------------------------------------------
+    elif st.session_state.etape_pdc == 10:
+        st.subheader("Étape 10/10 : Diagnostic, Validation & Exportation du PDC")
+        st.caption("Synthèse globale, diagnostic de conformité et validation finale.")
 
         donnees = st.session_state.get("reponses_pdc", {})
 
-        st.markdown("### 📌 Récapitulatif Synthétique du Producteur")
+        # --- 10.1 DIAGNOSTIC & AUDIT DE CONFORMITÉ ---
+        st.markdown("### 🔍 Diagnostic Qualité du PDC")
+        score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees)
+
+        st.metric(label="Score de Conformité Global (Étapes 1 à 9)", value=f"{score_global} / 100")
+
+        if alertes:
+            st.error("🚨 **Alertes Critiques / Non-Conformités Majeures :**")
+            for alerte in alertes:
+                st.write(f"- {alerte}")
+
+        if avert:
+            st.warning("⚠️ **Avertissements & Points d'attention :**")
+            for av in avert:
+                st.write(f"- {av}")
+
+        with st.expander("✅ Voir les Points Forts validés"):
+            if pts_forts:
+                for pf in pts_forts:
+                    st.write(f"- {pf}")
+            else:
+                st.write("Aucun point fort enregistré pour le moment.")
+
+        st.markdown("---")
+
+        # --- 10.2 RÉCAPITULATIF ET BUDGETS ---
+        st.markdown("### 📌 Récapitulatif Synthétique")
         col_s1, col_s2, col_s3 = st.columns(3)
         col_s1.metric("Producteur", donnees.get("nom", "Non renseigné"))
         col_s2.metric("Localité / Ville", donnees.get("ville", "Non renseigné"))
         col_s3.metric("Zone d'intervention", f"Zone {donnees.get('zone', '-')}")
 
-        st.markdown("---")
-        st.markdown("### 📊 Indicateurs Clés de l'Exploitation")
-        col_i1, col_i2, col_i3 = st.columns(3)
-        col_i1.metric("Superficie Cacao", f"{donnees.get('superficie', 0)} ha")
-        col_i2.metric("Densité Estimée", f"{donnees.get('densite_calculee_ha', 0):.0f} pieds/ha")
-        col_i3.metric("Décision Retenue", donnees.get("decision_fiches", "Non déterminée"))
-
-        st.markdown("---")
-        st.markdown("### 💰 Synthèse des Budgets Prévisionnels")
-        
-        budget_5ans = donnees.get("budget_total_5ans", 0)
-        budget_annuel = donnees.get("budget_annuel_total", 0)
-        budget_f8 = donnees.get("budget_fiche8_total", 0)
-
         col_b1, col_b2, col_b3 = st.columns(3)
-        col_b1.metric("Budget Plan 5 ans", f"{budget_5ans:,} FCFA".replace(",", " "))
-        col_b2.metric("Programme Annuel (A1)", f"{budget_annuel:,} FCFA".replace(",", " "))
-        col_b3.metric("Moyens & Intrants (F8)", f"{budget_f8:,} FCFA".replace(",", " "))
+        col_b1.metric("Budget Plan 5 ans", f"{donnees.get('budget_total_5ans', 0):,} FCFA".replace(",", " "))
+        col_b2.metric("Programme Annuel (A1)", f"{donnees.get('budget_annuel_total', 0):,} FCFA".replace(",", " "))
+        col_b3.metric("Moyens & Intrants (F8)", f"{donnees.get('budget_fiche8_total', 0):,} FCFA".replace(",", " "))
 
         st.markdown("---")
+
+        # --- 10.3 VALIDATION DE L'AGENT ---
         st.markdown("### ✍️ Validation & Engagements")
-        
         nom_agent = st.text_input("Nom & Prénoms de l'Agent Enquêteur / Formateur", key="nom_agent_pdc")
         date_cloture = st.date_input("Date de finalisation du PDC", datetime.date.today())
         observations_finales = st.text_area("Observations ou remarques particulières de l'agent", placeholder="Notez ici les contraintes spécifiques ou recommandations urgentes...")
 
-        col_n1, col_n2 = st.columns([1, 1])
-        with col_n1:
-            if st.button("⬅️ Retour (Étape 8)", use_container_width=True):
-                st.session_state.etape_pdc = 8
-                st.rerun()
+        st.markdown("---")
 
-        with col_n2:
-            if st.button("Valider et Passer à l'Exportation (Étape 10) ➡️", type="primary", use_container_width=True):
-                st.session_state.reponses_pdc.update({
-                    "nom_agent_enqueteur": nom_agent,
-                    "date_cloture_pdc": str(date_cloture),
-                    "observations_finales_agent": observations_finales
-                })
-                st.session_state.etape_pdc = 10
-                st.rerun()
-
-    # ---------------------------------------------------------
-    # ÉTAPE 10 : IMPRESSION & EXPORTATION PDF / EXCEL
-    # ---------------------------------------------------------
-    elif st.session_state.etape_pdc == 10:
-        st.subheader("Étape 10/10 : Exportation & Impression de la Fiche PDC")
-        st.success("🎉 Le Plan de Développement de Cacaoyère est entièrement renseigné et validé !")
-
-        donnees_finales = st.session_state.get("reponses_pdc", {})
-
+        # --- 10.4 EXPORTATION & ACTIONS ---
         st.markdown("### 📄 Options d'exportation")
-        
         col_exp1, col_exp2 = st.columns(2)
 
         with col_exp1:
-            st.markdown("**1. Rapport au Format JSON**")
-            st.caption("Téléchargez la structure de données brute pour l'intégration dans une base externe.")
-            json_str = pd.Series(donnees_finales).to_json(indent=4, force_unicode=True)
+            st.markdown("**Télécharger le Bilan JSON**")
+            json_str = pd.Series(donnees).to_json(indent=4, force_unicode=True)
             st.download_button(
                 label="📥 Télécharger le bilan JSON",
                 data=json_str,
-                file_name=f"PDC_{donnees_finales.get('nom', 'Producteur')}_{datetime.date.today()}.json",
+                file_name=f"PDC_{donnees.get('nom', 'Producteur')}_{datetime.date.today()}.json",
                 mime="application/json",
                 use_container_width=True
             )
 
         with col_exp2:
-            st.markdown("**2. Réinitialisation du Formulaire**")
-            st.caption("Commencer un nouveau diagnostic pour un autre producteur.")
-            if st.button("🔄 Nouveau PDC", type="secondary", use_container_width=True):
+            st.markdown("**Nouveau Diagnostic**")
+            if st.button("🔄 Réinitialiser et recommencer", type="secondary", use_container_width=True):
                 st.session_state.etape_pdc = 1
                 st.session_state.reponses_pdc = {}
                 st.rerun()
 
         st.markdown("---")
-        col_b_fin, _ = st.columns([1, 1])
-        with col_b_fin:
-            if st.button("⬅️ Retour au bilan (Étape 9)", use_container_width=True):
+
+        col_n1, _ = st.columns([1, 1])
+        with col_n1:
+            if st.button("⬅️ Retour (Étape 9 : Moyens & Coûts)", key="btn_retour_etape10", use_container_width=True):
                 st.session_state.etape_pdc = 9
                 st.rerun()
-
-
-
-
-
-    
-
-
-
