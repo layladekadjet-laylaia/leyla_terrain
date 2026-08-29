@@ -1053,7 +1053,7 @@ def afficher():
 
         st.markdown("---")
 
-                            # ---------------------------------------------------------
+# ---------------------------------------------------------
     # ÉTAPE 8 : DÉTERMINATION DES MOYENS ET COÛTS (FICHE 8)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 8:
@@ -1100,7 +1100,6 @@ def afficher():
             use_container_width=True
         )
 
-        # Calcul automatique du total Fiche 8
         total_fiche8 = sum(
             (row.get("Coût A1") or 0) + (row.get("Coût A2") or 0) + (row.get("Coût A3") or 0) + (row.get("Coût A4") or 0) + (row.get("Coût A5") or 0)
             for row in moyens_cou_df if isinstance(row, dict)
@@ -1118,7 +1117,6 @@ def afficher():
 
         with col_e8_2:
             if st.button("Suivant ➡️ (Vers Diagnostic & Audit)", key="btn_suivant_etape8", type="primary", use_container_width=True):
-                # Mise à jour du dictionnaire central
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
                 
@@ -1126,12 +1124,12 @@ def afficher():
                 st.session_state.reponses_pdc["moyens_fiche8_details"] = moyens_cou_df
                 st.session_state.reponses_pdc["budget_fiche8_total"] = total_fiche8
                 
-                # Passage à l'étape 9
+                # CHANGER L'ÉTAPE VERS 9
                 st.session_state.etape_pdc = 9
                 st.rerun()
 
     # ---------------------------------------------------------
-    # ÉTAPE 9 : AUDIT & DIAGNOSTIC QUALITÉ DU PDC
+    # ÉTAPE 9 : AUDIT & DIAGNOSTIC QUALITÉ DU PDC (BILAN JSON)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 9:
         st.subheader("Étape 9/10 : Audit & Diagnostic Qualité du PDC")
@@ -1139,7 +1137,7 @@ def afficher():
 
         donnees_pdc = st.session_state.get("reponses_pdc", {})
         
-        # Exécution du diagnostic
+        # Diagnostic
         score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees_pdc)
 
         st.metric(label="Score de Conformité Global (Étapes 1 à 8)", value=f"{score_global} / 100")
@@ -1163,8 +1161,9 @@ def afficher():
 
         st.markdown("---")
         st.markdown("### 📄 Bilan global des données collectées (JSON)")
-        with st.expander("Voir le détail JSON complet transmis au serveur", expanded=True):
-            st.json(donnees_pdc)
+        
+        # AFFICHE DIRECTEMENT LE JSON SANS MASQUAGE
+        st.json(donnees_pdc)
 
         st.markdown("---")
 
