@@ -1212,12 +1212,7 @@ def afficher():
 
         st.markdown("---")
 
-    # =========================================================
-    # SYNCHRONISATION / ENVOI AU SERVEUR
-    # (Affiché hors du bloc 'elif' pour être présent sur l'étape)
-    # =========================================================
-    st.markdown("### 🔄 Synchronisation / Envoi au Serveur Central")
-    st.info("Lorsque vous disposez d'une connexion Internet, cliquez ci-dessous pour envoyer les données vers le serveur central Supabase.")
+    
 
 
 
