@@ -1124,7 +1124,7 @@ def afficher():
 
 
         st.session_state.etape_pdc = 8
-            st.rerun()
+        st.rerun()
 
         # =========================================================
         # 8.6 AUDIT ET DIAGNOSTIC QUALITÉ DU PDC
