@@ -1123,7 +1123,7 @@ def afficher():
         st.info(f"💵 **Coût global estimé des moyens (Fiche 8) sur 5 ans :** `{total_fiche8:,} FCFA`".replace(",", " "))
 
 
-            st.markdown("---")
+        st.markdown("---")
 
         # =========================================================
         # 8.6 AUDIT ET DIAGNOSTIC QUALITÉ DU PDC
