@@ -1053,7 +1053,7 @@ def afficher():
 
         st.markdown("---")
 
-                        # ---------------------------------------------------------
+                            # ---------------------------------------------------------
     # ÉTAPE 8 : DÉTERMINATION DES MOYENS ET COÛTS (FICHE 8)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 8:
@@ -1063,7 +1063,8 @@ def afficher():
         activite_selectionnee = st.text_input(
             "Activité concernée :",
             value="Activité 1 : Traitement phytosanitaire et fertilisation",
-            placeholder="Entrez le nom de l'activité..."
+            placeholder="Entrez le nom de l'activité...",
+            key="input_activite_fiche8"
         )
 
         if 'df_moyens_cou_fiche8' not in st.session_state:
@@ -1099,38 +1100,33 @@ def afficher():
             use_container_width=True
         )
 
-        # Calcul dynamique sur les données éditées
-        total_fiche8 = 0
-        if isinstance(moyens_cou_df, list):
-            for row in moyens_cou_df:
-                if isinstance(row, dict):
-                    total_fiche8 += (row.get("Coût A1", 0) or 0) + (row.get("Coût A2", 0) or 0) + (row.get("Coût A3", 0) or 0) + (row.get("Coût A4", 0) or 0) + (row.get("Coût A5", 0) or 0)
-        elif hasattr(moyens_cou_df, 'to_dict'):
-            for row in moyens_cou_df.to_dict(orient="records"):
-                total_fiche8 += (row.get("Coût A1", 0) or 0) + (row.get("Coût A2", 0) or 0) + (row.get("Coût A3", 0) or 0) + (row.get("Coût A4", 0) or 0) + (row.get("Coût A5", 0) or 0)
+        # Calcul automatique du total Fiche 8
+        total_fiche8 = sum(
+            (row.get("Coût A1") or 0) + (row.get("Coût A2") or 0) + (row.get("Coût A3") or 0) + (row.get("Coût A4") or 0) + (row.get("Coût A5") or 0)
+            for row in moyens_cou_df if isinstance(row, dict)
+        )
 
         st.info(f"💵 **Coût global estimé des moyens (Fiche 8) sur 5 ans :** `{total_fiche8:,} FCFA`".replace(",", " "))
 
         st.markdown("---")
 
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("⬅️ Retour", key="btn_retour_e8", use_container_width=True):
+        col_e8_1, col_e8_2 = st.columns([1, 1])
+        with col_e8_1:
+            if st.button("⬅️ Retour", key="btn_retour_etape8", use_container_width=True):
                 st.session_state.etape_pdc = 7
                 st.rerun()
-        with col2:
-            if st.button("Suivant ➡️ (Vers Diagnostic & Audit)", key="btn_suivant_e8", type="primary", use_container_width=True):
-                # Conversion sécurisée pour session_state et JSON
-                data_moyens = moyens_cou_df.to_dict(orient="records") if hasattr(moyens_cou_df, 'to_dict') else moyens_cou_df
-                
+
+        with col_e8_2:
+            if st.button("Suivant ➡️ (Vers Diagnostic & Audit)", key="btn_suivant_etape8", type="primary", use_container_width=True):
+                # Mise à jour du dictionnaire central
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
-
-                st.session_state.reponses_pdc.update({
-                    "activite_fiche8": activite_selectionnee,
-                    "moyens_fiche8_details": data_moyens,
-                    "budget_fiche8_total": total_fiche8
-                })
+                
+                st.session_state.reponses_pdc["activite_fiche8"] = activite_selectionnee
+                st.session_state.reponses_pdc["moyens_fiche8_details"] = moyens_cou_df
+                st.session_state.reponses_pdc["budget_fiche8_total"] = total_fiche8
+                
+                # Passage à l'étape 9
                 st.session_state.etape_pdc = 9
                 st.rerun()
 
@@ -1142,6 +1138,8 @@ def afficher():
         st.caption("Évaluation de la conformité globale des données collectées")
 
         donnees_pdc = st.session_state.get("reponses_pdc", {})
+        
+        # Exécution du diagnostic
         score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees_pdc)
 
         st.metric(label="Score de Conformité Global (Étapes 1 à 8)", value=f"{score_global} / 100")
@@ -1164,22 +1162,24 @@ def afficher():
                 st.write("Aucun point fort enregistré pour le moment.")
 
         st.markdown("---")
-        st.markdown("### 📄 Bilan global des données collectées")
+        st.markdown("### 📄 Bilan global des données collectées (JSON)")
         with st.expander("Voir le détail JSON complet transmis au serveur", expanded=True):
             st.json(donnees_pdc)
 
         st.markdown("---")
 
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("⬅️ Retour (Moyens Fiche 8)", key="btn_retour_e9", use_container_width=True):
+        col_e9_1, col_e9_2 = st.columns([1, 1])
+        with col_e9_1:
+            if st.button("⬅️ Retour (Moyens Fiche 8)", key="btn_retour_etape9", use_container_width=True):
                 st.session_state.etape_pdc = 8
                 st.rerun()
-        with col2:
-            if st.button("Suivant ➡️ (Vers Étape 10 : Clôture)", key="btn_suivant_e9", type="primary", use_container_width=True):
+
+        with col_e9_2:
+            if st.button("Suivant ➡️ (Vers Étape 10 : Clôture)", key="btn_suivant_etape9", type="primary", use_container_width=True):
                 st.session_state.reponses_pdc["score_conformite_etape1_8"] = score_global
                 st.session_state.etape_pdc = 10
                 st.rerun()
+
 
 
 
