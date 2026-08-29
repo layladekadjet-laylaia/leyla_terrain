@@ -1123,103 +1123,101 @@ def afficher():
         st.info(f"💵 **Coût global estimé des moyens (Fiche 8) sur 5 ans :** `{total_fiche8:,} FCFA`".replace(",", " "))
 
 
-        st.markdown("---")
+                st.markdown("---")
 
-                         
-# =========================================================
-# 8.6 AUDIT ET DIAGNOSTIC QUALITÉ DU PDC
-# =========================================================
-st.markdown("---")
-st.markdown("### 📊 8.6 Audit & Diagnostic Qualité du PDC")
+        # =========================================================
+        # 8.6 AUDIT ET DIAGNOSTIC QUALITÉ DU PDC
+        # =========================================================
+        st.markdown("### 📊 8.6 Audit & Diagnostic Qualité du PDC")
 
-# Récupération sécurisée du dictionnaire principal
-donnees_pdc = st.session_state.get("reponses_pdc", {})
-
-# Exécution explicite du diagnostic
-score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees_pdc)
-
-# 1. Affichage du score principal
-st.metric(label="Score de Conformité Global (Étapes 1 à 8)", value=f"{score_global} / 100")
-
-# 2. Affichage des alertes critiques
-if alertes:
-    st.error("🚨 **Alertes Critiques / Non-Conformités Majeures :**")
-    for alerte in alertes:
-        st.write(f"- {alerte}")
-
-# 3. Affichage des avertissements
-if avert:
-    st.warning("⚠️ **Avertissements & Points d'attention :**")
-    for av in avert:
-        st.write(f"- {av}")
-
-# 4. Affichage des points forts validés
-with st.expander("✅ Voir les Points Forts validés"):
-    if pts_forts:
-        for pf in pts_forts:
-            st.write(f"- {pf}")
-    else:
-        st.write("Aucun point fort enregistré pour le moment.")
-
-st.markdown("---")
-
-
-# =========================================================
-# 8.7 BILAN JSON COMPLET
-# =========================================================
-st.markdown("### 📄 Bilan global des données collectées (1 à 8)")
-with st.expander("Voir le détail JSON complet transmis au serveur"):
-    st.json(donnees_pdc)
-
-st.markdown("---")
-
-
-# =========================================================
-# NAVIGATION VERS ÉTAPE 9
-# =========================================================
-col1, col2 = st.columns([1, 1])
-
-with col1:
-    if st.button("⬅️ Retour", use_container_width=True):
-        st.session_state.etape_pdc = 7
-        st.rerun()
-
-with col2:
-    if st.button("Suivant ➡️ (Vers Étape 9 : Clôture & Bilan Final)", type="primary", use_container_width=True):
-        # 1. Récupération des DataFrames édités via leurs clés 'key' respectives
-        df_analyse = st.session_state.get("editor_analyse_prob", [])
-        df_plan_5ans = st.session_state.get("editor_plan_action_5ans", [])
-        df_prog_annuel = st.session_state.get("editor_prog_annuel", [])
-        df_fiche8 = st.session_state.get("editor_fiche8_moyens_couts", [])
-
-        # 2. Recalcul ou récupération des totaux
-        total_b_5ans = sum([row.get("Coût (FCFA)", 0) for row in df_plan_5ans if isinstance(row, dict) and row.get("Coût (FCFA)")])
-        total_b_annuel = sum([row.get("Coût FCFA", 0) for row in df_prog_annuel if isinstance(row, dict) and row.get("Coût FCFA")])
-        total_b_f8 = sum(
-            row.get("Coût A1", 0) + row.get("Coût A2", 0) + row.get("Coût A3", 0) + row.get("Coût A4", 0) + row.get("Coût A5", 0)
-            for row in df_fiche8 if isinstance(row, dict)
-        )
-
-        # 3. Diagnostic exhaustif
+        # Exécution du diagnostic sur les données collectées
         donnees_pdc = st.session_state.get("reponses_pdc", {})
         score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees_pdc)
-        
-        # 4. Mise à jour sécurisée du dictionnaire principal
-        donnees_pdc.update({
-            "decision_fiches": decision_calculee,
-            "criteres_selectionnes": tous_criteres_cochis,
-            "analyse_problemes": df_analyse,
-            "plan_action_5ans": df_plan_5ans,
-            "budget_total_5ans": total_b_5ans,
-            "programme_annuel": df_prog_annuel,
-            "budget_annuel_total": total_b_annuel,
-            "moyens_fiche8_details": df_fiche8,
-            "budget_fiche8_total": total_b_f8,
-            "score_conformite_etape1_8": score_global
-        })
-        
-        st.session_state.reponses_pdc = donnees_pdc
-        st.session_state.etape_pdc = 9
-        st.rerun()
+
+        # Affichage du score
+        st.metric(label="Score de Conformité Global (Étapes 1 à 8)", value=f"{score_global} / 100")
+
+        if alertes:
+            st.error("🚨 **Alertes Critiques / Non-Conformités Majeures :**")
+            for alerte in alertes:
+                st.write(f"- {alerte}")
+
+        if avert:
+            st.warning("⚠️ **Avertissements & Points d'attention :**")
+            for av in avert:
+                st.write(f"- {av}")
+
+        with st.expander("✅ Voir les Points Forts validés"):
+            if pts_forts:
+                for pf in pts_forts:
+                    st.write(f"- {pf}")
+            else:
+                st.write("Aucun point fort enregistré.")
+
+        st.markdown("---")
+
+        # =========================================================
+        # 8.7 BILAN JSON COMPLET
+        # =========================================================
+        st.markdown("### 📄 Bilan global des données collectées (1 à 8)")
+        with st.expander("Voir le détail JSON complet transmis au serveur"):
+            st.json(donnees_pdc)
+
+        st.markdown("---")
+
+        # =========================================================
+        # NAVIGATION : BOUTONS RETOUR ET SUIVANT
+        # (Placés exactement sous le Bilan et au-dessus de la Sync)
+        # =========================================================
+        col_nav1, col_nav2 = st.columns([1, 1])
+
+        with col_nav1:
+            if st.button("⬅️ Retour", key="btn_retour_etape8", use_container_width=True):
+                st.session_state.etape_pdc = 7
+                st.rerun()
+
+        with col_nav2:
+            if st.button("Suivant ➡️ (Vers Étape 9 : Clôture & Bilan Final)", key="btn_suivant_etape8", type="primary", use_container_width=True):
+                # Récupération sécurisée des DataFrames de l'étape 8
+                df_analyse = st.session_state.get("editor_analyse_prob", [])
+                df_plan_5ans = st.session_state.get("editor_plan_action_5ans", [])
+                df_prog_annuel = st.session_state.get("editor_prog_annuel", [])
+                df_fiche8 = st.session_state.get("editor_fiche8_moyens_couts", [])
+
+                # Recalcul des totaux
+                total_b_5ans = sum([row.get("Coût (FCFA)", 0) for row in df_plan_5ans if isinstance(row, dict) and row.get("Coût (FCFA)")])
+                total_b_annuel = sum([row.get("Coût FCFA", 0) for row in df_prog_annuel if isinstance(row, dict) and row.get("Coût FCFA")])
+                total_b_f8 = sum(
+                    row.get("Coût A1", 0) + row.get("Coût A2", 0) + row.get("Coût A3", 0) + row.get("Coût A4", 0) + row.get("Coût A5", 0)
+                    for row in df_fiche8 if isinstance(row, dict)
+                )
+
+                # Mise à jour globale des données
+                donnees_pdc.update({
+                    "decision_fiches": decision_calculee,
+                    "criteres_selectionnes": tous_criteres_cochis,
+                    "analyse_problemes": df_analyse,
+                    "plan_action_5ans": df_plan_5ans,
+                    "budget_total_5ans": total_b_5ans,
+                    "programme_annuel": df_prog_annuel,
+                    "budget_annuel_total": total_b_annuel,
+                    "moyens_fiche8_details": df_fiche8,
+                    "budget_fiche8_total": total_b_f8,
+                    "score_conformite_etape1_8": score_global
+                })
+
+                st.session_state.reponses_pdc = donnees_pdc
+                st.session_state.etape_pdc = 9
+                st.rerun()
+
+        st.markdown("---")
+
+    # =========================================================
+    # SYNCHRONISATION / ENVOI AU SERVEUR
+    # (Affiché hors du bloc 'elif' pour être présent sur l'étape)
+    # =========================================================
+    st.markdown("### 🔄 Synchronisation / Envoi au Serveur Central")
+    st.info("Lorsque vous disposez d'une connexion Internet, cliquez ci-dessous pour envoyer les données vers le serveur central Supabase.")
+
 
 
