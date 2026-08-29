@@ -1053,68 +1053,52 @@ def afficher():
 
         st.markdown("---")
 
-                # --- 8.5 DÉTERMINATION DES MOYENS ET COÛTS (FICHE 8) ---
-        st.markdown("### 🛠️ 5. Détermination des moyens et des coûts (Fiche 8)")
+                    # ---------------------------------------------------------
+    # ÉTAPE 8 : DÉTERMINATION DES MOYENS ET COÛTS (FICHE 8)
+    # ---------------------------------------------------------
+    elif st.session_state.etape_pdc == 8:
+        st.subheader("Étape 8/10 : Détermination des moyens et des coûts (Fiche 8)")
         st.caption("Évaluation détaillée des coûts d'investissement, intrants et main d'œuvre par activité sur 5 ans.")
 
-        # Sélection de l'activité concernée
         activite_selectionnee = st.text_input(
             "Activité concernée :",
             value="Activité 1 : Traitement phytosanitaire et fertilisation",
             placeholder="Entrez le nom de l'activité..."
         )
 
-        # Initialisation de la structure de la Fiche 8 dans la session
         if 'df_moyens_cou_fiche8' not in st.session_state:
             st.session_state.df_moyens_cou_fiche8 = [
-                # --- Investissement ---
                 {"Catégorie": "Investissement", "Moyens spécifiques": "Atomiseur", "Unités": "Nombre", "Qté A1": 1, "Coût A1": 150000, "Qté A2": 0, "Coût A2": 0, "Qté A3": 0, "Coût A3": 0, "Qté A4": 0, "Coût A4": 0, "Qté A5": 0, "Coût A5": 0},
                 {"Catégorie": "Investissement", "Moyens spécifiques": "Machettes / Outils", "Unités": "Nombre", "Qté A1": 3, "Coût A1": 15000, "Qté A2": 0, "Coût A2": 0, "Qté A3": 2, "Coût A3": 10000, "Qté A4": 0, "Coût A4": 0, "Qté A5": 2, "Coût A5": 10000},
-                
-                # --- Intrants ---
                 {"Catégorie": "Intrants", "Moyens spécifiques": "Engrais", "Unités": "kg", "Qté A1": 200, "Coût A1": 70000, "Qté A2": 200, "Coût A2": 70000, "Qté A3": 250, "Coût A3": 87500, "Qté A4": 250, "Coût A4": 87500, "Qté A5": 300, "Coût A5": 105000},
                 {"Catégorie": "Intrants", "Moyens spécifiques": "Insecticide", "Unités": "Litre", "Qté A1": 4, "Coût A1": 24000, "Qté A2": 4, "Coût A2": 24000, "Qté A3": 4, "Coût A3": 24000, "Qté A4": 4, "Coût A4": 24000, "Qté A5": 4, "Coût A5": 24000},
                 {"Catégorie": "Intrants", "Moyens spécifiques": "Fungicide", "Unités": "Sachet/Kg", "Qté A1": 10, "Coût A1": 30000, "Qté A2": 10, "Coût A2": 30000, "Qté A3": 10, "Coût A3": 30000, "Qté A4": 10, "Coût A4": 30000, "Qté A5": 10, "Coût A5": 30000},
-
-                # --- Main d'œuvre ---
                 {"Catégorie": "Main d'œuvre", "Moyens spécifiques": "Taille / Émondage", "Unités": "Hommes/Jour", "Qté A1": 5, "Coût A1": 25000, "Qté A2": 3, "Coût A2": 15000, "Qté A3": 3, "Coût A3": 15000, "Qté A4": 3, "Coût A4": 15000, "Qté A5": 3, "Coût A5": 15000},
                 {"Catégorie": "Main d'œuvre", "Moyens spécifiques": "Application Phyto", "Unités": "Hommes/Jour", "Qté A1": 4, "Coût A1": 20000, "Qté A2": 4, "Coût A2": 20000, "Qté A3": 4, "Coût A3": 20000, "Qté A4": 4, "Coût A4": 20000, "Qté A5": 4, "Coût A5": 20000}
             ]
 
-        # Editeur de données interactif avec colonnes configurées
         moyens_cou_df = st.data_editor(
             st.session_state.df_moyens_cou_fiche8,
             num_rows="dynamic",
             key="editor_fiche8_moyens_couts",
             column_config={
-                "Catégorie": st.column_config.SelectboxColumn(
-                    "Catégorie",
-                    options=["Investissement", "Intrants", "Main d'œuvre", "Activités d'appui/gestion"],
-                    required=True,
-                    width="medium"
-                ),
+                "Catégorie": st.column_config.SelectboxColumn("Catégorie", options=["Investissement", "Intrants", "Main d'œuvre", "Activités d'appui/gestion"], required=True, width="medium"),
                 "Moyens spécifiques": st.column_config.TextColumn("Moyens spécifiques", width="medium"),
                 "Unités": st.column_config.TextColumn("Unités", width="small"),
-                
                 "Qté A1": st.column_config.NumberColumn("Qté A1", min_value=0, step=1),
                 "Coût A1": st.column_config.NumberColumn("Coût A1 (FCFA)", min_value=0, step=1000, format="%d FCFA"),
-                
                 "Qté A2": st.column_config.NumberColumn("Qté A2", min_value=0, step=1),
                 "Coût A2": st.column_config.NumberColumn("Coût A2 (FCFA)", min_value=0, step=1000, format="%d FCFA"),
-                
                 "Qté A3": st.column_config.NumberColumn("Qté A3", min_value=0, step=1),
                 "Coût A3": st.column_config.NumberColumn("Coût A3 (FCFA)", min_value=0, step=1000, format="%d FCFA"),
-                
                 "Qté A4": st.column_config.NumberColumn("Qté A4", min_value=0, step=1),
                 "Coût A4": st.column_config.NumberColumn("Coût A4 (FCFA)", min_value=0, step=1000, format="%d FCFA"),
-                
                 "Qté A5": st.column_config.NumberColumn("Qté A5", min_value=0, step=1),
                 "Coût A5": st.column_config.NumberColumn("Coût A5 (FCFA)", min_value=0, step=1000, format="%d FCFA")
             },
             use_container_width=True
         )
 
-        # Calcul automatique du coût global calculé dans le tableau Fiche 8
         total_fiche8 = sum(
             row.get("Coût A1", 0) + row.get("Coût A2", 0) + row.get("Coût A3", 0) + row.get("Coût A4", 0) + row.get("Coût A5", 0)
             for row in moyens_cou_df if isinstance(row, dict)
@@ -1122,20 +1106,32 @@ def afficher():
 
         st.info(f"💵 **Coût global estimé des moyens (Fiche 8) sur 5 ans :** `{total_fiche8:,} FCFA`".replace(",", " "))
 
+        st.markdown("---")
 
-        st.session_state.etape_pdc = 8
-        st.rerun()
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("⬅️ Retour", use_container_width=True):
+                st.session_state.etape_pdc = 7
+                st.rerun()
+        with col2:
+            if st.button("Suivant ➡️ (Vers Diagnostic & Audit)", type="primary", use_container_width=True):
+                st.session_state.reponses_pdc.update({
+                    "moyens_fiche8_details": moyens_cou_df,
+                    "budget_fiche8_total": total_fiche8
+                })
+                st.session_state.etape_pdc = 9
+                st.rerun()
 
-        # =========================================================
-        # 8.6 AUDIT ET DIAGNOSTIC QUALITÉ DU PDC
-        # =========================================================
-        st.markdown("### 📊 8.6 Audit & Diagnostic Qualité du PDC")
+    # ---------------------------------------------------------
+    # ÉTAPE 9 : AUDIT & DIAGNOSTIC QUALITÉ DU PDC
+    # ---------------------------------------------------------
+    elif st.session_state.etape_pdc == 9:
+        st.subheader("Étape 9/10 : Audit & Diagnostic Qualité du PDC")
+        st.caption("Évaluation de la conformité globale des données collectées")
 
-        # Exécution du diagnostic sur les données collectées
         donnees_pdc = st.session_state.get("reponses_pdc", {})
         score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees_pdc)
 
-        # Affichage du score
         st.metric(label="Score de Conformité Global (Étapes 1 à 8)", value=f"{score_global} / 100")
 
         if alertes:
@@ -1156,62 +1152,23 @@ def afficher():
                 st.write("Aucun point fort enregistré.")
 
         st.markdown("---")
-
-        # =========================================================
-        # 8.7 BILAN JSON COMPLET
-        # =========================================================
-        st.markdown("### 📄 Bilan global des données collectées (1 à 8)")
+        st.markdown("### 📄 Bilan global des données collectées")
         with st.expander("Voir le détail JSON complet transmis au serveur"):
             st.json(donnees_pdc)
 
         st.markdown("---")
 
-        # =========================================================
-        # NAVIGATION : BOUTONS RETOUR ET SUIVANT
-        # (Placés exactement sous le Bilan et au-dessus de la Sync)
-        # =========================================================
-        col_nav1, col_nav2 = st.columns([1, 1])
-
-        with col_nav1:
-            if st.button("⬅️ Retour", key="btn_retour_etape8", use_container_width=True):
-                st.session_state.etape_pdc = 7
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("⬅️ Retour (Moyens Fiche 8)", use_container_width=True):
+                st.session_state.etape_pdc = 8
+                st.rerun()
+        with col2:
+            if st.button("Suivant ➡️ (Vers Étape 10 : Clôture)", type="primary", use_container_width=True):
+                st.session_state.reponses_pdc["score_conformite_etape1_8"] = score_global
+                st.session_state.etape_pdc = 10
                 st.rerun()
 
-        with col_nav2:
-            if st.button("Suivant ➡️ (Vers Étape 9 : Clôture & Bilan Final)", key="btn_suivant_etape8", type="primary", use_container_width=True):
-                # Récupération sécurisée des DataFrames de l'étape 8
-                df_analyse = st.session_state.get("editor_analyse_prob", [])
-                df_plan_5ans = st.session_state.get("editor_plan_action_5ans", [])
-                df_prog_annuel = st.session_state.get("editor_prog_annuel", [])
-                df_fiche8 = st.session_state.get("editor_fiche8_moyens_couts", [])
-
-                # Recalcul des totaux
-                total_b_5ans = sum([row.get("Coût (FCFA)", 0) for row in df_plan_5ans if isinstance(row, dict) and row.get("Coût (FCFA)")])
-                total_b_annuel = sum([row.get("Coût FCFA", 0) for row in df_prog_annuel if isinstance(row, dict) and row.get("Coût FCFA")])
-                total_b_f8 = sum(
-                    row.get("Coût A1", 0) + row.get("Coût A2", 0) + row.get("Coût A3", 0) + row.get("Coût A4", 0) + row.get("Coût A5", 0)
-                    for row in df_fiche8 if isinstance(row, dict)
-                )
-
-                # Mise à jour globale des données
-                donnees_pdc.update({
-                    "decision_fiches": decision_calculee,
-                    "criteres_selectionnes": tous_criteres_cochis,
-                    "analyse_problemes": df_analyse,
-                    "plan_action_5ans": df_plan_5ans,
-                    "budget_total_5ans": total_b_5ans,
-                    "programme_annuel": df_prog_annuel,
-                    "budget_annuel_total": total_b_annuel,
-                    "moyens_fiche8_details": df_fiche8,
-                    "budget_fiche8_total": total_b_f8,
-                    "score_conformite_etape1_8": score_global
-                })
-
-                st.session_state.reponses_pdc = donnees_pdc
-                st.session_state.etape_pdc = 9
-                st.rerun()
-
-        st.markdown("---")
 
     
 
