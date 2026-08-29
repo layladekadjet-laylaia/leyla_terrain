@@ -1128,56 +1128,103 @@ def afficher():
                 st.session_state.etape_pdc = 9
                 st.rerun()
 
-    # ---------------------------------------------------------
-    # ÉTAPE 9 : AUDIT & DIAGNOSTIC QUALITÉ DU PDC (BILAN JSON)
+        # ---------------------------------------------------------
+    # ÉTAPE 9 : CLÔTURE & BILAN FINAL DU PDC
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 9:
-        st.subheader("Étape 9/10 : Audit & Diagnostic Qualité du PDC")
-        st.caption("Évaluation de la conformité globale des données collectées")
+        st.subheader("Étape 9/10 : Clôture & Bilan Final du PDC")
+        st.caption("Synthèse globale du plan de développement et validation des engagements.")
 
-        donnees_pdc = st.session_state.get("reponses_pdc", {})
-        
-        # Diagnostic
-        score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees_pdc)
+        donnees = st.session_state.get("reponses_pdc", {})
 
-        st.metric(label="Score de Conformité Global (Étapes 1 à 8)", value=f"{score_global} / 100")
-
-        if alertes:
-            st.error("🚨 **Alertes Critiques / Non-Conformités Majeures :**")
-            for alerte in alertes:
-                st.write(f"- {alerte}")
-
-        if avert:
-            st.warning("⚠️ **Avertissements & Points d'attention :**")
-            for av in avert:
-                st.write(f"- {av}")
-
-        with st.expander("✅ Voir les Points Forts validés"):
-            if pts_forts:
-                for pf in pts_forts:
-                    st.write(f"- {pf}")
-            else:
-                st.write("Aucun point fort enregistré pour le moment.")
+        st.markdown("### 📌 Récapitulatif Synthétique du Producteur")
+        col_s1, col_s2, col_s3 = st.columns(3)
+        col_s1.metric("Producteur", donnees.get("nom", "Non renseigné"))
+        col_s2.metric("Localité / Ville", donnees.get("ville", "Non renseigné"))
+        col_s3.metric("Zone d'intervention", f"Zone {donnees.get('zone', '-')}")
 
         st.markdown("---")
-        st.markdown("### 📄 Bilan global des données collectées (JSON)")
-        
-        # AFFICHE DIRECTEMENT LE JSON SANS MASQUAGE
-        st.json(donnees_pdc)
+        st.markdown("### 📊 Indicateurs Clés de l'Exploitation")
+        col_i1, col_i2, col_i3 = st.columns(3)
+        col_i1.metric("Superficie Cacao", f"{donnees.get('superficie', 0)} ha")
+        col_i2.metric("Densité Estimée", f"{donnees.get('densite_calculee_ha', 0):.0f} pieds/ha")
+        col_i3.metric("Décision Retenue", donnees.get("decision_fiches", "Non déterminée"))
 
         st.markdown("---")
+        st.markdown("### 💰 Synthèse des Budgets Prévisionnels")
+        
+        budget_5ans = donnees.get("budget_total_5ans", 0)
+        budget_annuel = donnees.get("budget_annuel_total", 0)
+        budget_f8 = donnees.get("budget_fiche8_total", 0)
 
-        col_e9_1, col_e9_2 = st.columns([1, 1])
-        with col_e9_1:
-            if st.button("⬅️ Retour (Moyens Fiche 8)", key="btn_retour_etape9", use_container_width=True):
+        col_b1, col_b2, col_b3 = st.columns(3)
+        col_b1.metric("Budget Plan 5 ans", f"{budget_5ans:,} FCFA".replace(",", " "))
+        col_b2.metric("Programme Annuel (A1)", f"{budget_annuel:,} FCFA".replace(",", " "))
+        col_b3.metric("Moyens & Intrants (F8)", f"{budget_f8:,} FCFA".replace(",", " "))
+
+        st.markdown("---")
+        st.markdown("### ✍️ Validation & Engagements")
+        
+        nom_agent = st.text_input("Nom & Prénoms de l'Agent Enquêteur / Formateur", key="nom_agent_pdc")
+        date_cloture = st.date_input("Date de finalisation du PDC", datetime.date.today())
+        observations_finales = st.text_area("Observations ou remarques particulières de l'agent", placeholder="Notez ici les contraintes spécifiques ou recommandations urgentes...")
+
+        col_n1, col_n2 = st.columns([1, 1])
+        with col_n1:
+            if st.button("⬅️ Retour (Étape 8)", use_container_width=True):
                 st.session_state.etape_pdc = 8
                 st.rerun()
 
-        with col_e9_2:
-            if st.button("Suivant ➡️ (Vers Étape 10 : Clôture)", key="btn_suivant_etape9", type="primary", use_container_width=True):
-                st.session_state.reponses_pdc["score_conformite_etape1_8"] = score_global
+        with col_n2:
+            if st.button("Valider et Passer à l'Exportation (Étape 10) ➡️", type="primary", use_container_width=True):
+                st.session_state.reponses_pdc.update({
+                    "nom_agent_enqueteur": nom_agent,
+                    "date_cloture_pdc": str(date_cloture),
+                    "observations_finales_agent": observations_finales
+                })
                 st.session_state.etape_pdc = 10
                 st.rerun()
+
+    # ---------------------------------------------------------
+    # ÉTAPE 10 : IMPRESSION & EXPORTATION PDF / EXCEL
+    # ---------------------------------------------------------
+    elif st.session_state.etape_pdc == 10:
+        st.subheader("Étape 10/10 : Exportation & Impression de la Fiche PDC")
+        st.success("🎉 Le Plan de Développement de Cacaoyère est entièrement renseigné et validé !")
+
+        donnees_finales = st.session_state.get("reponses_pdc", {})
+
+        st.markdown("### 📄 Options d'exportation")
+        
+        col_exp1, col_exp2 = st.columns(2)
+
+        with col_exp1:
+            st.markdown("**1. Rapport au Format JSON**")
+            st.caption("Téléchargez la structure de données brute pour l'intégration dans une base externe.")
+            json_str = pd.Series(donnees_finales).to_json(indent=4, force_unicode=True)
+            st.download_button(
+                label="📥 Télécharger le bilan JSON",
+                data=json_str,
+                file_name=f"PDC_{donnees_finales.get('nom', 'Producteur')}_{datetime.date.today()}.json",
+                mime="application/json",
+                use_container_width=True
+            )
+
+        with col_exp2:
+            st.markdown("**2. Réinitialisation du Formulaire**")
+            st.caption("Commencer un nouveau diagnostic pour un autre producteur.")
+            if st.button("🔄 Nouveau PDC", type="secondary", use_container_width=True):
+                st.session_state.etape_pdc = 1
+                st.session_state.reponses_pdc = {}
+                st.rerun()
+
+        st.markdown("---")
+        col_b_fin, _ = st.columns([1, 1])
+        with col_b_fin:
+            if st.button("⬅️ Retour au bilan (Étape 9)", use_container_width=True):
+                st.session_state.etape_pdc = 9
+                st.rerun()
+
 
 
 
