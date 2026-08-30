@@ -1120,12 +1120,12 @@ def afficher():
                 st.session_state.etape_pdc = 10
                 st.rerun()
 
-        # ---------------------------------------------------------
-    # ÉTAPE 10 : AUDIT, DIAGNOSTIC, CLÔTURE & EXPORTATION
+            # ---------------------------------------------------------
+    # ÉTAPE 10 : AUDIT & DIAGNOSTIC DE CONFORMITÉ (BILAN FINAL)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 10:
-        st.subheader("Étape 10/10 : Diagnostic, Validation & Exportation du PDC")
-        st.caption("Synthèse globale, diagnostic de conformité et validation finale.")
+        st.subheader("Étape 10/10 : Bilan & Diagnostic Qualité du PDC")
+        st.caption("Synthèse globale du plan de développement et évaluation de conformité.")
 
         donnees = st.session_state.get("reponses_pdc", {})
 
@@ -1168,20 +1168,17 @@ def afficher():
 
         st.markdown("---")
 
-       
-        with col_exp2:
-            st.markdown("**2. Réinitialisation du Formulaire**")
-            st.caption("Commencer un nouveau diagnostic pour un autre producteur.")
-            if st.button("🔄 Réinitialiser et recommencer", key="btn_reset_pdc", type="secondary", use_container_width=True):
+        # --- 10.3 ACTIONS ---
+        col_btn1, col_btn2 = st.columns([1, 1])
+        with col_btn1:
+            if st.button("⬅️ Retour (Étape 9 : Moyens & Coûts)", key="btn_retour_etape10", use_container_width=True):
+                st.session_state.etape_pdc = 9
+                st.rerun()
+
+        with col_btn2:
+            if st.button("🔄 Nouveau PDC / Recommencer", key="btn_reset_pdc", type="secondary", use_container_width=True):
                 st.session_state.etape_pdc = 1
                 st.session_state.reponses_pdc = {}
                 st.rerun()
 
-        st.markdown("---")
-
-        col_n1, _ = st.columns([1, 1])
-        with col_n1:
-            if st.button("⬅️ Retour (Étape 9 : Moyens & Coûts)", key="btn_retour_etape10", use_container_width=True):
-                st.session_state.etape_pdc = 9
-                st.rerun()
 
