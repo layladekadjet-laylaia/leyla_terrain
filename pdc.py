@@ -1176,7 +1176,7 @@ def afficher():
                 st.rerun()
 
         with col_btn2:
-            if st.button("🔄 Nouveau PDC / Recommencer", key="btn_reset_pdc", type="secondary", use_container_width=True):
+            if st.button("Suivant ➡️ ", key="btn_suivant", type="primary", use_container_width=True):
                 st.session_state.etape_pdc = 1
                 st.session_state.reponses_pdc = {}
                 st.rerun()
