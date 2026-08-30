@@ -1168,30 +1168,7 @@ def afficher():
 
         st.markdown("---")
 
-        # --- 10.3 VALIDATION DE L'AGENT ---
-        st.markdown("### ✍️ Validation & Engagements")
-        nom_agent = st.text_input("Nom & Prénoms de l'Agent Enquêteur / Formateur", key="nom_agent_pdc")
-        date_cloture = st.date_input("Date de finalisation du PDC", datetime.date.today())
-        observations_finales = st.text_area("Observations ou remarques particulières de l'agent", placeholder="Notez ici les contraintes spécifiques ou recommandations urgentes...")
-
-        st.markdown("---")
-
-        # --- 10.4 EXPORTATION & ACTIONS ---
-        st.markdown("### 📄 Options d'exportation")
-        col_exp1, col_exp2 = st.columns(2)
-
-        with col_exp1:
-            st.markdown("**1. Rapport au Format JSON**")
-            st.caption("Téléchargez la structure de données brute pour l'intégration dans une base externe.")
-            json_str = pd.Series(donnees).to_json(indent=4, force_unicode=True)
-            st.download_button(
-                label="📥 Télécharger le bilan JSON",
-                data=json_str,
-                file_name=f"PDC_{donnees.get('nom', 'Producteur')}_{datetime.date.today()}.json",
-                mime="application/json",
-                use_container_width=True
-            )
-
+       
         with col_exp2:
             st.markdown("**2. Réinitialisation du Formulaire**")
             st.caption("Commencer un nouveau diagnostic pour un autre producteur.")
