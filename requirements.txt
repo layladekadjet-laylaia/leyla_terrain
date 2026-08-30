@@ -1,32 +1,22 @@
-# --- Interface Utilisateur & Framework Web ---
 streamlit
 streamlit-aggrid
-streamlit-geolocation
-customtkinter
-
-# --- Cartographie & Géolocalisation ---
-geopy
-folium
-shapely
-
-# --- Traitement de Données & Calcul ---
-pandas
-numpy
-matplotlib
-plotly
-
-# --- Base de Données & API ---
 supabase
 requests
-
-# --- Acquisition Matérielle & GPS (NMEA / Série) ---
-pyserial
+customtkinter
+geopy
+folium
+matplotlib
+numpy
+pillow
 pynmea2
-
-# --- Reconnaissance Vocale & Synthèse Vocale ---
+pyserial
 pyttsx3
 SpeechRecognition
-
-# --- Images & Génération de Documents ---
-pillow
+pandas
+streamlit-geolocation
+shapely
+geopy
+supabase
+plotly
 fpdf2
+datetime
