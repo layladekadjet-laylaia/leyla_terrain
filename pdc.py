@@ -1235,13 +1235,13 @@ def afficher():
                 st.rerun()
 
 
-    # ---------------------------------------------------------
-    # ÉTAPE 12 : MÉNAGE & DESCRIPTION DE L'EXPLOITATION
+        # ---------------------------------------------------------
+    # ÉTAPE 12 : MÉNAGE & DESCRIPTION DE L'EXPLOITATION (NORMES CCC)
     # (PARTIE VI : STRUCTURATION DU PDC - 1.2 Ménage & 1.3 Exploitation)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 12:
         st.subheader("Étape 12/15 : Informations Ménage & Description de l'Exploitation")
-        st.caption("Saisie des données financières, de la main-d'œuvre et caractérisation automatique du verger.")
+        st.caption("Données financières, main-d'œuvre et croquis/caractérisation spatiale de la parcelle selon le barème du Conseil Café-Cacao.")
 
         # =========================================================
         # 12.1 SITUATION DE L'ÉPARGNE
@@ -1309,7 +1309,7 @@ def afficher():
         # =========================================================
         st.markdown("### 🏡 1.3 Description & Caractéristiques de l'Exploitation")
 
-        with st.expander("📋 **Formulaire de saisie des caractéristiques**", expanded=True):
+        with st.expander("📋 **1. Formulaire Agronomique & Foncier**", expanded=True):
             col1, col2 = st.columns(2)
 
             with col1:
@@ -1342,9 +1342,61 @@ def afficher():
                     key="contraintes_parcelle"
                 )
 
-        # Calculs et traitement automatique
+        # ---------------------------------------------------------
+        # NOUVEAU MODULE : ÉLÉMENTS CARTOGRAPHIQUES & AGROFORESTERIE (EXIGENCES CCC)
+        # ---------------------------------------------------------
+        with st.expander("🗺️ **2. Cartographie, Arbres Forestiers & Infrastructures (Exigences CCC)**", expanded=True):
+            st.caption("Données relatives au croquis/polygone, aux arbres d'ombrage et aux repères géographiques.")
+
+            col_geo1, col_geo2 = st.columns(2)
+
+            with col_geo1:
+                st.markdown("**📍 Repères & Voies d'accès**")
+                voies_acces = st.multiselect(
+                    "Pistes & Voies d'accès",
+                    ["Piste cyclable / Piétonne", "Piste camionnière / Sommier", "Route bitumée à proximité", "Traversée par voie d'eau"],
+                    default=["Piste camionnière / Sommier"],
+                    key="voies_acces"
+                )
+                elements_parcelle = st.multiselect(
+                    "Éléments remarquables de la parcelle",
+                    ["Campement / Habitation", "Cours d'eau / Bas-fond", "Puits / Source d'eau", "Zone rocheuse non cultivable"],
+                    default=["Campement / Habitation"],
+                    key="elements_parcelle"
+                )
+                waypoint_gps = st.text_input("Coordonnées GPS centrales / Waypoint (Ex: 6.67262 N, -5.28095 W)", value="6.67262 N, -5.28095 W", key="waypoint_gps")
+
+            with col_geo2:
+                st.markdown("**🌳 Inventaire Agroforestier (Arbres existants)**")
+                nb_arbres_forestiers = st.number_input("Nombre d'arbres forestiers d'ombrage recensés", min_value=0, value=18, step=1, key="nb_arbres_forestiers")
+                essences_arbres = st.multiselect(
+                    "Essences d'arbres prédominantes",
+                    ["Akpi", "Iroko", "Kinkéliba / Fraké", "Framiré", "Avocatier", "Citronnier / Agrumes", "Petit Piment / Autres"],
+                    default=["Akpi", "Iroko", "Framiré"],
+                    key="essences_arbres"
+                )
+                densite_ombrage = st.select_slider(
+                    "Niveau d'ombrage estimé",
+                    options=["Faible (< 10 arbres/ha)", "Adéquat (10-25 arbres/ha)", "Excessif (> 25 arbres/ha)"],
+                    value="Adéquat (10-25 arbres/ha)",
+                    key="densite_ombrage"
+                )
+
+            # Option d'import du croquis ou polygone GPS
+            fichier_croquis = st.file_uploader("🖼️ Importer l'image du croquis ou polygone (PNG/JPG)", type=["png", "jpg", "jpeg"], key="fichier_croquis_parcelle")
+
+        # ---------------------------------------------------------
+        # CALCULS AUTOMATIQUES & LOGIQUE DE DIAGNOSTIC
+        # ---------------------------------------------------------
         surf_autre = max(0.0, surf_totale - (surf_cacao_prod + surf_cacao_jeune))
         pct_cacao = (surf_cacao_prod + surf_cacao_jeune) / surf_totale * 100 if surf_totale > 0 else 0
+
+        # Formattage propre des listes
+        relief_str = ", ".join(relief_sol) if relief_sol else "Non précisé"
+        contraintes_str = ", ".join(contraintes) if contraintes else "Aucune contrainte majeure"
+        elements_str = ", ".join(elements_parcelle) if elements_parcelle else "Aucun élément spécifique"
+        voies_str = ", ".join(voies_acces) if voies_acces else "Non précisé"
+        essences_str = ", ".join(essences_arbres) if essences_arbres else "Aucune essence spécifiée"
 
         if "Vétuste" in age_moyen_plan:
             diagnostic_age = "🚨 **Régénération urgente requise** (Verger en fin de cycle productif)."
@@ -1356,13 +1408,15 @@ def afficher():
             diagnostic_age = "✅ **Potentiel de production optimal**."
             niveau_alerte = "success"
 
-        # Rendu visuel
-        st.markdown("#### 📊 Tableau de Bord Synthetique de l'Exploitation")
+        # ---------------------------------------------------------
+        # TAB-DE-BORD VISUEL
+        # ---------------------------------------------------------
+        st.markdown("#### 📊 Tableau de Bord Synthétique de l'Exploitation")
 
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
         kpi1.metric("Superficie Totale", f"{surf_totale:.1f} ha")
         kpi2.metric("Cacao Productif", f"{surf_cacao_prod:.1f} ha", f"{pct_cacao:.0f}% du total")
-        kpi3.metric("Cacao Immature", f"{surf_cacao_jeune:.1f} ha")
+        kpi3.metric("Arbres Forestiers", f"{nb_arbres_forestiers} pieds", f"{densite_ombrage}")
         kpi4.metric("Autre / Jachère", f"{surf_autre:.1f} ha")
 
         if niveau_alerte == "error":
@@ -1374,41 +1428,44 @@ def afficher():
 
         col_c1, col_c2 = st.columns(2)
         with col_c1:
-            st.markdown("##### 🏞️ Occupation du Sol & Foncier")
+            st.markdown("##### 🏞️ Occupation du Sol, Foncier & GPS")
             st.info(
                 f"• **Régime foncier :** {statut_foncier}\n\n"
                 f"• **Taux d'occupation cacaoyère :** {pct_cacao:.1f}%\n\n"
-                f"• **Relief/Sol :** {', '.join(relief_sol) if relief_sol else 'Non précisé'}"
+                f"• **Relief/Sol :** {relief_str}\n\n"
+                f"• **Waypoint Central :** `{waypoint_gps}`"
             )
 
         with col_c2:
-            st.markdown("##### 🛡️ État Phytosanitaire & Risques")
-            if contraintes:
-                badges_contraintes = " ".join([f"`{c}`" for c in contraintes])
-                st.write(f"**Contraintes identifiées :**\n{badges_contraintes}")
-            else:
-                st.write("✅ Aucune contrainte majeure signalée.")
+            st.markdown("##### 🛡️ Éléments du Croquis & Agroforesterie")
+            st.info(
+                f"• **Infrastructures/Repères :** {elements_str}\n\n"
+                f"• **Accès :** {voies_str}\n\n"
+                f"• **Arbres d'ombrage :** {nb_arbres_forestiers} pieds ({essences_str})\n\n"
+                f"• **Niveau d'ombrage :** {densite_ombrage}"
+            )
 
-        # Paragraphe de synthèse automatisé
-        st.markdown("#### 📝 Description Officielle (Générée automatiquement)")
+        # ---------------------------------------------------------
+        # DYNAMIQUE DU RAPPORT SYNTHÉTIQUE (100% CONFORME CONSEIL CAFÉ-CACAO)
+        # ---------------------------------------------------------
+        st.markdown("#### 📝 Description Officielle (Générée automatiquement pour le Dossier CCC)")
+
         texte_description = (
-            f"L'exploitation sous le statut foncier **{statut_foncier}** couvre une superficie totale mesurée de **{surf_totale} hectares**. "
-            f"La spéculation principale est la cacaoculture qui occupe **{surf_cacao_prod + surf_cacao_jeune} ha** "
-            f"(soit **{surf_cacao_prod} ha** en verger productif et **{surf_cacao_jeune} ha** en phase d'immaturité), représentant **{pct_cacao:.1f}%** de la surface globale. "
-            f"Le verger présente un profil d'âge **{age_moyen_plan}**, installé sur un relief de type **{', '.join(relief_sol) if relief_sol else 'plat'}**. "
+            f"L'exploitation sous le statut foncier **{statut_foncier}** couvre une superficie totale mesurée de **{surf_totale:.1f} hectares** (Waypoint GPS : {waypoint_gps}). "
+            f"La spéculation principale est la cacaoculture qui occupe **{surf_cacao_prod + surf_cacao_jeune:.1f} ha** "
+            f"(soit **{surf_cacao_prod:.1f} ha** en verger productif et **{surf_cacao_jeune:.1f} ha** en phase d'immaturité), représentant **{pct_cacao:.1f}%** de la surface globale. "
+            f"Le verger présente un profil d'âge **{age_moyen_plan}**, installé sur un relief de type **{relief_str}**. "
+            f"Le croquis cartographique identifie les voies d'accès (**{voies_str}**) ainsi que les infrastructures/repères physiques sur la parcelle (**{elements_str}**). "
+            f"Sur le plan agroforestier, l'exploitation compte **{nb_arbres_forestiers} arbres forestiers d'ombrage** "
+            f"(principalement : {essences_str}), garantissant un niveau d'ombrage évalué comme **{densite_ombrage}**. "
         )
+
         if contraintes:
-            texte_description += f"Sur le plan phytosanitaire et pédo-climatique, la parcelle est exposée aux facteurs limitants suivants : **{', '.join(contraintes)}**."
+            texte_description += f"Sur le plan phytosanitaire et pédo-climatique, la parcelle subit les contraintes suivantes : **{contraintes_str}**."
         else:
             texte_description += "Aucune contrainte phytosanitaire critique n'a été répertoriée lors de la visite terrain."
 
-        st.text_area(
-            "Rapport synthétique pour dossier CCC",
-            value=texte_description,
-            height=120,
-            disabled=True,
-            key="txt_desc_auto"
-        )
+        st.markdown(texte_description)
 
         st.markdown("---")
 
@@ -1437,9 +1494,16 @@ def afficher():
                     "age_moyen": age_moyen_plan,
                     "relief_sol": relief_sol,
                     "contraintes": contraintes,
+                    "waypoint_gps": waypoint_gps,
+                    "voies_acces": voies_acces,
+                    "elements_parcelle": elements_parcelle,
+                    "nb_arbres_forestiers": nb_arbres_forestiers,
+                    "essences_arbres": essences_arbres,
+                    "densite_ombrage": densite_ombrage,
                     "texte_synthese_auto": texte_description
                 }
 
                 st.session_state.etape_pdc = 13
                 st.rerun()
+
 
