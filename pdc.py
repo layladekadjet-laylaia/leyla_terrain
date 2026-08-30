@@ -1233,3 +1233,213 @@ def afficher():
                 })
                 st.session_state.etape_pdc = 12
                 st.rerun()
+
+
+    # ---------------------------------------------------------
+    # ÉTAPE 12 : MÉNAGE & DESCRIPTION DE L'EXPLOITATION
+    # (PARTIE VI : STRUCTURATION DU PDC - 1.2 Ménage & 1.3 Exploitation)
+    # ---------------------------------------------------------
+    elif st.session_state.etape_pdc == 12:
+        st.subheader("Étape 12/15 : Informations Ménage & Description de l'Exploitation")
+        st.caption("Saisie des données financières, de la main-d'œuvre et caractérisation automatique du verger.")
+
+        # =========================================================
+        # 12.1 SITUATION DE L'ÉPARGNE
+        # =========================================================
+        st.markdown("### 💳 1.2.1 Situation de l'épargne")
+
+        if 'df_epargne_pdc' not in st.session_state:
+            st.session_state.df_epargne_pdc = [
+                {"Épargne": "Mobile Money", "Avez-vous un compte ?": "Non", "Avez-vous de l'argent sur le compte ?": "Non", "Avez-vous bénéficié de financement ?": "Non", "Montant (FCFA)": 0},
+                {"Épargne": "Microfinance", "Avez-vous un compte ?": "Non", "Avez-vous de l'argent sur le compte ?": "Non", "Avez-vous bénéficié de financement ?": "Non", "Montant (FCFA)": 0},
+                {"Épargne": "Banque", "Avez-vous un compte ?": "Non", "Avez-vous de l'argent sur le compte ?": "Non", "Avez-vous bénéficié de financement ?": "Non", "Montant (FCFA)": 0},
+                {"Épargne": "Autres (à préciser)", "Avez-vous un compte ?": "Non", "Avez-vous de l'argent sur le compte ?": "Non", "Avez-vous bénéficié de financement ?": "Non", "Montant (FCFA)": 0},
+            ]
+
+        df_epargne_edite = st.data_editor(
+            st.session_state.df_epargne_pdc,
+            key="editor_epargne_pdc",
+            column_config={
+                "Épargne": st.column_config.TextColumn("Type d'épargne", disabled=True),
+                "Avez-vous un compte ?": st.column_config.SelectboxColumn("Compte ?", options=["Oui", "Non"], default="Non"),
+                "Avez-vous de l'argent sur le compte ?": st.column_config.SelectboxColumn("Argent disponible ?", options=["Oui", "Non"], default="Non"),
+                "Avez-vous bénéficié de financement ?": st.column_config.SelectboxColumn("Financement reçu ?", options=["Oui", "Non"], default="Non"),
+                "Montant (FCFA)": st.column_config.NumberColumn("Montant du financement", min_value=0, step=5000, format="%d FCFA")
+            },
+            use_container_width=True,
+            num_rows="dynamic"
+        )
+
+        st.markdown("---")
+
+        # =========================================================
+        # 12.2 SITUATION DE LA MAIN-D'ŒUVRE
+        # =========================================================
+        st.markdown("### 👥 1.2.2 Situation de la main-d'œuvre")
+
+        if 'df_main_oeuvre_pdc' not in st.session_state:
+            st.session_state.df_main_oeuvre_pdc = [
+                {"Membre du ménage": "Propriétaire de l'exploitation", "Nb Femmes": 0, "Nb Hommes": 0, "Nb à l'école": 0, "Instruction": "Aucun", "Temps de travail": "Plein temps"},
+                {"Membre du ménage": "Gérant ou représentant", "Nb Femmes": 0, "Nb Hommes": 0, "Nb à l'école": 0, "Instruction": "Aucun", "Temps de travail": "Plein temps"},
+                {"Membre du ménage": "Conjoints", "Nb Femmes": 0, "Nb Hommes": 0, "Nb à l'école": 0, "Instruction": "Aucun", "Temps de travail": "Occasionnel"},
+                {"Membre du ménage": "Enfants 0 - 6 ans", "Nb Femmes": 0, "Nb Hommes": 0, "Nb à l'école": 0, "Instruction": "Aucun", "Temps de travail": "Occasionnel"},
+                {"Membre du ménage": "Enfant 6 - 18 ans", "Nb Femmes": 0, "Nb Hommes": 0, "Nb à l'école": 0, "Instruction": "Primaire", "Temps de travail": "Occasionnel"},
+                {"Membre du ménage": "Enfant + 18 ans", "Nb Femmes": 0, "Nb Hommes": 0, "Nb à l'école": 0, "Instruction": "Secondaire", "Temps de travail": "Plein temps"},
+            ]
+
+        df_mo_edite = st.data_editor(
+            st.session_state.df_main_oeuvre_pdc,
+            key="editor_main_oeuvre_pdc",
+            column_config={
+                "Membre du ménage": st.column_config.TextColumn("Catégorie membre", disabled=True),
+                "Nb Femmes": st.column_config.NumberColumn("F", min_value=0, step=1, help="Nombre de femmes"),
+                "Nb Hommes": st.column_config.NumberColumn("M", min_value=0, step=1, help="Nombre d'hommes"),
+                "Nb à l'école": st.column_config.NumberColumn("Encore à l'école", min_value=0, step=1),
+                "Instruction": st.column_config.SelectboxColumn("Niveau d'instruction", options=["Aucun", "Primaire", "Secondaire", "Universitaire"], default="Aucun"),
+                "Temps de travail": st.column_config.SelectboxColumn("Temps de travail sur plantation", options=["Plein temps", "Occasionnel", "Aucun"], default="Occasionnel")
+            },
+            use_container_width=True,
+            num_rows="dynamic"
+        )
+
+        st.markdown("---")
+
+        # =========================================================
+        # 12.3 DESCRIPTION & CARACTÉRISTIQUES DE L'EXPLOITATION
+        # =========================================================
+        st.markdown("### 🏡 1.3 Description & Caractéristiques de l'Exploitation")
+
+        with st.expander("📋 **Formulaire de saisie des caractéristiques**", expanded=True):
+            col1, col2 = st.columns(2)
+
+            with col1:
+                statut_foncier = st.selectbox(
+                    "📜 Statut foncier de la parcelle",
+                    ["Propriétaire coutumier", "Titre foncier / Certificat foncier", "Métayage (Abougnon / Planteur-Partage)", "Location / Fermage"],
+                    key="statut_foncier"
+                )
+                surf_totale = st.number_input("📐 Superficie totale de l'exploitation (ha)", min_value=0.1, value=5.0, step=0.5, key="surf_totale")
+                surf_cacao_prod = st.number_input("🍫 Superficie en cacao productif (ha)", min_value=0.0, value=3.5, step=0.5, key="surf_cacao_prod")
+                surf_cacao_jeune = st.number_input("🌱 Superficie cacao immature / immaturité (ha)", min_value=0.0, value=1.0, step=0.5, key="surf_cacao_jeune")
+
+            with col2:
+                age_moyen_plan = st.select_slider(
+                    "🌳 Âge moyen du verger (années)",
+                    options=["0-3 ans (Jeune)", "4-15 ans (Plein rendement)", "16-25 ans (Vieillissant)", "+25 ans (Vétuste)"],
+                    value="4-15 ans (Plein rendement)",
+                    key="age_moyen"
+                )
+                relief_sol = st.multiselect(
+                    "⛰️ Relief & Type de sol prédominant",
+                    ["Bas-fond / Hydromorphe", "Plat / Sol Ferrallitique", "Pente légère / Sol Gravillonnaire", "Zone Rocheuse / Latéritique"],
+                    default=["Plat / Sol Ferrallitique"],
+                    key="relief_sol"
+                )
+                contraintes = st.multiselect(
+                    "⚠️ Contraintes & Risques observés sur la parcelle",
+                    ["Attaque de Swollen Shoot", "Pression Foreurs de tiges / Punaise", "Pourriture brune des cabosses", "Ombrage excessif", "Manque d'eau / Sécheresse", "Inaccessibilité en saison de pluies"],
+                    default=["Pression Foreurs de tiges / Punaise"],
+                    key="contraintes_parcelle"
+                )
+
+        # Calculs et traitement automatique
+        surf_autre = max(0.0, surf_totale - (surf_cacao_prod + surf_cacao_jeune))
+        pct_cacao = (surf_cacao_prod + surf_cacao_jeune) / surf_totale * 100 if surf_totale > 0 else 0
+
+        if "Vétuste" in age_moyen_plan:
+            diagnostic_age = "🚨 **Régénération urgente requise** (Verger en fin de cycle productif)."
+            niveau_alerte = "error"
+        elif "Vieillissant" in age_moyen_plan:
+            diagnostic_age = "⚠️ **Replantation progressive à prévoir**."
+            niveau_alerte = "warning"
+        else:
+            diagnostic_age = "✅ **Potentiel de production optimal**."
+            niveau_alerte = "success"
+
+        # Rendu visuel
+        st.markdown("#### 📊 Tableau de Bord Synthetique de l'Exploitation")
+
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        kpi1.metric("Superficie Totale", f"{surf_totale:.1f} ha")
+        kpi2.metric("Cacao Productif", f"{surf_cacao_prod:.1f} ha", f"{pct_cacao:.0f}% du total")
+        kpi3.metric("Cacao Immature", f"{surf_cacao_jeune:.1f} ha")
+        kpi4.metric("Autre / Jachère", f"{surf_autre:.1f} ha")
+
+        if niveau_alerte == "error":
+            st.error(diagnostic_age)
+        elif niveau_alerte == "warning":
+            st.warning(diagnostic_age)
+        else:
+            st.success(diagnostic_age)
+
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            st.markdown("##### 🏞️ Occupation du Sol & Foncier")
+            st.info(
+                f"• **Régime foncier :** {statut_foncier}\n\n"
+                f"• **Taux d'occupation cacaoyère :** {pct_cacao:.1f}%\n\n"
+                f"• **Relief/Sol :** {', '.join(relief_sol) if relief_sol else 'Non précisé'}"
+            )
+
+        with col_c2:
+            st.markdown("##### 🛡️ État Phytosanitaire & Risques")
+            if contraintes:
+                badges_contraintes = " ".join([f"`{c}`" for c in contraintes])
+                st.write(f"**Contraintes identifiées :**\n{badges_contraintes}")
+            else:
+                st.write("✅ Aucune contrainte majeure signalée.")
+
+        # Paragraphe de synthèse automatisé
+        st.markdown("#### 📝 Description Officielle (Générée automatiquement)")
+        texte_description = (
+            f"L'exploitation sous le statut foncier **{statut_foncier}** couvre une superficie totale mesurée de **{surf_totale} hectares**. "
+            f"La spéculation principale est la cacaoculture qui occupe **{surf_cacao_prod + surf_cacao_jeune} ha** "
+            f"(soit **{surf_cacao_prod} ha** en verger productif et **{surf_cacao_jeune} ha** en phase d'immaturité), représentant **{pct_cacao:.1f}%** de la surface globale. "
+            f"Le verger présente un profil d'âge **{age_moyen_plan}**, installé sur un relief de type **{', '.join(relief_sol) if relief_sol else 'plat'}**. "
+        )
+        if contraintes:
+            texte_description += f"Sur le plan phytosanitaire et pédo-climatique, la parcelle est exposée aux facteurs limitants suivants : **{', '.join(contraintes)}**."
+        else:
+            texte_description += "Aucune contrainte phytosanitaire critique n'a été répertoriée lors de la visite terrain."
+
+        st.text_area(
+            "Rapport synthétique pour dossier CCC",
+            value=texte_description,
+            height=120,
+            disabled=True,
+            key="txt_desc_auto"
+        )
+
+        st.markdown("---")
+
+        # =========================================================
+        # NAVIGATION DE L'ÉTAPE 12
+        # =========================================================
+        col_btn1, col_btn2 = st.columns([1, 1])
+        with col_btn1:
+            if st.button("⬅️ Retour (Étape 11 : Identification)", key="btn_retour_etape12", use_container_width=True):
+                st.session_state.etape_pdc = 11
+                st.rerun()
+
+        with col_btn2:
+            if st.button("Suivant (Vers Étape 13) ➡️", key="btn_suivant_etape12", type="primary", use_container_width=True):
+                if "reponses_pdc" not in st.session_state:
+                    st.session_state.reponses_pdc = {}
+
+                # Sauvegarde globale dans session_state
+                st.session_state.reponses_pdc["situation_epargne"] = df_epargne_edite
+                st.session_state.reponses_pdc["situation_main_oeuvre"] = df_mo_edite
+                st.session_state.reponses_pdc["description_exploitation"] = {
+                    "statut_foncier": statut_foncier,
+                    "superficie_totale": surf_totale,
+                    "superficie_cacao_productif": surf_cacao_prod,
+                    "superficie_cacao_immature": surf_cacao_jeune,
+                    "age_moyen": age_moyen_plan,
+                    "relief_sol": relief_sol,
+                    "contraintes": contraintes,
+                    "texte_synthese_auto": texte_description
+                }
+
+                st.session_state.etape_pdc = 13
+                st.rerun()
+
