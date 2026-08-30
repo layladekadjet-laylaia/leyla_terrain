@@ -10,6 +10,10 @@ from PIL import Image
 from shapely.geometry import Point, Polygon
 from fpdf import FPDF
 import datetime
+import io
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import numpy as np
 
 
 def effectuer_diagnostic_exhaustif_json(data):
