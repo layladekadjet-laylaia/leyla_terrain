@@ -781,7 +781,7 @@ def afficher():
     # ÉTAPE 8 : PLANIFICATION COMPLÈTE (PLAN 5 ANS & FICHE 7)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 8:
-        st.subheader("Étape 8/10 : Plan d'Action & Programme Annuel (Fiche 7)")
+        st.subheader("Étape 8/15 : Plan d'Action & Programme Annuel (Fiche 7)")
         st.caption("Planification globale, matrice quinquennale, calendrier d'exécution")
 
         # --- 8.1 GRILLE DE DÉCISION DYNAMIQUE ---
@@ -1003,7 +1003,7 @@ def afficher():
     # ÉTAPE 9 : DÉTERMINATION DES MOYENS ET COÛTS (FICHE 8)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 9:
-        st.subheader("Étape 9/10 : Détermination des moyens et des coûts (Fiche 8)")
+        st.subheader("Étape 9/15 : Détermination des moyens et des coûts (Fiche 8)")
         st.caption("Évaluation détaillée des coûts d'investissement, intrants et main d'œuvre par activité sur 5 ans.")
 
         activite_selectionnee = st.text_input(
@@ -1075,7 +1075,7 @@ def afficher():
     # ÉTAPE 9 : AUDIT & DIAGNOSTIC QUALITÉ ET BILAN JSON
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 9:
-        st.subheader("Étape 9/10 : Audit & Diagnostic Qualité du PDC")
+        st.subheader("Étape 9/15 : Audit & Diagnostic Qualité du PDC")
         st.caption("Évaluation de la conformité globale des données collectées")
 
         donnees_pdc = st.session_state.get("reponses_pdc", {})
@@ -1120,11 +1120,11 @@ def afficher():
                 st.session_state.etape_pdc = 10
                 st.rerun()
 
-            # ---------------------------------------------------------
-    # ÉTAPE 10 : AUDIT & DIAGNOSTIC DE CONFORMITÉ (BILAN FINAL)
+                # ---------------------------------------------------------
+    # ÉTAPE 10 : AUDIT & DIAGNOSTIC DE CONFORMITÉ (BILAN FINAL PARTIE 1)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 10:
-        st.subheader("Étape 10/10 : Bilan & Diagnostic Qualité du PDC")
+        st.subheader("Étape 10/15 : Bilan & Diagnostic Qualité du PDC")
         st.caption("Synthèse globale du plan de développement et évaluation de conformité.")
 
         donnees = st.session_state.get("reponses_pdc", {})
@@ -1168,17 +1168,68 @@ def afficher():
 
         st.markdown("---")
 
-        # --- 10.3 ACTIONS ---
+        # --- 10.3 ACTIONS / NAVIGATION ---
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
             if st.button("⬅️ Retour (Étape 9 : Moyens & Coûts)", key="btn_retour_etape10", use_container_width=True):
                 st.session_state.etape_pdc = 9
                 st.rerun()
-
+                
         with col_btn2:
-            if st.button("Suivant ➡️ ", key="btn_suivant", type="primary", use_container_width=True):
-                st.session_state.etape_pdc = 1
-                st.session_state.reponses_pdc = {}
+            if st.button("Suivant (Vers Partie 2 : Identification) ➡️", key="btn_suivant_etape10", type="primary", use_container_width=True):
+                st.session_state.etape_pdc = 11
                 st.rerun()
 
+    # ---------------------------------------------------------
+    # ÉTAPE 11 : IDENTIFICATION DU PRODUCTEUR & LOCALISATION (PARTIE 2)
+    # (PARTIE VI : STRUCTURATION DU PDC - 1.1 Identification)
+    # ---------------------------------------------------------
+    elif st.session_state.etape_pdc == 11:
+        st.subheader("Étape 11/15 : Identification du Producteur (Situation de Référence)")
+        st.info("Saisie des informations d'identification officielles selon le modèle Conseil Café-Cacao.")
 
+        col_id1, col_id2 = st.columns(2)
+        
+        with col_id1:
+            nom_prenoms = st.text_input("Nom et prénoms du producteur", key="input_nom_prenoms")
+            contact_tel = st.text_input("Contact (Tél)", key="input_contact_tel")
+            code_national = st.text_input("Code National du producteur (Le Conseil du Café-Cacao)", key="input_code_national")
+            code_groupe = st.text_input("Code groupe", key="input_code_groupe")
+            nom_entite = st.text_input("Nom Entité reconnue", key="input_nom_entite")
+            code_entite = st.text_input("Code Entité reconnue", key="input_code_entite")
+
+        with col_id2:
+            delegation_regionale = st.text_input("Délégation Régionale du Conseil du Café-Cacao", key="input_delegation")
+            departement = st.text_input("Département", key="input_departement")
+            sous_prefecture = st.text_input("Sous-Préfecture", key="input_sprefecture")
+            village = st.text_input("Village", key="input_village")
+            campement = st.text_input("Campement", key="input_campement")
+
+        st.markdown("---")
+
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("⬅️ Retour (Étape 10 : Bilan & Diagnostic)", key="btn_retour_etape11", use_container_width=True):
+                st.session_state.etape_pdc = 10
+                st.rerun()
+
+        with col2:
+            if st.button("Suivant (Vers Étape 12 : Info Ménage) ➡️", key="btn_suivant_etape11", type="primary", use_container_width=True):
+                if "reponses_pdc" not in st.session_state:
+                    st.session_state.reponses_pdc = {}
+                    
+                st.session_state.reponses_pdc.update({
+                    "nom_prenoms_producteur": nom_prenoms,
+                    "contact_tel": contact_tel,
+                    "code_national_producteur": code_national,
+                    "code_groupe": code_groupe,
+                    "nom_entite_reconnue": nom_entite,
+                    "code_entite_reconnue": code_entite,
+                    "delegation_regionale": delegation_regionale,
+                    "departement": departement,
+                    "sous_prefecture": sous_prefecture,
+                    "village": village,
+                    "campement": campement
+                })
+                st.session_state.etape_pdc = 12
+                st.rerun()
