@@ -1,4 +1,4 @@
-import streamlit as st
+pimport streamlit as st
 import sqlite3
 import os
 from datetime import datetime
@@ -74,33 +74,40 @@ with st.sidebar:
         st.session_state.identifie = False
         st.rerun()
 
-# --- 2. FICHE DE SAISIE DU PRODUCTEUR & DE LA PARCELLE ---
-st.header("📋 Fiche Producteur & Parcelle")
+# --- ÉCRAN DE DÉVERROUILLAGE TECHNICIEN ---
+st.header("🔒 Accès Sécurisé Technicien")
+st.caption("Veuillez saisir votre mot de passe pour déverrouiller l'application Leyla et accéder aux modules.")
 
-col1, col2 = st.columns(2)
+# Initialisation de l'état de déverrouillage
+if "appareil_deverrouille" not in st.session_state:
+    st.session_state.appareil_deverrouille = False
 
-with col1:
-    code_producteur = st.text_input("Code du Producteur *", key="code_prod_tab")
-    nom_producteur = st.text_input("Nom du Producteur", key="nom_prod_tab")
-    localite = st.text_input("Localité", key="localite_prod_tab")
+# Mot de passe défini (ex: "leyla2026" ou code agent)
+MOT_DE_PASSE_VALIDE = "1234" 
 
-with col2:
-    section = st.text_input("Section", key="section_prod_tab")
-    superficie = st.number_input("Superficie (Hectares)", min_value=0.1, step=0.1, value=1.0, key="sup_prod_tab")
-    age_parcelle = st.text_input("Âge de la cacaoyère (ex: 12 ans)", key="age_prod_tab")
+# Formulaire de saisie
+with st.form("form_login_technicien"):
+    code_agent = st.text_input("Code Agent / Technicien", placeholder="Ex: TAG-042", key="input_code_agent")
+    mot_de_passe = st.text_input("Mot de passe *", type="password", key="input_mdp_technicien")
+    btn_valider = st.form_submit_button("🔓 Déverrouiller la tablette", type="primary", use_container_width=True)
 
-code_valide = bool(code_producteur and code_producteur.strip())
+if btn_valider:
+    if mot_de_passe == MOT_DE_PASSE_VALIDE:
+        st.session_state.appareil_deverrouille = True
+        st.session_state.code_agent_connecte = code_agent
+        st.success(f"✅ Déverrouillage réussi. Bienvenue Agent {code_agent} !")
+        st.rerun()
+    else:
+        st.error("❌ Mot de passe incorrect. Accès refusé.")
 
-st.session_state.info_producteur = {
-    "code": code_producteur.strip() if code_valide else "",
-    "nom": nom_producteur,
-    "localite": localite,
-    "section": section,
-    "superficie": superficie,
-    "age": age_parcelle
-}
+# Blocage de l'accès si non déverrouillé
+if not st.session_state.appareil_deverrouille:
+    st.warning("⚠️ L'application est verrouillée. Entrez le mot de passe pour continuer.")
+    st.stop()  # Arrête l'exécution du reste du code tant que le MDP n'est pas bon
 
 st.markdown("---")
+# Le reste de tes modules s'exécute ici seulement si le MDP est correct
+
 
 # --- 3. SÉLECTION ET EXÉCUTION DES MODULES TERRAIN ---
 st.header("🛠️ Modules de Saisie")
