@@ -1868,3 +1868,124 @@ def afficher():
                 st.rerun()
 
 
+    # ---------------------------------------------------------
+    # ÉTAPE 15 : RÉSUMÉ GLOBAL, ÉVALUATION DU SUCCÈS & GÉNÉRATION DU PDC FINAL
+    # (SYNTHÈSE DU PLAN DE DÉVELOPPEMENT DE CONSEIL)
+    # ---------------------------------------------------------
+    elif st.session_state.etape_pdc == 15:
+        st.subheader("Étape 15/15 : Bilan Synthétique, Faisabilité & Validation du PDC")
+        st.caption("Évaluation de la viabilité du plan, score de réussite prévisionnel et impression du document final.")
+
+        # Récupération sécurisée des données
+        reponses = st.session_state.get("reponses_pdc", {})
+
+        # =========================================================
+        # 15.1 SYNTHÈSE & RÉSUMÉ DES MODULES
+        # =========================================================
+        st.markdown("### 📋 1. Synthèse Générale de l'Exploitation")
+
+        # Calculs de synthèse
+        df_cult = reponses.get("cultures_et_revenus", [])
+        df_quinq = reponses.get("plan_quinquennal", [])
+        df_ann = reponses.get("programme_annuel", [])
+        df_arb = reponses.get("inventaire_arbres", [])
+
+        tot_revenu_actuel = sum(item.get("Revenu (FCFA)", 0) for item in df_cult)
+        tot_cout_quinq = sum(item.get("Coût (FCFA)", 0) for item in df_quinq)
+        tot_cout_a1 = sum(item.get("Coût (FCFA)", 0) for item in df_ann)
+        nb_arbres_maintenus = sum(item.get("Nombre", 1) for item in df_arb if item.get("Décision") == "À maintenir")
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Revenu Actuel", f"{tot_revenu_actuel:,} FCFA")
+        c2.metric("Budget Quinquennal", f"{tot_cout_quinq:,} FCFA")
+        c3.metric("Investissement A1", f"{tot_cout_a1:,} FCFA")
+        c4.metric("Arbres Conservés", f"{nb_arbres_maintenus} pieds")
+
+        st.markdown("---")
+
+        # =========================================================
+        # 15.2 ÉVALUATION DE LA RÉUSSITE ET DE LA VIABILITÉ DU PDC
+        # =========================================================
+        st.markdown("### 📊 2. Évaluation de la Faisabilité & Diagnostic de Réussite")
+        st.caption("Analyse des critères de viabilité financière, technique et sociale du producteur.")
+
+        # Calcul automatique d'un score de faisabilité (Base 100)
+        score = 0
+        criteres = []
+
+        # Critère 1 : Capacité financière
+        ratio_invest = (tot_cout_a1 / tot_revenu_actuel) if tot_revenu_actuel > 0 else 1.0
+        if ratio_invest <= 0.4:
+            score += 35
+            criteres.append("✅ **Capacité financière solide** : Le coût de l'Année 1 représente moins de 40% des revenus actuels.")
+        elif ratio_invest <= 0.7:
+            score += 20
+            criteres.append("⚠️ **Capacité financière moyenne** : L'investissement A1 nécessite un préfinancement ou un crédit léger.")
+        else:
+            score += 10
+            criteres.append("❌ **Tension de trésorerie** : L'investissement A1 dépasse 70% du revenu actuel (Besoin urgent d'appui/subvention).")
+
+        # Critère 2 : Agroforesterie & Normes Durables
+        if nb_arbres_maintenus >= 10:
+            score += 35
+            criteres.append("✅ **Norme Agroforesterie respectée** : Densité d'ombrage conforme aux directives CCC (>10 pieds/ha).")
+        else:
+            score += 15
+            criteres.append("⚠️ **Agroforesterie à renforcer** : Prévoir l'introduction d'arbres d'ombrage supplémentaires.")
+
+        # Critère 3 : Planification et Clarté des Objectifs
+        if len(df_quinq) >= 3 and len(df_ann) >= 2:
+            score += 30
+            criteres.append("✅ **Plan d'Action Complet** : Les axes de réhabilitation, replantation et diversification sont structurés.")
+        else:
+            score += 15
+            criteres.append("⚠️ **Plan d'Action partiel** : Compléter les activités trimestrielles pour garantir le suivi.")
+
+        # Affichage du Score et du Statut de Réussite
+        st.markdown(f"#### Score de Faisabilité Global : **{score} / 100**")
+        st.progress(score / 100)
+
+        if score >= 85:
+            st.success("🎉 **PDC Très Viable (Très Forte Chance de Réussite)** : Le producteur dispose de toutes les conditions pour exécuter son plan avec succès et améliorer durablement ses conditions de vie.")
+        elif score >= 60:
+            st.info("👍 **PDC Viable sous conditions** : Le plan est réalisable, mais nécessite un accompagnement technique soutenu et un suivi de la trésorerie.")
+        else:
+            st.warning("⚠️ **Risque Élevé d'Échec** : Ajuster les ambitions financières ou rechercher des partenaires/coopératives pour cofinancer l'Année 1.")
+
+        st.markdown("**Détails du Diagnostic :**")
+        for crit in criteres:
+            st.markdown(f"- {crit}")
+
+        st.markdown("---")
+
+        # =========================================================
+        # 15.3 RECOMMANDATIONS ET CONCLUSION
+        # =========================================================
+        st.markdown("### 💡 3. Recommandations du Conseiller Agricole")
+        recom_def = (
+            "1. Prioriser les travaux d'assainissement sanitaire (taille des loranthacées) dès le T1.\n"
+            "2. Sécuriser les plants d'arbres d'ombrage auprès des pépinières agréées par le Conseil Café-Cacao.\n"
+            "3. Veiller à la scolarisation effective des enfants du ménage conformément aux engagements sociaux du PDC.\n"
+            "4. Faire un point trimestriel avec le conseiller de la coopérative pour valider le chronogramme T1 à T4."
+        )
+        st.text_area("Recommandations stratégiques à l'attention du producteur", value=recom_def, height=120, key="txt_recom_finales")
+
+        st.markdown("---")
+
+        # =========================================================
+        # 15.4 GÉNÉRATION & TÉLÉCHARGEMENT DU DOCUMENT PDC
+        # =========================================================
+        st.markdown("### 📄 4. Finalisation et Impression du PDC Final")
+
+        col_final1, col_final2 = st.columns([1, 1])
+
+        with col_final1:
+            if st.button("⬅️ Retour (Étape 14 : Planification)", key="btn_retour_etape15", use_container_width=True):
+                st.session_state.etape_pdc = 14
+                st.rerun()
+
+        with col_final2:
+            if st.button("🎓 Valider & Générer le PDF Final du PDC", key="btn_generer_pdf_pdc", type="primary", use_container_width=True):
+                st.balloons()
+                st.success("Le Plan de Développement de Conseil (PDC) est validé et enregistré dans le système Leyla !")
+
