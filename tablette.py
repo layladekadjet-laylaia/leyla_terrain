@@ -82,7 +82,7 @@ st.caption("Veuillez saisir votre mot de passe pour déverrouiller l'application
 if "appareil_deverrouille" not in st.session_state:
     st.session_state.appareil_deverrouille = False
 
-# Mot de passe défini (ex: "leyla2026" ou code agent)
+# Mot de passe défini
 MOT_DE_PASSE_VALIDE = "1234" 
 
 # Formulaire de saisie
@@ -103,43 +103,38 @@ if btn_valider:
 # Blocage de l'accès si non déverrouillé
 if not st.session_state.appareil_deverrouille:
     st.warning("⚠️ L'application est verrouillée. Entrez le mot de passe pour continuer.")
-    st.stop()  # Arrête l'exécution du reste du code tant que le MDP n'est pas bon
+    st.stop()
 
 st.markdown("---")
-# Le reste de tes modules s'exécute ici seulement si le MDP est correct
-
 
 # --- 3. SÉLECTION ET EXÉCUTION DES MODULES TERRAIN ---
 st.header("🛠️ Modules de Saisie")
 
-if not code_valide:
-    st.warning("⚠️ **Le Code du Producteur est obligatoire.** Veuillez saisir le code du producteur ci-dessus pour pouvoir accéder aux modules de saisie.")
-else:
-    choix_module = st.selectbox(
-        "Sélectionnez le module à exécuter :",
-        [
-            "-- Choisir un module --",
-            "1. Diagnostic Phytosanitaire",
-            "2. Géo-intelligence & RDUE",
-            "3. Estimation de Rendement",
-            "4. PDC",            
-        ]
-    )
+choix_module = st.selectbox(
+    "Sélectionnez le module à exécuter :",
+    [
+        "-- Choisir un module --",
+        "1. Diagnostic Phytosanitaire",
+        "2. Géo-intelligence & RDUE",
+        "3. Estimation de Rendement",
+        "4. PDC",            
+    ]
+)
 
-    st.markdown("---")
+st.markdown("---")
 
-    # --- APPEL DES MODULES ---
-    if choix_module == "1. Diagnostic Phytosanitaire":
-        diagnostique.afficher()
+# --- APPEL DES MODULES ---
+if choix_module == "1. Diagnostic Phytosanitaire":
+    diagnostique.afficher()
 
-    elif choix_module == "2. Géo-intelligence & RDUE":
-        geolocalisation.afficher()
+elif choix_module == "2. Géo-intelligence & RDUE":
+    geolocalisation.afficher()
 
-    elif choix_module == "3. Estimation de Rendement":
-        estimation_de_rendement.afficher()
+elif choix_module == "3. Estimation de Rendement":
+    estimation_de_rendement.afficher()
 
-    elif choix_module == "4. PDC":
-        pdc.afficher()
+elif choix_module == "4. PDC":
+    pdc.afficher()
 
 # --- 4. SYNCHRONISATION / ENVOI AU SERVEUR CENTRAL ---
 st.markdown("---")
