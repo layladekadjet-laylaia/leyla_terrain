@@ -365,53 +365,79 @@ def afficher():
                 st.session_state.etape_pdc = 4
                 st.rerun()
 
-        # ---------------------------------------------------------
+            # ---------------------------------------------------------
     # ÉTAPE 4 : DIAGNOSTICS PÉDOLOGIQUE & SANITAIRE
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 4:
         st.subheader("Étape 4/15 : Diagnostics Sanitaire, Toposéquence & Pédologique")
 
-        # --- 1. TABLEAU DIAGNOSTIC SANITAIRE ---
+        # Initialisation du stock tampon des données sanitaires
+        if "temp_sante" not in st.session_state:
+            st.session_state.temp_sante = st.session_state.reponses_pdc.get("sante_cacaoyere", [])
+
+        # --- 1. SAISIE ET TABLEAU DIAGNOSTIC SANITAIRE ---
         st.markdown("### 🦟 1. Santé Cacaoyère & Ravageurs")
         
-        # Initialisation du tableau d'observation sanitaire dans la session
-        if 'df_sante_cacao' not in st.session_state:
-            st.session_state.df_sante_cacao = [
-                {"Problème / Bioagresseur": "Capsides / Punaises", "Présence": "Non", "Sévérité": "1. Faible"},
-                {"Problème / Bioagresseur": "Forage des tiges (Scolytes)", "Présence": "Non", "Sévérité": "1. Faible"},
-                {"Problème / Bioagresseur": "Pourrissement brun (Phytophthora)", "Présence": "Oui", "Sévérité": "2. Modéré"},
-                {"Problème / Bioagresseur": "Swollen Shoot (CSSV)", "Présence": "Non", "Sévérité": "1. Faible"}
-            ]
+        # Formulaire d'ajout d'une pathologie/ravageur
+        with st.expander("➕ Ajouter un problème sanitaire / ravageur", expanded=True):
+            col_f1, col_f2, col_f3 = st.columns([2, 2, 2])
+            with col_f1:
+                pathologie = st.selectbox(
+                    "Problème / Ravageur",
+                    ["Pourriture brune", "Swollen Shoot", "Mirides (Capsides)", "Foreurs de tiges", "Rongeurs / Écureuils", "Autre"]
+                )
+            with col_f2:
+                organe = st.selectbox(
+                    "Organe touché",
+                    ["Cabosses", "Tronc / Branches", "Feuilles", "Racines", "Ensemble du pied"]
+                )
+            with col_f3:
+                severite = st.selectbox(
+                    "Sévérité / Attaque",
+                    ["1. Faible / Sporadique", "2. Modérée", "3. Élevée / Sévère"]
+                )
+            
+            if st.button("➕ Ajouter au tableau sanitaire", use_container_width=True):
+                nouvelle_attaque = {
+                    "Problème / Ravageur": pathologie,
+                    "Organe touché": organe,
+                    "Sévérité": severite
+                }
+                st.session_state.temp_sante.append(nouvelle_attaque)
+                st.success(f"✅ Problème '{pathologie}' ajouté avec succès !")
+                st.rerun()
 
-        # Saisie interactive du tableau par le technicien
-        sante_data = st.data_editor(
-            st.session_state.df_sante_cacao,
-            num_rows="dynamic",
-            key="editor_sante",
-            use_container_width=True
-        )
+        # Affichage du Tableau Sanitaire
+        sante_data = st.session_state.temp_sante
 
-        # === CALCULS ET RÉSULTATS VISUELS EN BAS DU TABLEAU SANITAIRE ===
         if sante_data:
+            st.markdown("#### 📋 Tableau des problèmes sanitaires enregistrés")
+            
+            # Formattage et affichage du tableau interactif
+            df_sante = pd.DataFrame(sante_data)
+            st.dataframe(df_sante, use_container_width=True)
+
+            # Bouton pour réinitialiser le tableau en cas d'erreur
+            if st.button("🗑️ Effacer le tableau sanitaire"):
+                st.session_state.temp_sante = []
+                st.rerun()
+
+            # Indicateurs de synthèse
             total_pathologies = len(sante_data)
-            # Filtrage des attaques graves basées sur les critères 13 du PDC
-            attaques_graves = [
-                s for s in sante_data 
-                if s.get("Présence") == "Oui" and ("3." in str(s.get("Sévérité", "")) or "Élevé" in str(s.get("Sévérité", "")))
-            ]
+            attaques_graves = [s for s in sante_data if "3." in str(s.get("Sévérité", "")) or "Élevé" in str(s.get("Sévérité", ""))]
             nb_graves = len(attaques_graves)
 
             col_s1, col_s2, col_s3 = st.columns(3)
-            col_s1.metric("Pathologies suivies", f"{total_pathologies}")
+            col_s1.metric("Problèmes identifiés", f"{total_pathologies}")
             col_s2.metric("Attaques Sévères (Niv. 3)", f"{nb_graves}", delta_color="inverse")
             
             if nb_graves > 0:
                 col_s3.error("⚠️ Pression Sanitaire ÉLEVÉE")
-                st.warning(f"🔴 **Alerte Terrain :** {nb_graves} problème(s) critique(s) sévère(s) détecté(s). Intervention phytosanitaire ou arrachage sanitaire requis.")
+                st.warning(f"🔴 **Alerte Terrain :** {nb_graves} problème(s) critique(s) nécessite(nt) un traitement ou un arrachage prioritaire.")
             else:
                 col_s3.success("✅ Pression Sanitaire MODÉRÉE")
         else:
-            st.info("ℹ️ Aucun problème sanitaire renseigné pour le moment.")
+            st.info("ℹ️ Aucun problème sanitaire renseigné pour le moment. Utilisez le formulaire ci-dessus pour ajouter des données.")
 
         st.markdown("---")
 
@@ -423,7 +449,6 @@ def afficher():
             key="topo_input"
         )
 
-        # Diagnostic visuel bas de tableau
         if toposequence in ["Bas de pente", "Bas-fond"]:
             st.warning("⚠️ **Risque d'hydromorphie :** Surveillance accrue du pourrissement brun des cabosses requise.")
         elif toposequence in ["Sommet", "Haut de pente"]:
@@ -461,12 +486,13 @@ def afficher():
         with col_nav2:
             if st.button("Suivant ➡️", use_container_width=True, type="primary"):
                 st.session_state.reponses_pdc.update({
-                    "sante_cacaoyere": sante_data,
+                    "sante_cacaoyere": st.session_state.temp_sante,
                     "toposequence": toposequence,
                     "caracteristiques_sol": sols_data
                 })
                 st.session_state.etape_pdc = 5
                 st.rerun()
+
 
 
 
