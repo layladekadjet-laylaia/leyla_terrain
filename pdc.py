@@ -2316,7 +2316,7 @@ def afficher():
         nom_prod_input = col_p1.text_input("Nom & Prénoms du Producteur", value=nom_producteur, key="input_nom_prod_pdc")
         code_prod_input = col_p2.text_input("Code CCC / Identifiant", value=code_producteur, key="input_code_prod_pdc")
 
-        if st.button("💾 Enregistrer le PDC dans la tablette", type="primary", key="btn_sauvegarder_pdc_local", use_container_width=True):
+                if st.button("💾 Enregistrer le PDC dans la tablette", type="primary", key="btn_sauvegarder_pdc_local", use_container_width=True):
             import json
             import time
 
@@ -2333,17 +2333,22 @@ def afficher():
                 "statut_synchro": "En attente de synchro"
             }
 
-            # Enregistrement dans la base SQLite locale
-            sauvegarder_en_local_sqlite(donnees_dossier_pdc)
+            try:
+                # Enregistrement dans la base SQLite locale
+                sauvegarder_en_local_sqlite(donnees_dossier_pdc)
 
-            st.success(f"💾 Dossier PDC de **{nom_prod_input}** ({code_prod_input}) sauvegardé avec succès sur la tablette !")
-            st.balloons()
+                st.success(f"💾 Dossier PDC de **{nom_prod_input}** ({code_prod_input}) sauvegardé avec succès sur la tablette !")
+                st.balloons()
 
-            # Réinitialisation du module PDC
-            time.sleep(2)
-            st.session_state.etape_pdc = 1
-            st.session_state.reponses_pdc = {}
-            if "croquis_genere" in st.session_state:
-                del st.session_state["croquis_genere"]
-            
-            st.rerun()
+                # Réinitialisation du module PDC
+                time.sleep(2)
+                st.session_state.etape_pdc = 1
+                st.session_state.reponses_pdc = {}
+                if "croquis_genere" in st.session_state:
+                    del st.session_state["croquis_genere"]
+                
+                st.rerun()
+
+            except Exception as e:
+                st.error(f"❌ Erreur lors de l'enregistrement en local sur la tablette : {e}")
+
