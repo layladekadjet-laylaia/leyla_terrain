@@ -312,27 +312,65 @@ def afficher():
     st.progress(st.session_state.etape_pdc / total_etapes)
 
 
-    # ---------------------------------------------------------
+        # ---------------------------------------------------------
     # ÉTAPE 1 : INFORMATIONS GÉNÉRALES
     # ---------------------------------------------------------
     if st.session_state.etape_pdc == 1:
-        st.subheader("Étape 1/15 : Identification du Producteur")
-        
-        zone = st.selectbox("Zone", ["A", "B", "C", "D", "E"], key="zone_input")
-        ville = st.selectbox("Ville", ["Lakota", "Sassandra", "Fresco", "Gbagbam", "Gueyo"])
-        nom_producteur = st.text_input("Nom et Prénoms du Producteur")
-        contact = st.text_input("Contact")
-        cooperative = st.text_input("Coopérative")
+        st.subheader("Étape 1/15 : Localisation & Identification de la Section")
+
+        # Dictionnaire des régions cacaoyères de Côte d'Ivoire et leurs villes principales
+        REGIONS_CACAO = {
+            "Gôh (Gagnoa)": ["Gagnoa", "Oumé", "Diégonéfla"],
+            "Lôh-Djiboua (Divo)": ["Divo", "Lakota", "Guitry"],
+            "Nawa (Soubré)": ["Soubré", "Méagui", "Buyo", "Gueyo"],
+            "San-Pédro": ["San-Pédro", "Sassandra", "Fresco", "Gbagbam", "Grabo"],
+            "Indénié-Djuablin (Abengourou)": ["Abengourou", "Agnibilékrou", "Bettie"],
+            "Sud-Comoé (Aboisso)": ["Aboisso", "Adiaké", "Grand-Bassam"],
+            "Haut-Sassandra (Daloa)": ["Daloa", "Issia", "Vavoua", "Zoukougbeu"],
+            "Cavally (Guiglo)": ["Guiglo", "Blolequin", "Taï", "Toulepleu"],
+            "Guémon (Duékoué)": ["Duékoué", "Bangolo", "Kouibly"],
+            "Mé (Adzopé)": ["Adzopé", "Akoupé", "Yakassé-Attobrou"],
+            "Agnéby-Tiassa (Agboville)": ["Agboville", "Sikensi", "Tiassalé", "Taabo"],
+            "Iffou (Daoukro)": ["Daoukro", "M'Bahiakro", "Prikro"],
+            "N'Zi (Dimbokro)": ["Dimbokro", "Bocanda", "Kouassi-Kouassikro"]
+        }
+
+        # Sélection de la Région
+        region = st.selectbox(
+            "Région cacaoyère *",
+            options=list(REGIONS_CACAO.keys()),
+            key="region_input"
+        )
+
+        # Sélection dynamique de la Ville en fonction de la Région
+        villes_disponibles = REGIONS_CACAO.get(region, [])
+        ville = st.selectbox(
+            "Ville / Localité *",
+            options=villes_disponibles,
+            key="ville_input"
+        )
+
+        # Remplacement de Coopérative par Section
+        section = st.text_input(
+            "Section *",
+            placeholder="Ex: Section Divo-Sud, Section Gbagbam 1...",
+            key="section_input"
+        )
 
         col1, col2 = st.columns([1, 1])
         with col2:
-            if st.button("Suivant ➡️", use_container_width=True):
-                st.session_state.reponses_pdc.update({
-                    "zone": zone, "ville": ville, "nom": nom_producteur,
-                    "contact": contact, "cooperative": cooperative
-                })
-                st.session_state.etape_pdc = 2
-                st.rerun()
+            if st.button("Suivant ➡️", use_container_width=True, type="primary"):
+                if section.strip():
+                    st.session_state.reponses_pdc.update({
+                        "region": region,
+                        "ville": ville,
+                        "section": section.strip()
+                    })
+                    st.session_state.etape_pdc = 2
+                    st.rerun()
+                else:
+                    st.error("⚠️ Veuillez renseigner le nom de la Section avant de continuer.")
+
 
     # ---------------------------------------------------------
     # ÉTAPE 2 : CARACTÉRISTIQUES DE LA PARCELLE
