@@ -365,133 +365,186 @@ def afficher():
                 st.session_state.etape_pdc = 4
                 st.rerun()
 
-            # ---------------------------------------------------------
-    # ÉTAPE 4 : DIAGNOSTICS PÉDOLOGIQUE & SANITAIRE
+                # ---------------------------------------------------------
+    # ÉTAPE 4 : DIAGNOSTIC DES CULTURES, ÉQUIPEMENTS & ARBRES D'OMBRAGE
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 4:
-        st.subheader("Étape 4/15 : Diagnostics Sanitaire, Toposéquence & Pédologique")
+        st.subheader("Étape 4/15 : Données sur les Cultures, Équipements & Agroforesterie")
 
-        # Initialisation du stock tampon des données sanitaires
-        if "temp_sante" not in st.session_state:
-            st.session_state.temp_sante = st.session_state.reponses_pdc.get("sante_cacaoyere", [])
+        # Initialisation des structures de données par défaut si non définies
+        if "temp_tableau_cultures" not in st.session_state:
+            st.session_state.temp_tableau_cultures = st.session_state.reponses_pdc.get(
+                "tableau_cultures", 
+                [
+                    {"Culture": "Cacao - Parcelle 1", "Superficie (ha)": 1.5, "Année création": 2012, "Précédent cultural": "Forêt", "Origine matériel": "CNRA / Certifié", "En production": "OUI"},
+                    {"Culture": "Cacao - Parcelle 2", "Superficie (ha)": 1.0, "Année création": 2018, "Précédent cultural": "Friche", "Origine matériel": "Tout-venant", "En production": "OUI"},
+                    {"Culture": "Hévéa", "Superficie (ha)": 0.0, "Année création": 2020, "Précédent cultural": "Savane", "Origine matériel": "Privé", "En production": "NON"},
+                    {"Culture": "Palmier à huile", "Superficie (ha)": 0.0, "Année création": 2021, "Précédent cultural": "Friche", "Origine matériel": "Privé", "En production": "NON"},
+                    {"Culture": "Vivrier (Manioc/Maïs)", "Superficie (ha)": 0.5, "Année création": 2023, "Précédent cultural": "Friche", "Origine matériel": "Local", "En production": "OUI"},
+                ]
+            )
 
-        # --- 1. SAISIE ET TABLEAU DIAGNOSTIC SANITAIRE ---
-        st.markdown("### 🦟 1. Santé Cacaoyère & Ravageurs")
-        
-        # Formulaire d'ajout d'une pathologie/ravageur
-        with st.expander("➕ Ajouter un problème sanitaire / ravageur", expanded=True):
-            col_f1, col_f2, col_f3 = st.columns([2, 2, 2])
-            with col_f1:
-                pathologie = st.selectbox(
-                    "Problème / Ravageur",
-                    ["Pourriture brune", "Swollen Shoot", "Mirides (Capsides)", "Foreurs de tiges", "Rongeurs / Écureuils", "Autre"]
-                )
-            with col_f2:
-                organe = st.selectbox(
-                    "Organe touché",
-                    ["Cabosses", "Tronc / Branches", "Feuilles", "Racines", "Ensemble du pied"]
-                )
-            with col_f3:
-                severite = st.selectbox(
-                    "Sévérité / Attaque",
-                    ["1. Faible / Sporadique", "2. Modérée", "3. Élevée / Sévère"]
-                )
-            
-            if st.button("➕ Ajouter au tableau sanitaire", use_container_width=True):
-                nouvelle_attaque = {
-                    "Problème / Ravageur": pathologie,
-                    "Organe touché": organe,
-                    "Sévérité": severite
-                }
-                st.session_state.temp_sante.append(nouvelle_attaque)
-                st.success(f"✅ Problème '{pathologie}' ajouté avec succès !")
-                st.rerun()
+        if "temp_tableau_equipements" not in st.session_state:
+            st.session_state.temp_tableau_equipements = st.session_state.reponses_pdc.get(
+                "tableau_equipements",
+                [
+                    {"Type": "Matériel de traitement", "Désignation": "Pulvérisateur", "Quantité": 1, "Année d'acquisition": 2021, "Coût (FCFA)": 35000, "État": "Bon"},
+                    {"Type": "Matériel de traitement", "Désignation": "Atomiseur", "Quantité": 0, "Année d'acquisition": 2020, "Coût (FCFA)": 0, "État": "Mauvais"},
+                    {"Type": "Matériel de transport", "Désignation": "Brouette / Charette", "Quantité": 2, "Année d'acquisition": 2022, "Coût (FCFA)": 45000, "État": "Acceptable"},
+                    {"Type": "Moyen de déplacement", "Désignation": "Moto terrain", "Quantité": 1, "Année d'acquisition": 2019, "Coût (FCFA)": 450000, "État": "Acceptable"}
+                ]
+            )
 
-        # Affichage du Tableau Sanitaire
-        sante_data = st.session_state.temp_sante
+        if "temp_tableau_arbres" not in st.session_state:
+            st.session_state.temp_tableau_arbres = st.session_state.reponses_pdc.get(
+                "tableau_arbres",
+                [
+                    {"Espèce": "Akpi", "Nombre": 20, "Latitude": 6.020668, "Longitude": -4.357132, "Statut": "Préservé", "Avantages Cacaoyère": "1. Ombrage / 2. Fertilité sol", "Usage": "Alimentaire / Bois", "Décision": "A maintenir", "Remarque": ""},
+                    {"Espèce": "Fraqué", "Nombre": 7, "Latitude": 6.020664, "Longitude": -4.356949, "Statut": "Préservé", "Avantages Cacaoyère": "1. Ombrage / 3. Protection érosion", "Usage": "Bois d'œuvre", "Décision": "A éliminer", "Remarque": "Situé à 1,5m d'un autre tree"},
+                    {"Espèce": "Fromager", "Nombre": 2, "Latitude": 6.020614, "Longitude": -4.356902, "Statut": "Préservé", "Avantages Cacaoyère": "1. Ombrage", "Usage": "Bois d'œuvre", "Décision": "A maintenir", "Remarque": ""}
+                ]
+            )
 
-        if sante_data:
-            st.markdown("#### 📋 Tableau des problèmes sanitaires enregistrés")
-            
-            # Formattage et affichage du tableau interactif
-            df_sante = pd.DataFrame(sante_data)
-            st.dataframe(df_sante, use_container_width=True)
+        # =========================================================
+        # 1. TABLEAU : DONNÉES SUR LES CULTURES
+        # =========================================================
+        st.markdown("### 🌾 1. Données sur les cultures et parcelles")
+        st.caption("Renseignez l'ensemble des parcelles cacaoyères et des autres spéculations sur l'exploitation.")
 
-            # Bouton pour réinitialiser le tableau en cas d'erreur
-            if st.button("🗑️ Effacer le tableau sanitaire"):
-                st.session_state.temp_sante = []
-                st.rerun()
+        df_cult_in = pd.DataFrame(st.session_state.temp_tableau_cultures)
+        df_cult_out = st.data_editor(
+            df_cult_in,
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "Culture": st.column_config.SelectboxColumn("Culture / Parcelle", options=["Cacao - Parcelle 1", "Cacao - Parcelle 2", "Cacao - Parcelle 3", "Hévéa", "Palmier à huile", "Vivrier (Manioc/Maïs)", "Banane / Plantain", "Autre"], required=True),
+                "Superficie (ha)": st.column_config.NumberColumn("Superficie (ha)", min_value=0.0, step=0.1, format="%.2f ha"),
+                "Année création": st.column_config.NumberColumn("Année de création", min_value=1950, max_value=2026, step=1),
+                "Précédent cultural": st.column_config.SelectboxColumn("Précédent cultural", options=["Forêt", "Friche", "Savane", "Replantation Cacao", "Culture vivrière"]),
+                "Origine matériel": st.column_config.SelectboxColumn("Origine matériel végétal", options=["CNRA / Certifié", "Tout-venant", "Champ voisin", "Privé"]),
+                "En production": st.column_config.SelectboxColumn("En production ?", options=["OUI", "NON"])
+            },
+            key="editor_cultures"
+        )
 
-            # Indicateurs de synthèse
-            total_pathologies = len(sante_data)
-            attaques_graves = [s for s in sante_data if "3." in str(s.get("Sévérité", "")) or "Élevé" in str(s.get("Sévérité", ""))]
-            nb_graves = len(attaques_graves)
+        # Calculs automatiques pour les cultures
+        superficie_totale_cacao = df_cult_out[df_cult_out["Culture"].str.contains("Cacao", case=False, na=False)]["Superficie (ha)"].sum()
+        superficie_autres = df_cult_out[~df_cult_out["Culture"].str.contains("Cacao", case=False, na=False)]["Superficie (ha)"].sum()
 
-            col_s1, col_s2, col_s3 = st.columns(3)
-            col_s1.metric("Problèmes identifiés", f"{total_pathologies}")
-            col_s2.metric("Attaques Sévères (Niv. 3)", f"{nb_graves}", delta_color="inverse")
-            
-            if nb_graves > 0:
-                col_s3.error("⚠️ Pression Sanitaire ÉLEVÉE")
-                st.warning(f"🔴 **Alerte Terrain :** {nb_graves} problème(s) critique(s) nécessite(nt) un traitement ou un arrachage prioritaire.")
-            else:
-                col_s3.success("✅ Pression Sanitaire MODÉRÉE")
-        else:
-            st.info("ℹ️ Aucun problème sanitaire renseigné pour le moment. Utilisez le formulaire ci-dessus pour ajouter des données.")
+        col_c1, col_c2, col_c3 = st.columns(3)
+        col_c1.metric("Superficie Cacao Totale", f"{superficie_totale_cacao:.2f} ha")
+        col_c2.metric("Autres Spéculations", f"{superficie_autres:.2f} ha")
+        col_c3.metric("Diversification Spéculative", "Élevée" if superficie_autres > 0 else "Nulle")
 
         st.markdown("---")
 
-        # --- 2. RELIEF & TOPOSÉQUENCE ---
-        st.markdown("### 📐 2. Relief & Positionnement Topographique")
-        toposequence = st.selectbox(
-            "Position sur la pente (Toposéquence) *",
-            ["Sommet", "Haut de pente", "Mi-pente", "Bas de pente", "Bas-fond"],
-            key="topo_input"
+        # =========================================================
+        # 2. TABLEAU : MATÉRIEL AGRICOLE ET ÉQUIPEMENTS
+        # =========================================================
+        st.markdown("### 🛠️ 2. Matériel agricole et équipements")
+        st.caption("Inventaire des équipements de pulvérisation, transport et déplacement.")
+
+        df_eq_in = pd.DataFrame(st.session_state.temp_tableau_equipements)
+        df_eq_out = st.data_editor(
+            df_eq_in,
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "Type": st.column_config.SelectboxColumn("Type", options=["Matériel de traitement", "Matériel de transport", "Moyen de déplacement", "Petit outillage"]),
+                "Désignation": st.column_config.TextColumn("Désignation"),
+                "Quantité": st.column_config.NumberColumn("Quantité", min_value=0, step=1),
+                "Année d'acquisition": st.column_config.NumberColumn("Année d'acquisition", min_value=1980, max_value=2026, step=1),
+                "Coût (FCFA)": st.column_config.NumberColumn("Coût d'achat (FCFA)", min_value=0, step=5000, format="%d FCFA"),
+                "État": st.column_config.SelectboxColumn("État fonctionnel", options=["Bon", "Acceptable", "Mauvais"])
+            },
+            key="editor_equipements"
         )
 
-        if toposequence in ["Bas de pente", "Bas-fond"]:
-            st.warning("⚠️ **Risque d'hydromorphie :** Surveillance accrue du pourrissement brun des cabosses requise.")
-        elif toposequence in ["Sommet", "Haut de pente"]:
-            st.info("💡 **Profil Drainé :** Sensibilité accrue au stress hydrique en saison sèche.")
+        # Calculs équipements
+        valeur_equipements = (df_eq_out["Quantité"] * df_eq_out["Coût (FCFA)"]).sum()
+        nb_pulverisateurs = df_eq_out[(df_eq_out["Désignation"].str.contains("Pulvérisateur|Atomiseur", case=False, na=False)) & (df_eq_out["État"] != "Mauvais")]["Quantité"].sum()
+
+        col_eq1, col_eq2 = st.columns(2)
+        col_eq1.metric("Valeur estimée du parc (FCFA)", f"{valeur_equipements:,.0f} FCFA")
+        col_eq2.metric("Matériel de traitement opérationnel", f"{nb_pulverisateurs} unité(s)", delta="Insuffisant" if nb_pulverisateurs == 0 else "Opérationnel")
 
         st.markdown("---")
 
-        # --- 3. CARACTÉRISTIQUES DU SOL ---
-        st.markdown("### 🧪 3. Profil & Propriétés du Sol")
-        
-        sols_data = st.multiselect(
-            "Observation des contraintes/propriétés du sol :",
-            ["Sol profond (>80 cm)", "Sol caillouteux / Gravillonnaire", "Sol sableux (filtrant)", "Sol argileux (lourd)", "Présence de cuirasse", "Sol riche en matière organique"],
-            key="sols_input"
+        # =========================================================
+        # 3. TABLEAU : DIAGNOSTIC DES ARBRES D'OMBRAGE SUR L'EXPLOITATION
+        # =========================================================
+        st.markdown("### 🌳 3. Diagnostic des arbres d'ombrage et associés")
+        st.caption("Relevé de la composante agroforestière (Nombre, localisation, avantages et décision d'aménagement).")
+
+        df_arb_in = pd.DataFrame(st.session_state.temp_tableau_arbres)
+        df_arb_out = st.data_editor(
+            df_arb_in,
+            num_rows="dynamic",
+            use_container_width=True,
+            column_config={
+                "Espèce": st.column_config.TextColumn("Espèce / Nom d'arbre"),
+                "Nombre": st.column_config.NumberColumn("Nombre de pieds", min_value=1, step=1),
+                "Latitude": st.column_config.NumberColumn("Latitude GPS", format="%.6f"),
+                "Longitude": st.column_config.NumberColumn("Longitude GPS", format="%.6f"),
+                "Statut": st.column_config.SelectboxColumn("Statut", options=["Préservé", "Introduit / Planté", "Spontané"]),
+                "Avantages Cacaoyère": st.column_config.SelectboxColumn("Avantages pour la cacaoyère", options=[
+                    "1. Ombrage", "2. Fertilité du sol", "3. Protection contre l'érosion", "4. Maintien de l'humidité", "5. Lutte contre l'enherbement"
+                ]),
+                "Usage": st.column_config.SelectboxColumn("Usage principal", options=[
+                    "Alimentaire", "Médicinale", "Protection des cacaoyers", "Bois d'œuvre", "Bois de chauffage"
+                ]),
+                "Décision": st.column_config.SelectboxColumn("Action recommandée", options=["A maintenir", "A éliminer", "A élaguer"]),
+                "Remarque": st.column_config.TextColumn("Remarques / Distances")
+            },
+            key="editor_arbres"
         )
 
-        nb_params_sol = len(sols_data)
-        
-        col_g1, col_g2 = st.columns(2)
-        col_g1.metric("Paramètres du Sol Renseignés", f"{nb_params_sol} / 3 requis")
+        # Calculs agroforestiers
+        total_arbres = df_arb_out["Nombre"].sum()
+        arbres_par_ha = (total_arbres / superficie_totale_cacao) if superficie_totale_cacao > 0 else 0
+        arbres_a_maintenir = df_arb_out[df_arb_out["Décision"] == "A maintenir"]["Nombre"].sum()
 
-        if nb_params_sol >= 3:
-            col_g2.success("✅ Profil Pédologique Conforme")
+        col_a1, col_a2, col_a3 = st.columns(3)
+        col_a1.metric("Nombre total d'arbres", f"{total_arbres} pieds")
+        col_a2.metric("Densité d'ombrage moyenne", f"{arbres_par_ha:.1f} arbres/ha")
+        if 15 <= arbres_par_ha <= 40:
+            col_a3.success("✅ Densité agroforestière conforme (15-40 arbres/ha)")
+        elif arbres_par_ha < 15:
+            col_a3.warning("⚠️ Ombrage déficitaire (< 15 arbres/ha)")
         else:
-            col_g2.warning("⚠️ Profil Incomplet (< 3 paramètres)")
+            col_a3.error("⚠️ Ombrage excessif (> 40 arbres/ha)")
 
-        # --- NAVIGATION ---
+        # =========================================================
+        # CODE DE CALCUL DE SCORE ET POINTS D'ÉVALUATION (AVERTISSEMENTS)
+        # =========================================================
+        # Mettre à jour les session_states pour la persistance
+        st.session_state.temp_tableau_cultures = df_cult_out.to_dict("records")
+        st.session_state.temp_tableau_equipements = df_eq_out.to_dict("records")
+        st.session_state.temp_tableau_arbres = df_arb_out.to_dict("records")
+
+        # --- NAVIGATION ET SAUVEGARDE DE L'ÉTAPE 4 ---
         st.markdown("---")
         col_nav1, col_nav2 = st.columns([1, 1])
         with col_nav1:
             if st.button("⬅️ Précédent", use_container_width=True):
                 st.session_state.etape_pdc = 3
                 st.rerun()
-                
+
         with col_nav2:
             if st.button("Suivant ➡️", use_container_width=True, type="primary"):
                 st.session_state.reponses_pdc.update({
-                    "sante_cacaoyere": st.session_state.temp_sante,
-                    "toposequence": toposequence,
-                    "caracteristiques_sol": sols_data
+                    "tableau_cultures": st.session_state.temp_tableau_cultures,
+                    "superficie_totale_cacao": superficie_totale_cacao,
+                    "superficie_autres_cultures": superficie_autres,
+                    "tableau_equipements": st.session_state.temp_tableau_equipements,
+                    "valeur_total_equipements": valeur_equipements,
+                    "tableau_arbres": st.session_state.temp_tableau_arbres,
+                    "total_arbres_ombrage": total_arbres,
+                    "densite_arbres_ha": arbres_par_ha
                 })
                 st.session_state.etape_pdc = 5
                 st.rerun()
+
 
 
 
