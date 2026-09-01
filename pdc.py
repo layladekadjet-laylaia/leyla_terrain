@@ -1443,11 +1443,14 @@ def afficher():
 
         donnees = st.session_state.get("reponses_pdc", {})
 
-        # --- 10.1 DIAGNOSTIC & AUDIT DE CONFORMITÉ ---
+                # --- 10.1 DIAGNOSTIC & AUDIT DE CONFORMITÉ ---
         st.markdown("### 🔍 Diagnostic Qualité du PDC")
-        score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees)
+        
+        # REMPLACER effectuer_diagnostic_exhaustif_json PAR evaluer_pdc
+        score_global, pts_forts, avert, alertes = evaluer_pdc(donnees)
 
         st.metric(label="Score de Conformité Global (Étapes 1 à 9)", value=f"{score_global} / 100")
+
 
         if alertes:
             st.error("🚨 **Alertes Critiques / Non-Conformités Majeures :**")
