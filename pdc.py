@@ -251,6 +251,73 @@ def evaluer_pdc(data):
 
 
 
+
+import sqlite3
+import json
+import os
+
+def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_local.db"):
+    """
+    Sauvegarde le dossier PDC dans une base de données SQLite locale sur la tablette.
+    Crée automatiquement la table si elle n'existe pas encore.
+    """
+    try:
+        # Connexion à la base SQLite locale (le fichier sera créé s'il n'existe pas)
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # Création de la table si elle n'existe pas
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS pdc_locaux (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                code_ccc TEXT,
+                nom_producteur TEXT,
+                zone TEXT,
+                score_faisabilite REAL,
+                donnees_pdc TEXT,
+                croquis_base64 TEXT,
+                facteurs_succes TEXT,
+                statut_synchro TEXT DEFAULT 'En attente de synchro',
+                date_creation TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        # Conversion des données dictionnaire/JSON en texte pour le stockage SQLite
+        donnees_pdc_json = json.dumps(donnees_dossier.get("donnees_pdc", {}), ensure_ascii=False)
+
+        # Insertion de l'enregistrement
+        cursor.execute("""
+            INSERT INTO pdc_locaux (
+                code_ccc, 
+                nom_producteur, 
+                zone, 
+                score_faisabilite, 
+                donnees_pdc, 
+                croquis_base64, 
+                facteurs_succes, 
+                statut_synchro
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            donnees_dossier.get("code_ccc", ""),
+            donnees_dossier.get("nom_producteur", ""),
+            donnees_dossier.get("zone", ""),
+            donnees_dossier.get("score_faisabilite", 0),
+            donnees_pdc_json,
+            donnees_dossier.get("croquis_base64", ""),
+            donnees_dossier.get("facteurs_succes", ""),
+            donnees_dossier.get("statut_synchro", "En attente de synchro")
+        ))
+
+        conn.commit()
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"Erreur lors de la sauvegarde SQLite locale : {e}")
+        raise e
+
+
+
+
 def afficher():
     st.title("📋 PDC - Diagnostic & Plan de Développement")
 
