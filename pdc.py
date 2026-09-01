@@ -136,36 +136,92 @@ def effectuer_diagnostic_exhaustif_json(data):
 
 
     # =========================================================
-    # 4. DIAGNOSTICS PÉDOLOGIQUE & SANITAIRE (3 critères)
-    # =========================================================
-    # Critère 13 : Suivi de la santé cacaoyère
-    sante = data.get("sante_cacaoyere", [])
-    if sante:
-        attaques_graves = [s for s in sante if "3." in str(s.get("Sévérité", "")) or "Élevé" in str(s.get("Sévérité", ""))]
-        if attaques_graves:
-            avertissements.append(f"Pression sanitaire élevée détectée ({len(attaques_graves)} problème(s) sévère(s)).")
-            score -= 5
+# ÉTAPE 4 : DIAGNOSTICS PÉDOLOGIQUE & SANITAIRE
+# =========================================================
+if st.session_state.etape_pdc == 4:
+    st.subheader("Étape 4/15 : Diagnostics Sanitaire, Toposéquence & Pédologique")
+
+    # --- 1. TABLEAU DIAGNOSTIC SANITAIRE ---
+    st.markdown("### 🦟 1. Santé Cacaoyère & Ravageurs")
+    
+    # (Saisie du tableau sanitaire via st.data_editor ou formulaires...)
+    # Exemple de récupération des données saisies :
+    sante_data = st.session_state.get("temp_sante", [])
+
+    # === CALCULS ET RÉSULTATS VISUELS EN BAS DU TABLEAU SANITAIRE ===
+    if sante_data:
+        total_pathologies = len(sante_data)
+        attaques_graves = [s for s in sante_data if "3." in str(s.get("Sévérité", "")) or "Élevé" in str(s.get("Sévérité", ""))]
+        nb_graves = len(attaques_graves)
+
+        col_s1, col_s2, col_s3 = st.columns(3)
+        col_s1.metric("Problèmes identifiés", f"{total_pathologies}")
+        col_s2.metric("Attaques Sévères (Niv. 3)", f"{nb_graves}", delta_color="inverse")
+        
+        if nb_graves > 0:
+            col_s3.error("⚠️ Pression Sanitaire ÉLEVÉE")
+            st.warning(f"🔴 **Alerte Terrain :** {nb_graves} problème(s) critique(s) nécessite(nt) un traitement ou arrachage prioritaire.")
         else:
-            points_forts.append("Suivi sanitaire de la cacaoyère enregistré (Pression modérée).")
+            col_s3.success("✅ Pression Sanitaire MODÉRÉE")
     else:
-        avertissements.append("Évaluation sanitaire de la plantation absente.")
-        score -= 5
+        st.info("ℹ️ Aucun problème sanitaire renseigné pour le moment.")
 
-    # Critère 14 : Relief & Toposéquence
-    toposequence = data.get("toposequence", "")
-    if toposequence:
-        points_forts.append(f"Toposéquence identifiée : {toposequence}.")
-    else:
-        avertissements.append("Toposéquence non précisée.")
-        score -= 2
+    st.markdown("---")
 
-    # Critère 15 : Caractéristiques du sol
-    sols = data.get("caracteristiques_sol", [])
-    if len(sols) >= 3:
-        points_forts.append(f"Profil Pédologique analysé ({len(sols)} paramètres renseignés).")
+    # --- 2. RELIEF & TOPOSÉQUENCE ---
+    st.markdown("### 📐 2. Relief & Positionnement Topographique")
+    toposequence = st.selectbox(
+        "Position sur la pente (Toposéquence) *",
+        ["Sommet", "Haut de pente", "Mi-pente", "Bas de pente", "Bas-fond"],
+        key="topo_input"
+    )
+
+    # === RÉSULTAT DU DIAGNOSTIC TOPOGRAPHIQUE EN BAS ===
+    if toposequence in ["Bas de pente", "Bas-fond"]:
+        st.warning("⚠️ **Risque d'hydromorphie :** Surveillance accrue du pourrissement brun des cabosses requise.")
+    elif toposequence in ["Sommet", "Haut de pente"]:
+        st.info("💡 **Profil Drainé :** Sensibilité accrue au stress hydrique en saison sèche.")
+
+    st.markdown("---")
+
+    # --- 3. CARACTÉRISTIQUES DU SOL ---
+    st.markdown("### 🧪 3. Profil & Propriétés du Sol")
+    
+    sols_data = st.multiselect(
+        "Observation des contraintes/propriétés du sol :",
+        ["Sol profond (>80 cm)", "Sol caillouteux / Gravillonnaire", "Sol sableux (filtrant)", "Sol argileux (lourd)", "Presence de cuirasse", "Sol riche en matière organique"],
+        key="sols_input"
+    )
+
+    # === CALCULS ET RÉSULTATS VISUELS EN BAS DU TABLEAU SOL ===
+    nb_params_sol = len(sols_data)
+    
+    col_g1, col_g2 = st.columns(2)
+    col_g1.metric("Paramètres du Sol Renseignés", f"{nb_params_sol} / 3 requis")
+
+    if nb_params_sol >= 3:
+        col_g2.success("✅ Profil Pédologique Conforme")
     else:
-        avertissements.append("Analyse visuelle du sol incomplète.")
-        score -= 3
+        col_g2.warning("⚠️ Profil Incomplet (< 3 paramètres)")
+
+    # --- NAVIGATION ---
+    st.markdown("---")
+    col_nav1, col_nav2 = st.columns([1, 1])
+    with col_nav1:
+        if st.button("⬅️ Précédent", use_container_width=True):
+            st.session_state.etape_pdc = 3
+            st.rerun()
+            
+    with col_nav2:
+        if st.button("Suivant ➡️", use_container_width=True, type="primary"):
+            st.session_state.reponses_pdc.update({
+                "sante_cacaoyere": sante_data,
+                "toposequence": toposequence,
+                "caracteristiques_sol": sols_data
+            })
+            st.session_state.etape_pdc = 5
+            st.rerun()
+
 
 
     # =========================================================
