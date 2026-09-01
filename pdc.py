@@ -507,10 +507,10 @@ def afficher():
         col_a1, col_a2, col_a3 = st.columns(3)
         col_a1.metric("Nombre total d'arbres", f"{total_arbres} pieds")
         col_a2.metric("Densité d'ombrage moyenne", f"{arbres_par_ha:.1f} arbres/ha")
-        if 15 <= arbres_par_ha <= 40:
+        if 24 <= arbres_par_ha <= 40:
             col_a3.success("✅ Densité agroforestière conforme (15-40 arbres/ha)")
-        elif arbres_par_ha < 15:
-            col_a3.warning("⚠️ Ombrage déficitaire (< 15 arbres/ha)")
+        elif arbres_par_ha < 25:
+            col_a3.warning("⚠️ Ombrage déficitaire (< 25 arbres/ha)")
         else:
             col_a3.error("⚠️ Ombrage excessif (> 40 arbres/ha)")
 
