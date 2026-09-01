@@ -365,7 +365,7 @@ def afficher():
                 st.session_state.etape_pdc = 4
                 st.rerun()
 
-    # ---------------------------------------------------------
+        # ---------------------------------------------------------
     # ÉTAPE 4 : DIAGNOSTICS PÉDOLOGIQUE & SANITAIRE
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 4:
@@ -374,20 +374,40 @@ def afficher():
         # --- 1. TABLEAU DIAGNOSTIC SANITAIRE ---
         st.markdown("### 🦟 1. Santé Cacaoyère & Ravageurs")
         
-        sante_data = st.session_state.get("temp_sante", [])
+        # Initialisation du tableau d'observation sanitaire dans la session
+        if 'df_sante_cacao' not in st.session_state:
+            st.session_state.df_sante_cacao = [
+                {"Problème / Bioagresseur": "Capsides / Punaises", "Présence": "Non", "Sévérité": "1. Faible"},
+                {"Problème / Bioagresseur": "Forage des tiges (Scolytes)", "Présence": "Non", "Sévérité": "1. Faible"},
+                {"Problème / Bioagresseur": "Pourrissement brun (Phytophthora)", "Présence": "Oui", "Sévérité": "2. Modéré"},
+                {"Problème / Bioagresseur": "Swollen Shoot (CSSV)", "Présence": "Non", "Sévérité": "1. Faible"}
+            ]
 
+        # Saisie interactive du tableau par le technicien
+        sante_data = st.data_editor(
+            st.session_state.df_sante_cacao,
+            num_rows="dynamic",
+            key="editor_sante",
+            use_container_width=True
+        )
+
+        # === CALCULS ET RÉSULTATS VISUELS EN BAS DU TABLEAU SANITAIRE ===
         if sante_data:
             total_pathologies = len(sante_data)
-            attaques_graves = [s for s in sante_data if "3." in str(s.get("Sévérité", "")) or "Élevé" in str(s.get("Sévérité", ""))]
+            # Filtrage des attaques graves basées sur les critères 13 du PDC
+            attaques_graves = [
+                s for s in sante_data 
+                if s.get("Présence") == "Oui" and ("3." in str(s.get("Sévérité", "")) or "Élevé" in str(s.get("Sévérité", "")))
+            ]
             nb_graves = len(attaques_graves)
 
             col_s1, col_s2, col_s3 = st.columns(3)
-            col_s1.metric("Problèmes identifiés", f"{total_pathologies}")
+            col_s1.metric("Pathologies suivies", f"{total_pathologies}")
             col_s2.metric("Attaques Sévères (Niv. 3)", f"{nb_graves}", delta_color="inverse")
             
             if nb_graves > 0:
                 col_s3.error("⚠️ Pression Sanitaire ÉLEVÉE")
-                st.warning(f"🔴 **Alerte Terrain :** {nb_graves} problème(s) critique(s) nécessite(nt) un traitement ou arrachage prioritaire.")
+                st.warning(f"🔴 **Alerte Terrain :** {nb_graves} problème(s) critique(s) sévère(s) détecté(s). Intervention phytosanitaire ou arrachage sanitaire requis.")
             else:
                 col_s3.success("✅ Pression Sanitaire MODÉRÉE")
         else:
@@ -403,6 +423,7 @@ def afficher():
             key="topo_input"
         )
 
+        # Diagnostic visuel bas de tableau
         if toposequence in ["Bas de pente", "Bas-fond"]:
             st.warning("⚠️ **Risque d'hydromorphie :** Surveillance accrue du pourrissement brun des cabosses requise.")
         elif toposequence in ["Sommet", "Haut de pente"]:
@@ -415,7 +436,7 @@ def afficher():
         
         sols_data = st.multiselect(
             "Observation des contraintes/propriétés du sol :",
-            ["Sol profond (>80 cm)", "Sol caillouteux / Gravillonnaire", "Sol sableux (filtrant)", "Sol argileux (lourd)", "Presence de cuirasse", "Sol riche en matière organique"],
+            ["Sol profond (>80 cm)", "Sol caillouteux / Gravillonnaire", "Sol sableux (filtrant)", "Sol argileux (lourd)", "Présence de cuirasse", "Sol riche en matière organique"],
             key="sols_input"
         )
 
@@ -446,6 +467,7 @@ def afficher():
                 })
                 st.session_state.etape_pdc = 5
                 st.rerun()
+
 
 
 
