@@ -2368,7 +2368,7 @@ def afficher():
                 st.success("Le Plan de Développement de Conseil (PDC) est validé et enregistré dans le système Leyla !")
 
 
-        # =========================================================
+                # =========================================================
         # 15.4 SAUVEGARDE LOCALE SQLITE & SYNCHRONISATION
         # =========================================================
         st.markdown("---")
@@ -2383,7 +2383,7 @@ def afficher():
         nom_prod_input = col_p1.text_input("Nom & Prénoms du Producteur", value=nom_producteur, key="input_nom_prod_pdc")
         code_prod_input = col_p2.text_input("Code CCC / Identifiant", value=code_producteur, key="input_code_prod_pdc")
 
-                if st.button("💾 Enregistrer le PDC dans la tablette", type="primary", key="btn_sauvegarder_pdc_local", use_container_width=True):
+        if st.button("💾 Enregistrer le PDC dans la tablette", type="primary", key="btn_sauvegarder_pdc_local", use_container_width=True):
             import json
             import time
 
@@ -2418,4 +2418,5 @@ def afficher():
 
             except Exception as e:
                 st.error(f"❌ Erreur lors de l'enregistrement en local sur la tablette : {e}")
+
 
