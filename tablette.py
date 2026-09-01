@@ -14,6 +14,13 @@ from generate_croquis import generer_croquis_parcelle
 # --- CONFIGURATION DE LA TABLETTE ---
 st.set_page_config(page_title="Leyla Agri - Tablette Terrain", page_icon="📱", layout="centered")
 
+# --- INITIALISATION DE LA SESSION ---
+if "appareil_deverrouille" not in st.session_state:
+    st.session_state.appareil_deverrouille = False
+
+if "identifie" not in st.session_state:
+    st.session_state.identifie = False
+
 # --- INITIALISATION DE LA BASE DE DONNÉES LOCALE (SQLite) ---
 def init_local_db():
     conn = sqlite3.connect("leyla_terrain.db")
@@ -43,9 +50,6 @@ init_local_db()
 st.title("📱 Leyla Agri - Mode Terrain")
 st.markdown("---")
 
-if "identifie" not in st.session_state:
-    st.session_state.identifie = False
-
 if not st.session_state.identifie:
     st.subheader("🔒 Profil d'identification du Technicien")
     with st.form("form_identification"):
@@ -65,31 +69,26 @@ if not st.session_state.identifie:
                 st.error("Veuillez remplir tous les champs d'identification.")
     st.stop()
 
+# --- BARRE LATÉRALE ---
 with st.sidebar:
     st.markdown("### 👤 Session Active")
     st.write(f"**Coop :** {st.session_state.cooperative}")
     st.write(f"**Section :** {st.session_state.section}")
     st.write(f"**Agent :** {st.session_state.technicien}")
+    
     if st.button("🔓 Modifier le profil"):
         st.session_state.identifie = False
         st.rerun()
 
-with st.sidebar:
-    if st.session_state. appareil_deverrouille:
-        if st.button("🔒 Verrouiller la tablette"):
+    st.markdown("---")
+    if st.session_state.appareil_deverrouille:
+        if st.button("🔒 Verrouiller la tablette", use_container_width=True):
             st.session_state.appareil_deverrouille = False
             st.rerun()
 
-
-
-# Initialisation de l'état de déverrouillage
-if "appareil_deverrouille" not in st.session_state:
-    st.session_state.appareil_deverrouille = False
-
-# Mot de passe défini
+# --- 2. ÉCRAN DE DÉVERROUILLAGE TECHNICIEN ---
 MOT_DE_PASSE_VALIDE = "leyla2.6" 
 
-# --- 1. ÉCRAN DE DÉVERROUILLAGE (Affiché UNIQUEMENT si verrouillé) ---
 if not st.session_state.appareil_deverrouille:
     st.header("🔒 Accès Sécurisé Technicien")
     st.caption("Veuillez saisir votre mot de passe pour déverrouiller l'application Leyla et accéder aux modules.")
@@ -109,11 +108,9 @@ if not st.session_state.appareil_deverrouille:
             st.error("❌ Mot de passe incorrect. Accès refusé.")
 
     st.warning("⚠️ L'application est verrouillée. Entrez le mot de passe pour continuer.")
-    st.stop()  # Empêche l'affichage des modules tant qu'on n'est pas connecté
+    st.stop()
 
-# --- 2. ACCÈS AUX MODULES (Affiché UNE FOIS DÉVERROUILLÉ) ---
-# Tout ce qui se trouve ci-dessous s'affichera SANS l'écran de mot de passe
-
+# --- 3. ACCÈS AUX MODULES (UNISSONS UNE FOIS DÉVERROUILLÉ) ---
 st.header("🛠️ Modules de Saisie")
 st.caption(f"👤 Session Agent : **{st.session_state.get('code_agent_connecte', 'Inconnu')}**")
 
@@ -142,7 +139,6 @@ elif choix_module == "3. Estimation de Rendement":
 
 elif choix_module == "4. PDC":
     pdc.afficher()
-
 
 # --- 4. SYNCHRONISATION / ENVOI AU SERVEUR CENTRAL ---
 st.markdown("---")
