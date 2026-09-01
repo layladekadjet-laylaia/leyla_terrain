@@ -592,8 +592,8 @@ def afficher():
                 st.rerun()
 
 
-    # ---------------------------------------------------------
-    # ÉTAPE 6 : ÉTAT SANITAIRE, SOL, RÉCOLTE & ENGRAIS (FICHE 3 - PARTIE 2)
+        # ---------------------------------------------------------
+    # ÉTAPE 6 : ÉTAT SANITAIRE, SOL, RÉCOLTE & ENGRAIS (FICHE 3)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 6:
         st.subheader("Étape 6/15 : État Sanitaire, Sol, Récolte & Engrais (Fiche 3)")
@@ -629,7 +629,7 @@ def afficher():
         if 'df_sol_caract' not in st.session_state:
             st.session_state.df_sol_caract = [
                 {"Éléments d'observation (A)": "Couvert végétal", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "Existence de zones érodées", "Valeur B": "2. Non", "Obs B": "Ravinements..."},
-                {"Éléments d'observation (A)": "Présence de Matière organique", "Valeur A": "1. beaucoup", "Obs A": "", "Éléments d'observation (B)": "Existence de zones à risque d'érosion", "Valeur B": "2. Non", "Obs B": "Pente..."},
+                {"Éléments d me d'observation (A)": "Présence de Matière organique", "Valeur A": "1. beaucoup", "Obs A": "", "Éléments d'observation (B)": "Existence de zones à risque d'érosion", "Valeur B": "2. Non", "Obs B": "Pente..."},
                 {"Éléments d'observation (A)": "Profondeur", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "", "Valeur B": "", "Obs B": ""},
                 {"Éléments d'observation (A)": "Texture", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "", "Valeur B": "", "Obs B": ""}
             ]
@@ -659,9 +659,17 @@ def afficher():
             mode_fermentation = st.selectbox("Mode de fermentation", ["1. Bâche en plastique", "2. Feuilles de bananier", "3. Bac de fermentation", "4. Autre (à préciser)"])
             methode_sechage = st.selectbox("Méthodes de séchage", ["1. Sur goudron", "2. Sur aire cimentée", "3. Sur bâche en plastique à terre", "4. Sur claie", "5. Autre (à préciser)"])
 
+        # Analyse qualité post-récolte
+        if duree_fermentation < 5:
+            st.warning("⚠️ Fermentation courte (< 5 jours) : Risque de fèves violettes ou d'acidité élevée.")
+        elif duree_fermentation > 7:
+            st.warning("⚠️ Fermentation longue (> 7 jours) : Risque de moisissures internes.")
+        else:
+            st.success("✅ Durée de fermentation optimale (5 à 7 jours).")
+
         st.markdown("---")
 
-                # 6.4 UTILISATION DES ENGRAIS ET AMENDEMENTS
+        # 6.4 UTILISATION DES ENGRAIS ET AMENDEMENTS
         st.markdown("### 🧪 4. Utilisation des engrais / amendements")
         if 'df_engrais' not in st.session_state:
             st.session_state.df_engrais = [
@@ -725,14 +733,21 @@ def afficher():
             height=100
         )
 
+        # SYNTHÈSE DES DONNÉES DE L'ÉTAPE 6
+        st.session_state.df_sante_cacao = sante_df
+        st.session_state.df_sol_caract = sol_df
+        st.session_state.df_engrais = engrais_df
+        st.session_state.df_phyto = phyto_df
+
         # NAVIGATION ENTRE ÉTAPES
+        st.markdown("---")
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
                 st.session_state.etape_pdc = 5
                 st.rerun()
         with col2:
-            if st.button("Suivant) ➡️", use_container_width=True):
+            if st.button("Suivant ➡️", use_container_width=True, type="primary"):
                 st.session_state.reponses_pdc.update({
                     "sante_cacaoyere": sante_df,
                     "toposequence": toposequence,
@@ -750,7 +765,8 @@ def afficher():
                 st.rerun()
 
 
-        # ---------------------------------------------------------
+
+            # ---------------------------------------------------------
     # ÉTAPE 7 : PARTIE D - DONNÉES SOCIO-ÉCONOMIQUES (FICHE 4)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 7:
@@ -772,7 +788,8 @@ def afficher():
             column_config={
                 "Compte d'épargne (Oui/Non)": st.column_config.SelectboxColumn("Compte d'épargne", options=["Oui", "Non"]),
                 "Demande de crédit (Oui/Non)": st.column_config.SelectboxColumn("Demande de crédit", options=["Oui", "Non"]),
-                "Crédit obtenu (Oui/Non)": st.column_config.SelectboxColumn("Crédit obtenu", options=["Oui", "Non"])
+                "Crédit obtenu (Oui/Non)": st.column_config.SelectboxColumn("Crédit obtenu", options=["Oui", "Non"]),
+                "Montant (FCFA)": st.column_config.NumberColumn("Montant (FCFA)", min_value=0, step=10000, format="%d FCFA")
             },
             use_container_width=True
         )
@@ -783,17 +800,30 @@ def afficher():
         st.markdown("### 📦 2. Production de cacao des trois (3) dernières années")
         if 'df_prod_historique' not in st.session_state:
             st.session_state.df_prod_historique = [
-                {"Campagne": "Année N-1", "Production (kg)": 0, "Prix moyen (FCFA/kg)": 1500},
-                {"Campagne": "Année N-2", "Production (kg)": 0, "Prix moyen (FCFA/kg)": 1000},
-                {"Campagne": "Année N-3", "Production (kg)": 0, "Prix moyen (FCFA/kg)": 900}
+                {"Campagne": "Année N-1", "Production (kg)": 1500, "Prix moyen (FCFA/kg)": 1500},
+                {"Campagne": "Année N-2", "Production (kg)": 1200, "Prix moyen (FCFA/kg)": 1000},
+                {"Campagne": "Année N-3", "Production (kg)": 1000, "Prix moyen (FCFA/kg)": 900}
             ]
 
         prod_historique_df = st.data_editor(
             st.session_state.df_prod_historique,
             num_rows="dynamic",
             key="editor_prod_historique",
+            column_config={
+                "Production (kg)": st.column_config.NumberColumn("Production (kg)", min_value=0, step=50, format="%d kg"),
+                "Prix moyen (FCFA/kg)": st.column_config.NumberColumn("Prix moyen (FCFA/kg)", min_value=0, step=50, format="%d FCFA")
+            },
             use_container_width=True
         )
+
+        # Calcul automatique des revenus bruts cacao
+        df_prod_calc = pd.DataFrame(prod_historique_df)
+        df_prod_calc["Revenu Brut (FCFA)"] = df_prod_calc["Production (kg)"] * df_prod_calc["Prix moyen (FCFA/kg)"]
+        revenu_cacao_dernire_annee = df_prod_calc.iloc[0]["Revenu Brut (FCFA)"] if not df_prod_calc.empty else 0
+
+        col_r1, col_r2 = st.columns(2)
+        col_r1.metric("Production (Année N-1)", f"{df_prod_calc.iloc[0]['Production (kg)']:,.0f} kg" if not df_prod_calc.empty else "0 kg")
+        col_r2.metric("Revenu Cacao Estimé (Année N-1)", f"{revenu_cacao_dernire_annee:,.0f} FCFA")
 
         st.markdown("---")
 
@@ -801,16 +831,22 @@ def afficher():
         st.markdown("### 💰 3. Sources de revenus autres que le cacao")
         if 'df_autres_revenus' not in st.session_state:
             st.session_state.df_autres_revenus = [
-                {"Source de revenu / Activité": "Vente de vivriers", "Montant estimé/an (FCFA)": 0, "Observations": ""},
-                {"Source de revenu / Activité": "Elevage", "Montant estimé/an (FCFA)": 0, "Observations": ""}
+                {"Source de revenu / Activité": "Vente de vivriers", "Montant estimé/an (FCFA)": 250000, "Observations": ""},
+                {"Source de revenu / Activité": "Élevage", "Montant estimé/an (FCFA)": 100000, "Observations": ""}
             ]
 
         autres_revenus_df = st.data_editor(
             st.session_state.df_autres_revenus,
             num_rows="dynamic",
             key="editor_autres_revenus",
+            column_config={
+                "Montant estimé/an (FCFA)": st.column_config.NumberColumn("Montant estimé/an (FCFA)", min_value=0, step=10000, format="%d FCFA")
+            },
             use_container_width=True
         )
+
+        total_autres_revenus = pd.DataFrame(autres_revenus_df)["Montant estimé/an (FCFA)"].sum()
+        st.metric("Total Revenus Hors-Cacao / an", f"{total_autres_revenus:,.0f} FCFA")
 
         st.markdown("---")
 
@@ -818,20 +854,38 @@ def afficher():
         st.markdown("### 🛒 4. Dépenses courantes du foyer")
         if 'df_depenses' not in st.session_state:
             st.session_state.df_depenses = [
-                {"Dépenses": "Scolarité", "Périodicité": "Année", "Montant moyen (FCFA)": 0},
-                {"Dépenses": "Nourriture", "Périodicité": "Mois", "Montant moyen (FCFA)": 0},
-                {"Dépenses": "Santé", "Périodicité": "Année", "Montant moyen (FCFA)": 0},
-                {"Dépenses": "Électricité", "Périodicité": "2 mois", "Montant moyen (FCFA)": 0},
-                {"Dépenses": "Eau courante", "Périodicité": "Mois", "Montant moyen (FCFA)": 0},
-                {"Dépenses": "Charges sociales (Funérailles, fêtes...)", "Périodicité": "Année", "Montant moyen (FCFA)": 0}
+                {"Dépenses": "Scolarité", "Périodicité": "Année", "Montant moyen (FCFA)": 150000},
+                {"Dépenses": "Nourriture", "Périodicité": "Mois", "Montant moyen (FCFA)": 50000},
+                {"Dépenses": "Santé", "Périodicité": "Année", "Montant moyen (FCFA)": 80000},
+                {"Dépenses": "Électricité", "Périodicité": "2 mois", "Montant moyen (FCFA)": 15000},
+                {"Dépenses": "Eau courante", "Périodicité": "Mois", "Montant moyen (FCFA)": 5000},
+                {"Dépenses": "Charges sociales (Funérailles, fêtes...)", "Périodicité": "Année", "Montant moyen (FCFA)": 100000}
             ]
 
         depenses_df = st.data_editor(
             st.session_state.df_depenses,
             num_rows="dynamic",
             key="editor_depenses",
+            column_config={
+                "Périodicité": st.column_config.SelectboxColumn("Périodicité", options=["Mois", "2 mois", "Trimestre", "Semestre", "Année"]),
+                "Montant moyen (FCFA)": st.column_config.NumberColumn("Montant (FCFA)", min_value=0, step=5000, format="%d FCFA")
+            },
             use_container_width=True
         )
+
+        # Calcul annualisé des dépenses ménagères
+        df_dep = pd.DataFrame(depenses_df)
+        def aux_annualiser(row):
+            m = row["Montant moyen (FCFA)"]
+            p = row["Périodicité"]
+            if p == "Mois": return m * 12
+            elif p == "2 mois": return m * 6
+            elif p == "Trimestre": return m * 4
+            elif p == "Semestre": return m * 2
+            return m
+
+        total_depenses_an = df_dep.apply(aux_annualiser, axis=1).sum() if not df_dep.empty else 0
+        st.metric("Total Dépenses Foyer Estimées / an", f"{total_depenses_an:,.0f} FCFA")
 
         st.markdown("---")
 
@@ -839,8 +893,8 @@ def afficher():
         st.markdown("### 👥 5. Coût et gestion de la main d'œuvre")
         if 'df_main_oeuvre' not in st.session_state:
             st.session_state.df_main_oeuvre = [
-                {"Travailleur": "Travailleur 1", "Statut": "MO permanente", "Sexe": "M", "Coût annuel (FCFA)": 0, "Temps de travail / an (jours)": 0},
-                {"Travailleur": "Groupe de travail (Entraide)", "Statut": "Non rémunérée (familiale)", "Sexe": "M", "Coût annuel (FCFA)": 0, "Temps de travail / an (jours)": 0}
+                {"Travailleur": "Travailleur 1", "Statut": "MO permanente", "Sexe": "M", "Coût annuel (FCFA)": 300000, "Temps de travail / an (jours)": 250},
+                {"Travailleur": "Groupe de travail (Entraide)", "Statut": "Non rémunérée (familiale)", "Sexe": "M", "Coût annuel (FCFA)": 0, "Temps de travail / an (jours)": 30}
             ]
 
         main_oeuvre_df = st.data_editor(
@@ -849,28 +903,54 @@ def afficher():
             key="editor_main_oeuvre",
             column_config={
                 "Statut": st.column_config.SelectboxColumn("Statut de la main d'œuvre", options=["MO permanente", "MO occasionnelle", "Non rémunérée (familiale)"]),
-                "Sexe": st.column_config.SelectboxColumn("Sexe", options=["M", "F"])
+                "Sexe": st.column_config.SelectboxColumn("Sexe", options=["M", "F"]),
+                "Coût annuel (FCFA)": st.column_config.NumberColumn("Coût annuel (FCFA)", min_value=0, step=10000, format="%d FCFA"),
+                "Temps de travail / an (jours)": st.column_config.NumberColumn("Temps (jours/an)", min_value=0, step=5)
             },
             use_container_width=True
         )
 
+        total_cout_mo = pd.DataFrame(main_oeuvre_df)["Coût annuel (FCFA)"].sum()
+        
+        # Bilan financier global succinct de l'exploitation
+        st.markdown("#### ⚖️ Bilan financier estimé du ménage")
+        revenu_total_estime = revenu_cacao_dernire_annee + total_autres_revenus
+        solde_net_estime = revenu_total_estime - (total_depenses_an + total_cout_mo)
+
+        col_b1, col_b2, col_b3 = st.columns(3)
+        col_b1.metric("Revenus Totaux", f"{revenu_total_estime:,.0f} FCFA")
+        col_b2.metric("Charges Totales (Foyer + MO)", f"{(total_depenses_an + total_cout_mo):,.0f} FCFA")
+        col_b3.metric("Solde Net Estimé", f"{solde_net_estime:,.0f} FCFA", delta_color="normal" if solde_net_estime >= 0 else "inverse")
+
+        # SAUVEGARDE ÉTAPE 7
+        st.session_state.df_financement = financement_df
+        st.session_state.df_prod_historique = prod_historique_df
+        st.session_state.df_autres_revenus = autres_revenus_df
+        st.session_state.df_depenses = depenses_df
+        st.session_state.df_main_oeuvre = main_oeuvre_df
+
         # NAVIGATION ENTRE ÉTAPES
+        st.markdown("---")
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
                 st.session_state.etape_pdc = 6
                 st.rerun()
         with col2:
-            if st.button("Suivant) ➡️", use_container_width=True):
+            if st.button("Suivant ➡️", use_container_width=True, type="primary"):
                 st.session_state.reponses_pdc.update({
                     "financement": financement_df,
                     "prod_historique": prod_historique_df,
                     "autres_revenus": autres_revenus_df,
                     "depenses_foyer": depenses_df,
-                    "main_oeuvre": main_oeuvre_df
+                    "main_oeuvre": main_oeuvre_df,
+                    "revenu_total_estime": revenu_total_estime,
+                    "charges_totales_estimees": total_depenses_an + total_cout_mo,
+                    "solde_net_estime": solde_net_estime
                 })
                 st.session_state.etape_pdc = 8
                 st.rerun()
+
 
                         # ---------------------------------------------------------
     # ÉTAPE 8 : PLANIFICATION COMPLÈTE (PLAN 5 ANS & FICHE 7)
