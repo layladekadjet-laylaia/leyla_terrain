@@ -385,74 +385,86 @@ def afficher():
                 st.session_state.etape_pdc = 4
                 st.rerun()
 
-    # ---------------------------------------------------------
-    # ÉTAPE 4 : DESCRIPTION DE L'EXPLOITATION (FICHE 2)
-    # ---------------------------------------------------------
-    elif st.session_state.etape_pdc == 4:
-        st.subheader("Étape 4/15 : Description de l'Exploitation (Fiche 2)")
+    # ÉTAPE 4 : DIAGNOSTICS PÉDOLOGIQUE & SANITAIRE (Dans l'interface Streamlit)
+if st.session_state.etape_pdc == 4:
+    st.subheader("Étape 4/15 : Diagnostics Sanitaire, Toposéquence & Pédologique")
 
-        st.markdown("### 🌾 1. Données sur les cultures")
-        st.markdown("**A. Plantation de Cacao**")
-        if 'df_cacao' not in st.session_state:
-            st.session_state.df_cacao = [
-                {"Parcelle": "Parcelle 1", "Superficie (ha)": 1.5, "Année création": 2010, "Précédent cultural": "Forêt", "Origine matériel végétal": "CNRA", "En production (OUI/NON)": "OUI"},
-                {"Parcelle": "Parcelle 2", "Superficie (ha)": 2.0, "Année création": 2015, "Précédent cultural": "Jachère", "Origine matériel végétal": "Tout venant", "En production (OUI/NON)": "OUI"}
-            ]
-        cacao_df = st.data_editor(st.session_state.df_cacao, num_rows="dynamic", key="editor_cacao", use_container_width=True)
+    # --- 1. TABLEAU DIAGNOSTIC SANITAIRE ---
+    st.markdown("### 🦟 1. Santé Cacaoyère & Ravageurs")
+    
+    sante_data = st.session_state.get("temp_sante", [])
 
-        st.markdown("**B. Autres cultures**")
-        if 'df_autres_cultures' not in st.session_state:
-            st.session_state.df_autres_cultures = [
-                {"Culture": "Hévéa", "Superficie (ha)": 1.0, "Année création": 2018, "Précédent cultural": "Jachère", "Origine matériel végétal": "Vulgarisé", "En production (OUI/NON)": "NON"},
-                {"Culture": "P. à huile", "Superficie (ha)": 0.5, "Année création": 2020, "Précédent cultural": "Savane", "Origine matériel végétal": "Sélectionné", "En production (OUI/NON)": "NON"}
-            ]
-        autres_cultures_df = st.data_editor(st.session_state.df_autres_cultures, num_rows="dynamic", key="editor_autres_cultures", use_container_width=True)
+    if sante_data:
+        total_pathologies = len(sante_data)
+        attaques_graves = [s for s in sante_data if "3." in str(s.get("Sévérité", "")) or "Élevé" in str(s.get("Sévérité", ""))]
+        nb_graves = len(attaques_graves)
 
-        st.markdown("---")
-        st.markdown("### 🚜 2. Matériel agricole et équipements")
-        if 'df_equipements' not in st.session_state:
-            st.session_state.df_equipements = [
-                {"Type": "Matériel de traitement", "Désignation": "Pulvérisateur", "Quantité": 1, "Année d'acquisition": 2021, "Coût (FCFA)": 35000, "État": "Bon"}
-            ]
-        equipements_df = st.data_editor(st.session_state.df_equipements, num_rows="dynamic", key="editor_equipements", use_container_width=True)
+        col_s1, col_s2, col_s3 = st.columns(3)
+        col_s1.metric("Problèmes identifiés", f"{total_pathologies}")
+        col_s2.metric("Attaques Sévères (Niv. 3)", f"{nb_graves}", delta_color="inverse")
+        
+        if nb_graves > 0:
+            col_s3.error("⚠️ Pression Sanitaire ÉLEVÉE")
+            st.warning(f"🔴 **Alerte Terrain :** {nb_graves} problème(s) critique(s) nécessite(nt) un traitement ou arrachage prioritaire.")
+        else:
+            col_s3.success("✅ Pression Sanitaire MODÉRÉE")
+    else:
+        st.info("ℹ️ Aucun problème sanitaire renseigné pour le moment.")
 
-        st.markdown("---")
-        st.markdown("### 🌳 3. Diagnostic des arbres autres que le cacaoyer")
-        if 'df_arbres_ombrage' not in st.session_state:
-            st.session_state.df_arbres_ombrage = [
-                {"N°": 1, "Nom de l'arbre": "Akpi", "Nombre": 200, "Latitude": 6.020668, "Longitude": -4.3571323, "Statut": "Préservé", "Avantages cacaoyère": "1. Ombrage", "Usage": "4. Bois d'oeuvre", "Action": "A maintenir", "Observations": ""}
-            ]
-        arbres_ombrage_df = st.data_editor(
-            st.session_state.df_arbres_ombrage,
-            num_rows="dynamic",
-            key="editor_arbres_ombrage",
-            column_config={
-                "Statut": st.column_config.SelectboxColumn("Statut", options=["Préservé", "Introduit", "Régénéré"]),
-                "Avantages cacaoyère": st.column_config.SelectboxColumn("Avantages pour la cacaoyère", options=["1. Ombrage", "2. Fertilité du sol", "3. Protection contre l'érosion", "4. Maintien l'humidité", "5. Lutte contre l'enherbement"]),
-                "Usage": st.column_config.SelectboxColumn("Usage", options=["1. Alimentaire", "2. Médicinale", "3. Protection des cacaoyers", "4. Bois d'oeuvre", "5. Bois de chauffage"]),
-                "Action": st.column_config.SelectboxColumn("Action recommandée", options=["A maintenir", "A éliminer", "A élaguer"])
-            },
-            use_container_width=True
-        )
+    st.markdown("---")
 
-        st.markdown("---")
-        terres_disponibles = st.number_input("Terres disponibles non exploitées (ha)", min_value=0.0, step=0.5, value=0.0)
-        autre_speculations = st.text_input("Autres spéculations (Élevage, production halieutique, etc.)")
+    # --- 2. RELIEF & TOPOSÉQUENCE ---
+    st.markdown("### 📐 2. Relief & Positionnement Topographique")
+    toposequence = st.selectbox(
+        "Position sur la pente (Toposéquence) *",
+        ["Sommet", "Haut de pente", "Mi-pente", "Bas de pente", "Bas-fond"],
+        key="topo_input"
+    )
 
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("⬅️ Retour", use_container_width=True):
-                st.session_state.etape_pdc = 3
-                st.rerun()
-        with col2:
-            if st.button("Suivant ➡️", use_container_width=True):
-                st.session_state.reponses_pdc.update({
-                    "parcelles_cacaoyer": cacao_df, "autres_cultures": autres_cultures_df,
-                    "equipements": equipements_df, "arbres_ombrage": arbres_ombrage_df,
-                    "terres_disponibles": terres_disponibles, "autre_speculations": autre_speculations
-                })
-                st.session_state.etape_pdc = 5
-                st.rerun()
+    if toposequence in ["Bas de pente", "Bas-fond"]:
+        st.warning("⚠️ **Risque d'hydromorphie :** Surveillance accrue du pourrissement brun des cabosses requise.")
+    elif toposequence in ["Sommet", "Haut de pente"]:
+        st.info("💡 **Profil Drainé :** Sensibilité accrue au stress hydrique en saison sèche.")
+
+    st.markdown("---")
+
+    # --- 3. CARACTÉRISTIQUES DU SOL ---
+    st.markdown("### 🧪 3. Profil & Propriétés du Sol")
+    
+    sols_data = st.multiselect(
+        "Observation des contraintes/propriétés du sol :",
+        ["Sol profond (>80 cm)", "Sol caillouteux / Gravillonnaire", "Sol sableux (filtrant)", "Sol argileux (lourd)", "Presence de cuirasse", "Sol riche en matière organique"],
+        key="sols_input"
+    )
+
+    nb_params_sol = len(sols_data)
+    
+    col_g1, col_g2 = st.columns(2)
+    col_g1.metric("Paramètres du Sol Renseignés", f"{nb_params_sol} / 3 requis")
+
+    if nb_params_sol >= 3:
+        col_g2.success("✅ Profil Pédologique Conforme")
+    else:
+        col_g2.warning("⚠️ Profil Incomplet (< 3 paramètres)")
+
+    # --- NAVIGATION ---
+    st.markdown("---")
+    col_nav1, col_nav2 = st.columns([1, 1])
+    with col_nav1:
+        if st.button("⬅️ Précédent", use_container_width=True):
+            st.session_state.etape_pdc = 3
+            st.rerun()
+            
+    with col_nav2:
+        if st.button("Suivant ➡️", use_container_width=True, type="primary"):
+            st.session_state.reponses_pdc.update({
+                "sante_cacaoyere": sante_data,
+                "toposequence": toposequence,
+                "caracteristiques_sol": sols_data
+            })
+            st.session_state.etape_pdc = 5
+            st.rerun()
+
 
     # ---------------------------------------------------------
     # ÉTAPE 5 : DENSITÉ ET RENDEMENT (FICHE 3 - PARTIE 1)
