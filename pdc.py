@@ -466,10 +466,10 @@ if st.session_state.etape_pdc == 4:
             st.rerun()
 
 
-    # ---------------------------------------------------------
+        # ---------------------------------------------------------
     # ÉTAPE 5 : DENSITÉ ET RENDEMENT (FICHE 3 - PARTIE 1)
     # ---------------------------------------------------------
-    elif st.session_state.etape_pdc == 5:
+    if st.session_state.etape_pdc == 5:
         st.subheader("Étape 5/15 : Densité et Rendement (Fiche 3)")
 
         st.markdown("### 📐 1. Densité des cacaoyers")
@@ -499,13 +499,14 @@ if st.session_state.etape_pdc == 4:
                 st.session_state.etape_pdc = 4
                 st.rerun()
         with col2:
-            if st.button("Suivant ➡️", use_container_width=True):
+            if st.button("Suivant ➡️", use_container_width=True, type="primary"):
                 st.session_state.reponses_pdc.update({
-                    "donnees_densite": densite_df, "densite_calculee_ha": densite_estimee,
-                    
+                    "donnees_densite": densite_df, 
+                    "densite_calculee_ha": densite_estimee
                 })
                 st.session_state.etape_pdc = 6
                 st.rerun()
+
 
     # ---------------------------------------------------------
     # ÉTAPE 6 : ÉTAT SANITAIRE, SOL, RÉCOLTE & ENGRAIS (FICHE 3 - PARTIE 2)
