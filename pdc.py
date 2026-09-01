@@ -251,6 +251,30 @@ def evaluer_pdc(data):
 
 
 
+import json
+import numpy as np
+import pandas as pd
+
+def convert_types(obj):
+    """Convertit récursivement les int64/float64 Pandas/NumPy en types Python natifs."""
+    if isinstance(obj, dict):
+        return {k: convert_types(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_types(i) for i in obj]
+    elif isinstance(obj, (np.integer, np.int64)):
+        return int(obj)
+    elif isinstance(obj, (np.floating, np.float64)):
+        return float(obj)
+    elif isinstance(obj, pd.DataFrame):
+        return obj.to_dict(orient="records")
+    return obj
+
+# Dans votre fonction sauvegarder_en_local_sqlite :
+# Avant le json.dumps(), appliquez la conversion :
+donnees_nettoyees = convert_types(donnees_dossier.get("donnees_pdc", {}))
+donnees_pdc_json = json.dumps(donnees_nettoyees, ensure_ascii=False)
+
+
 
 import sqlite3
 import json
