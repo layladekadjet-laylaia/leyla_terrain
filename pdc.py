@@ -592,7 +592,7 @@ def afficher():
                 st.rerun()
 
 
-        # ---------------------------------------------------------
+            # ---------------------------------------------------------
     # ÉTAPE 6 : ÉTAT SANITAIRE, SOL, RÉCOLTE & ENGRAIS (FICHE 3)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 6:
@@ -620,6 +620,39 @@ def afficher():
             use_container_width=True
         )
 
+        # --- DIAGNOSTIC AUTOMATIQUE 6.1 (SANTE & VEGETATIF) ---
+        df_sante = pd.DataFrame(sante_df)
+        
+        # Mappage des niveaux de sévérité pour calculs
+        sev_map = {"1. Aucun": 0, "2. Faible": 1, "3. Moyen": 2, "3. moyen": 2, "4. Fort": 3}
+        
+        score_maladies = sum([sev_map.get(str(x), 0) for x in df_sante["Sévérité"] if pd.notna(x)])
+        score_entretien = sum([sev_map.get(str(x), 0) for x in df_sante["Valeur"] if pd.notna(x)])
+        score_total_sante = score_maladies + score_entretien
+
+        # Vérifications spécifiques
+        cssvd_detecte = any("CSSVD" in str(row["Maladies / Ravageurs"]) and row["Sévérité"] != "1. Aucun" for _, row in df_sante.iterrows())
+        gourmands_forts = any("gourmands" in str(row["Paramètres"]).lower() and row["Valeur"] in ["3. Moyen", "3. moyen", "4. Fort"] for _, row in df_sante.iterrows())
+        loranthus_present = any("loranthus" in str(row["Paramètres"]).lower() and row["Valeur"] != "1. Aucun" for _, row in df_sante.iterrows())
+
+        st.markdown("#### 🩺 Diagnostic Phytosanitaire & Entretien")
+        col_s1, col_s2, col_s3 = st.columns(3)
+        col_s1.metric("Pression Sanitaire", f"{score_maladies} pts / 15")
+        col_s2.metric("Niveau d'Enherbement / Gourmands", f"{score_entretien} pts / 12")
+        
+        if score_total_sante <= 3:
+            col_s3.success("🟢 État sanitaire global : EXCELLENT")
+        elif score_total_sante <= 7:
+            col_s3.warning("🟡 État sanitaire global : MODÉRÉ")
+        else:
+            col_s3.error("🔴 État sanitaire global : CRITIQUE")
+
+        # Alertes ciblées
+        if cssvd_detecte:
+            st.error("🚨 **ALERTE CSSVD (Swollen Shoot)** : Présence suspectée ! Isolement immédiat et arrachage des pieds infectés préconisés selon le protocole national.")
+        if gourmands_forts or loranthus_present:
+            st.warning("⚠️ **Recommandation Taille** : Présence importante de gourmands ou Loranthus. Prévoir une séance d'égourmandage et de déparasitage pour réduire la compétition nutritive.")
+
         st.markdown("---")
 
         # 6.2 CARACTÉRISTIQUES PHYSIQUES DU SOL
@@ -629,7 +662,7 @@ def afficher():
         if 'df_sol_caract' not in st.session_state:
             st.session_state.df_sol_caract = [
                 {"Éléments d'observation (A)": "Couvert végétal", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "Existence de zones érodées", "Valeur B": "2. Non", "Obs B": "Ravinements..."},
-                {"Éléments d me d'observation (A)": "Présence de Matière organique", "Valeur A": "1. beaucoup", "Obs A": "", "Éléments d'observation (B)": "Existence de zones à risque d'érosion", "Valeur B": "2. Non", "Obs B": "Pente..."},
+                {"Éléments d'observation (A)": "Présence de Matière organique", "Valeur A": "1. beaucoup", "Obs A": "", "Éléments d'observation (B)": "Existence de zones à risque d'érosion", "Valeur B": "2. Non", "Obs B": "Pente..."},
                 {"Éléments d'observation (A)": "Profondeur", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "", "Valeur B": "", "Obs B": ""},
                 {"Éléments d'observation (A)": "Texture", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "", "Valeur B": "", "Obs B": ""}
             ]
@@ -645,6 +678,31 @@ def afficher():
             use_container_width=True
         )
 
+        # --- DIAGNOSTIC AUTOMATIQUE 6.2 (SOL ET TOPOSEQUENCE) ---
+        df_sol = pd.DataFrame(sol_df)
+        
+        # Détection du risque d'érosion et d'asphyxie
+        zone_erodee = any(row["Valeur B"] == "1. Oui" for _, row in df_sol.iterrows() if "zones érodées" in str(row["Éléments d'observation (B)"]))
+        risque_erosion = any(row["Valeur B"] == "1. Oui" for _, row in df_sol.iterrows() if "risque d'érosion" in str(row["Éléments d'observation (B)"]))
+        faible_mo = any(row["Valeur A"] == "3. Faible" for _, row in df_sol.iterrows() if "Matière organique" in str(row["Éléments d'observation (A)"]))
+
+        st.markdown("#### 🌱 Diagnostic d'Aptitude du Sol")
+        col_sol1, col_sol2 = st.columns(2)
+        
+        # Évaluation Toposéquence
+        if toposequence in ["Bas-fond", "Bas de versant"]:
+            col_sol1.warning(f"📍 Toposéquence ({toposequence}) : Risque d'hydromorphie / Asphyxie racinaire en saison des pluies. Drainages à prévoir.")
+        else:
+            col_sol1.success(f"📍 Toposéquence ({toposequence}) : Sol bien drainé a priori.")
+
+        # Évaluation Risque Érosion / Fertilité
+        if zone_erodee or risque_erosion:
+            col_sol2.error("⚠️ Risque d'érosion ÉLEVÉ : Aménagement en courbes de niveau ou enherbement contrôlé recommandé.")
+        elif faible_mo:
+            col_sol2.warning("⚠️ Matière organique FAIBLE : Prévoir un apport de compost ou maintien des réidus de taille au sol.")
+        else:
+            col_sol2.success("✅ Conservation du sol & fertilité satisfaisantes.")
+
         st.markdown("---")
 
         # 6.3 PRATIQUES DE RÉCOLTE ET POST-RÉCOLTE
@@ -659,13 +717,19 @@ def afficher():
             mode_fermentation = st.selectbox("Mode de fermentation", ["1. Bâche en plastique", "2. Feuilles de bananier", "3. Bac de fermentation", "4. Autre (à préciser)"])
             methode_sechage = st.selectbox("Méthodes de séchage", ["1. Sur goudron", "2. Sur aire cimentée", "3. Sur bâche en plastique à terre", "4. Sur claie", "5. Autre (à préciser)"])
 
-        # Analyse qualité post-récolte
+        # Diagnostic qualité post-récolte
+        st.markdown("#### 🍫 Diagnostic Qualité Post-Récolte")
         if duree_fermentation < 5:
-            st.warning("⚠️ Fermentation courte (< 5 jours) : Risque de fèves violettes ou d'acidité élevée.")
+            st.warning("⚠️ Fermentation courte (< 5 jours) : Risque de fèves violettes, d'amertume et d'acidité élevée.")
         elif duree_fermentation > 7:
-            st.warning("⚠️ Fermentation longue (> 7 jours) : Risque de moisissures internes.")
+            st.warning("⚠️ Fermentation longue (> 7 jours) : Risque de moisissures internes et d'arômes défectueux.")
         else:
             st.success("✅ Durée de fermentation optimale (5 à 7 jours).")
+
+        if "goudron" in methode_sechage.lower() or "bâche en plastique à terre" in methode_sechage.lower():
+            st.error("🚫 Séchage non conforme : Le séchage à terre ou sur goudron altère la qualité des fèves et entraîne un risque de contamination PAH/HAP.")
+        elif "claie" in methode_sechage.lower():
+            st.success("✅ Séchage sur claie : Conforme aux standards d'exportation de qualité supérieure.")
 
         st.markdown("---")
 
@@ -733,7 +797,7 @@ def afficher():
             height=100
         )
 
-        # SYNTHÈSE DES DONNÉES DE L'ÉTAPE 6
+        # SYNTHÈSE ET SAUVEGARDE DES DONNÉES DE L'ÉTAPE 6
         st.session_state.df_sante_cacao = sante_df
         st.session_state.df_sol_caract = sol_df
         st.session_state.df_engrais = engrais_df
@@ -759,14 +823,15 @@ def afficher():
                     "methode_sechage": methode_sechage,
                     "utilisation_engrais": engrais_df,
                     "produits_phytosanitaires": phyto_df,
-                    "gestion_emballages": gestion_emballages
+                    "gestion_emballages": gestion_emballages,
+                    "score_pression_sanitaire": score_maladies,
+                    "score_entretien_parcelle": score_entretien
                 })
                 st.session_state.etape_pdc = 7
                 st.rerun()
 
 
-
-            # ---------------------------------------------------------
+                # ---------------------------------------------------------
     # ÉTAPE 7 : PARTIE D - DONNÉES SOCIO-ÉCONOMIQUES (FICHE 4)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 7:
@@ -794,6 +859,24 @@ def afficher():
             use_container_width=True
         )
 
+        # --- DIAGNOSTIC AUTOMATIQUE 7.1 (INCLUSION FINANCIÈRE) ---
+        df_fin = pd.DataFrame(financement_df)
+        has_epargne = any(row["Compte d'épargne (Oui/Non)"] == "Oui" for _, row in df_fin.iterrows())
+        credit_obtenu = any(row["Crédit obtenu (Oui/Non)"] == "Oui" for _, row in df_fin.iterrows())
+        montant_total_credit = df_fin["Montant (FCFA)"].sum() if "Montant (FCFA)" in df_fin.columns else 0
+
+        st.markdown("#### 💳 Diagnostic d'Inclusion Financière")
+        col_f1, col_f2 = st.columns(2)
+        if has_epargne:
+            col_f1.success("✅ Accès aux services d'épargne confirmé.")
+        else:
+            col_f1.warning("⚠️ Absence de compte d'épargne formel : Vulnérabilité accrue aux chocs de trésorerie.")
+
+        if credit_obtenu:
+            col_f2.info(f"ℹ️ Crédit obtenu : Total de {montant_total_credit:,.0f} FCFA engagé.")
+        else:
+            col_f2.write("ℹ️ Aucun crédit bancaire ou microfinance contracté.")
+
         st.markdown("---")
 
         # 2. PRODUCTION DE CACAO DES 3 DERNIÈRES ANNÉES
@@ -816,14 +899,38 @@ def afficher():
             use_container_width=True
         )
 
-        # Calcul automatique des revenus bruts cacao
+        # --- DIAGNOSTIC MULTI-ANNÉES COMPLET (7.2) ---
         df_prod_calc = pd.DataFrame(prod_historique_df)
         df_prod_calc["Revenu Brut (FCFA)"] = df_prod_calc["Production (kg)"] * df_prod_calc["Prix moyen (FCFA/kg)"]
-        revenu_cacao_dernire_annee = df_prod_calc.iloc[0]["Revenu Brut (FCFA)"] if not df_prod_calc.empty else 0
+        
+        # Inversion pour analyse chronologique si besoin ou extraction par indice
+        prod_n1 = df_prod_calc.iloc[0]["Production (kg)"] if len(df_prod_calc) > 0 else 0
+        prod_n2 = df_prod_calc.iloc[1]["Production (kg)"] if len(df_prod_calc) > 1 else 0
+        prod_n3 = df_prod_calc.iloc[2]["Production (kg)"] if len(df_prod_calc) > 2 else 0
 
-        col_r1, col_r2 = st.columns(2)
-        col_r1.metric("Production (Année N-1)", f"{df_prod_calc.iloc[0]['Production (kg)']:,.0f} kg" if not df_prod_calc.empty else "0 kg")
-        col_r2.metric("Revenu Cacao Estimé (Année N-1)", f"{revenu_cacao_dernire_annee:,.0f} FCFA")
+        rev_n1 = df_prod_calc.iloc[0]["Revenu Brut (FCFA)"] if len(df_prod_calc) > 0 else 0
+        rev_n2 = df_prod_calc.iloc[1]["Revenu Brut (FCFA)"] if len(df_prod_calc) > 1 else 0
+        rev_n3 = df_prod_calc.iloc[2]["Revenu Brut (FCFA)"] if len(df_prod_calc) > 2 else 0
+
+        revenu_cacao_dernire_annee = rev_n1
+        moyenne_prod_3ans = df_prod_calc["Production (kg)"].mean() if not df_prod_calc.empty else 0
+
+        # Calcul de la tendance de production (N-3 à N-1)
+        evo_prod_pct = ((prod_n1 - prod_n3) / prod_n3 * 100) if prod_n3 > 0 else 0
+
+        st.markdown("#### 📊 Analyse Dynamique de la Production (Historique 3 Ans)")
+        col_h1, col_h2, col_h3, col_h4 = st.columns(4)
+        col_h1.metric("Production Année N-1", f"{prod_n1:,.0f} kg", delta=f"{((prod_n1 - prod_n2)/prod_n2*100):+.1f}% vs N-2" if prod_n2 > 0 else None)
+        col_h2.metric("Production Année N-2", f"{prod_n2:,.0f} kg", delta=f"{((prod_n2 - prod_n3)/prod_n3*100):+.1f}% vs N-3" if prod_n3 > 0 else None)
+        col_h3.metric("Production Année N-3", f"{prod_n3:,.0f} kg")
+        col_h4.metric("Moyenne Production (3 ans)", f"{moyenne_prod_3ans:,.0f} kg")
+
+        if evo_prod_pct > 5:
+            st.success(f"📈 **Tendance de production positive** : Progression de +{evo_prod_pct:.1f}% sur les 3 dernières campagnes.")
+        elif evo_prod_pct < -5:
+            st.error(f"📉 **Baisse de production détectée** : Chute de {evo_prod_pct:.1f}% entre N-3 et N-1. Nécessite une analyse du vieillissement des arbres ou des attaques sanitaires.")
+        else:
+            st.info("➡️ **Production stable** sur les trois dernières années.")
 
         st.markdown("---")
 
@@ -845,8 +952,19 @@ def afficher():
             use_container_width=True
         )
 
-        total_autres_revenus = pd.DataFrame(autres_revenus_df)["Montant estimé/an (FCFA)"].sum()
-        st.metric("Total Revenus Hors-Cacao / an", f"{total_autres_revenus:,.0f} FCFA")
+        total_autres_revenus = pd.DataFrame(autres_revenus_df)["Montant estimé/an (FCFA)"].sum() if not pd.DataFrame(autres_revenus_df).empty else 0
+        revenu_total_global = revenu_cacao_dernire_annee + total_autres_revenus
+        part_cacao = (revenu_cacao_dernire_annee / revenu_total_global * 100) if revenu_total_global > 0 else 0
+
+        st.markdown("#### 🌾 Analyse de Diversification du Revenu")
+        col_d1, col_d2 = st.columns(2)
+        col_d1.metric("Revenus Hors-Cacao / an", f"{total_autres_revenus:,.0f} FCFA")
+        col_d2.metric("Part du Cacao dans le Revenu Total", f"{part_cacao:.1f}%")
+
+        if part_cacao > 85:
+            st.warning("⚠️ **Forte dépendance à la monoculture de cacao** (> 85%). Vulnérabilité élevée face aux fluctuations des cours mondiaux.")
+        else:
+            st.success("✅ **Bonne diversification des revenus** (cultures vivrières, élevage ou services).")
 
         st.markdown("---")
 
@@ -910,17 +1028,35 @@ def afficher():
             use_container_width=True
         )
 
-        total_cout_mo = pd.DataFrame(main_oeuvre_df)["Coût annuel (FCFA)"].sum()
-        
-        # Bilan financier global succinct de l'exploitation
-        st.markdown("#### ⚖️ Bilan financier estimé du ménage")
+        df_mo = pd.DataFrame(main_oeuvre_df)
+        total_cout_mo = df_mo["Coût annuel (FCFA)"].sum() if not df_mo.empty else 0
+        total_jours_mo = df_mo["Temps de travail / an (jours)"].sum() if not df_mo.empty else 0
+
+        st.markdown("#### 👷 Diagnostic de la Main d'Œuvre")
+        col_m1, col_m2 = st.columns(2)
+        col_m1.metric("Coût Total Main d'Œuvre / an", f"{total_cout_mo:,.0f} FCFA")
+        col_m2.metric("Volume de Travail Annuel", f"{total_jours_mo:,.0f} homme-jours")
+
+        st.markdown("---")
+
+        # --- BILAN FINANCIER GLOBAL CONSOLIDÉ ---
+        st.markdown("### ⚖️ Bilan Financier Consolidé & Capacité d'Investissement")
         revenu_total_estime = revenu_cacao_dernire_annee + total_autres_revenus
-        solde_net_estime = revenu_total_estime - (total_depenses_an + total_cout_mo)
+        charges_totales = total_depenses_an + total_cout_mo
+        solde_net_estime = revenu_total_estime - charges_totales
 
         col_b1, col_b2, col_b3 = st.columns(3)
-        col_b1.metric("Revenus Totaux", f"{revenu_total_estime:,.0f} FCFA")
-        col_b2.metric("Charges Totales (Foyer + MO)", f"{(total_depenses_an + total_cout_mo):,.0f} FCFA")
+        col_b1.metric("Revenus Totaux (N-1)", f"{revenu_total_estime:,.0f} FCFA")
+        col_b2.metric("Charges Totales (Foyer + MO)", f"{charges_totales:,.0f} FCFA")
         col_b3.metric("Solde Net Estimé", f"{solde_net_estime:,.0f} FCFA", delta_color="normal" if solde_net_estime >= 0 else "inverse")
+
+        # Évaluation de la soutenabilité économique
+        if solde_net_estime < 0:
+            st.error("🚨 **Déficit financier annuel** : Les charges du ménage et de la main-d'œuvre dépassent les revenus générés. Risque de surendettement.")
+        elif solde_net_estime < 200000:
+            st.warning("⚠️ **Capacité d'épargne limitée** (< 200 000 FCFA/an). Capacité d'investissement restreinte pour la fertilisation et la réhabilitation.")
+        else:
+            st.success("🟢 **Solde financier positif** : Le ménage dispose d'une marge budgétaire pour investir dans les intrants et les aménagements de la parcelle.")
 
         # SAUVEGARDE ÉTAPE 7
         st.session_state.df_financement = financement_df
@@ -945,11 +1081,14 @@ def afficher():
                     "depenses_foyer": depenses_df,
                     "main_oeuvre": main_oeuvre_df,
                     "revenu_total_estime": revenu_total_estime,
-                    "charges_totales_estimees": total_depenses_an + total_cout_mo,
-                    "solde_net_estime": solde_net_estime
+                    "charges_totales_estimees": charges_totales,
+                    "solde_net_estime": solde_net_estime,
+                    "tendance_production_3ans_pct": evo_prod_pct,
+                    "part_revenu_cacao_pct": part_cacao
                 })
                 st.session_state.etape_pdc = 8
                 st.rerun()
+
 
 
                         # ---------------------------------------------------------
