@@ -74,41 +74,48 @@ with st.sidebar:
         st.session_state.identifie = False
         st.rerun()
 
-# --- ÉCRAN DE DÉVERROUILLAGE TECHNICIEN ---
-st.header("🔒 Accès Sécurisé Technicien")
-st.caption("Veuillez saisir votre mot de passe pour déverrouiller l'application Leyla et accéder aux modules.")
+with st.sidebar:
+    if st.session_state. appareil_deverrouille:
+        if st.button("🔒 Verrouiller la tablette"):
+            st.session_state.appareil_deverrouille = False
+            st.rerun()
+
+
 
 # Initialisation de l'état de déverrouillage
 if "appareil_deverrouille" not in st.session_state:
     st.session_state.appareil_deverrouille = False
 
 # Mot de passe défini
-MOT_DE_PASSE_VALIDE = "1234" 
+MOT_DE_PASSE_VALIDE = "leyla2.6" 
 
-# Formulaire de saisie
-with st.form("form_login_technicien"):
-    code_agent = st.text_input("Code Agent / Technicien", placeholder="Ex: TAG-042", key="input_code_agent")
-    mot_de_passe = st.text_input("Mot de passe *", type="password", key="input_mdp_technicien")
-    btn_valider = st.form_submit_button("🔓 Déverrouiller la tablette", type="primary", use_container_width=True)
-
-if btn_valider:
-    if mot_de_passe == MOT_DE_PASSE_VALIDE:
-        st.session_state.appareil_deverrouille = True
-        st.session_state.code_agent_connecte = code_agent
-        st.success(f"✅ Déverrouillage réussi. Bienvenue Agent {code_agent} !")
-        st.rerun()
-    else:
-        st.error("❌ Mot de passe incorrect. Accès refusé.")
-
-# Blocage de l'accès si non déverrouillé
+# --- 1. ÉCRAN DE DÉVERROUILLAGE (Affiché UNIQUEMENT si verrouillé) ---
 if not st.session_state.appareil_deverrouille:
+    st.header("🔒 Accès Sécurisé Technicien")
+    st.caption("Veuillez saisir votre mot de passe pour déverrouiller l'application Leyla et accéder aux modules.")
+
+    with st.form("form_login_technicien"):
+        code_agent = st.text_input("Code Agent / Technicien", placeholder="Ex: Agent Kouame", key="input_code_agent")
+        mot_de_passe = st.text_input("Mot de passe *", type="password", key="input_mdp_technicien")
+        btn_valider = st.form_submit_button("🔓 Déverrouiller la tablette", type="primary", use_container_width=True)
+
+    if btn_valider:
+        if mot_de_passe == MOT_DE_PASSE_VALIDE:
+            st.session_state.appareil_deverrouille = True
+            st.session_state.code_agent_connecte = code_agent
+            st.success(f"✅ Déverrouillage réussi. Bienvenue Agent {code_agent} !")
+            st.rerun()
+        else:
+            st.error("❌ Mot de passe incorrect. Accès refusé.")
+
     st.warning("⚠️ L'application est verrouillée. Entrez le mot de passe pour continuer.")
-    st.stop()
+    st.stop()  # Empêche l'affichage des modules tant qu'on n'est pas connecté
 
-st.markdown("---")
+# --- 2. ACCÈS AUX MODULES (Affiché UNE FOIS DÉVERROUILLÉ) ---
+# Tout ce qui se trouve ci-dessous s'affichera SANS l'écran de mot de passe
 
-# --- 3. SÉLECTION ET EXÉCUTION DES MODULES TERRAIN ---
 st.header("🛠️ Modules de Saisie")
+st.caption(f"👤 Session Agent : **{st.session_state.get('code_agent_connecte', 'Inconnu')}**")
 
 choix_module = st.selectbox(
     "Sélectionnez le module à exécuter :",
@@ -135,6 +142,7 @@ elif choix_module == "3. Estimation de Rendement":
 
 elif choix_module == "4. PDC":
     pdc.afficher()
+
 
 # --- 4. SYNCHRONISATION / ENVOI AU SERVEUR CENTRAL ---
 st.markdown("---")
