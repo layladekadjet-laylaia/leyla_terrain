@@ -133,29 +133,43 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("## 📄 Actions PDC")
     
-    # 1. BOUTON : VALIDER & GÉNÉRER LE PDF
+        # 1. BOUTON : VALIDER & GÉNÉRER LE PDF
     if st.button("🎓 Générer le PDF Final", key="sb_btn_generer_pdf", type="primary", use_container_width=True):
-        score_final = st.session_state.get("score_pdc", 0)
-        code_prod = st.session_state.get("code_producteur", "CCC-001")
-        nom_prod = st.session_state.get("nom_producteur", "Inconnu")
-        section_zone = st.session_state.get("section", "Zone Centre")
+        # Consolidation exhaustive de toutes les données saisies dans st.session_state
+        reponses_combinees = {}
+        
+        # 1. On récupère le dictionnaire reponses_pdc s'il existe
+        if "reponses_pdc" in st.session_state and isinstance(st.session_state.reponses_pdc, dict):
+            reponses_combinees.update(st.session_state.reponses_pdc)
+            
+        # 2. On injecte toutes les autres variables saisies dans la session
+        for k, v in st.session_state.items():
+            if not k.startswith("btn_") and not k.startswith("sb_") and k not in ["pdf_bytes_pdc", "reponses_pdc"]:
+                # Évite d'ajouter des objets complexes non imprimables
+                if isinstance(v, (str, int, float, bool, list, dict)):
+                    reponses_combinees[k] = v
+
+        score_final = st.session_state.get("score_pdc", st.session_state.get("score", 0))
+        code_prod = st.session_state.get("code_producteur", st.session_state.get("code_ccc", "CCC-001"))
+        nom_prod = st.session_state.get("nom_producteur", st.session_state.get("nom_prod", "Inconnu"))
+        section_zone = st.session_state.get("section", st.session_state.get("zone", "Zone Centre"))
 
         payload_pdf = {
             "nom_producteur": nom_prod,
             "code_ccc": code_prod,
             "zone": section_zone,
             "score_faisabilite": score_final,
-            "reponses": st.session_state.get("reponses_pdc", {})
+            "reponses": reponses_combinees  # Mêmes clés attendues par la fonction PDF
         }
         
         try:
-            # Appel via le module pdc
             pdf_bytes = pdc.generer_pdf_pdc_fonction(payload_pdf)
             st.session_state["pdf_bytes_pdc"] = pdf_bytes
             st.success("✅ PDF généré avec succès !")
             st.balloons()
         except Exception as e:
             st.error(f"❌ Erreur PDF : {e}")
+
 
     # 2. BOUTON : TÉLÉCHARGER LE PDF
     if st.session_state.get("pdf_bytes_pdc"):
