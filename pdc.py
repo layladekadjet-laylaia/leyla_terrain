@@ -329,6 +329,39 @@ def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_loc
 
 
 
+from fpdf import FPDF
+
+def generer_pdf_pdc_fonction(data):
+    """
+    Génère un rapport PDF simple à partir des données du PDC.
+    """
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_auto_page_break(auto=True, margin=15)
+    
+    # Titre du document
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(0, 10, "PLAN DE DEVELOPPEMENT DE CONSEIL (PDC)", ln=True, align="C")
+    pdf.ln(10)
+    
+    # Informations de base
+    pdf.set_font("Arial", size=11)
+    pdf.cell(0, 8, f"Producteur : {data.get('nom_producteur', 'N/A')}", ln=True)
+    pdf.cell(0, 8, f"Code CCC : {data.get('code_ccc', 'N/A')}", ln=True)
+    pdf.cell(0, 8, f"Zone : {data.get('zone', 'N/A')}", ln=True)
+    pdf.cell(0, 8, f"Ville / Localite : {data.get('ville', 'N/A')}", ln=True)
+    pdf.ln(5)
+    
+    # Évaluation du PDC
+    score = data.get("score", "N/A")
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 8, f"Score de faisabilite : {score} / 100", ln=True)
+    pdf.ln(5)
+    
+    # Export en bytes
+    return bytes(pdf.output())
+
+
 
 def afficher():
     st.title("📋 PDC - Diagnostic & Plan de Développement")
