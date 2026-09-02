@@ -251,6 +251,7 @@ def evaluer_pdc(data):
 
 
 
+import sqlite3
 import json
 import numpy as np
 import pandas as pd
@@ -269,28 +270,15 @@ def convert_types(obj):
         return obj.to_dict(orient="records")
     return obj
 
-# Dans votre fonction sauvegarder_en_local_sqlite :
-# Avant le json.dumps(), appliquez la conversion :
-donnees_nettoyees = convert_types(donnees_dossier.get("donnees_pdc", {}))
-donnees_pdc_json = json.dumps(donnees_nettoyees, ensure_ascii=False)
-
-
-
-import sqlite3
-import json
-import os
 
 def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_local.db"):
     """
-    Sauvegarde le dossier PDC dans une base de données SQLite locale sur la tablette.
-    Crée automatiquement la table si elle n'existe pas encore.
+    Sauvegarde le dossier PDC dans la base SQLite locale.
     """
     try:
-        # Connexion à la base SQLite locale (le fichier sera créé s'il n'existe pas)
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        # Création de la table si elle n'existe pas
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS pdc_locaux (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -306,10 +294,10 @@ def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_loc
             )
         """)
 
-        # Conversion des données dictionnaire/JSON en texte pour le stockage SQLite
-        donnees_pdc_json = json.dumps(donnees_dossier.get("donnees_pdc", {}), ensure_ascii=False)
+        # CONVERSION OBLIGATOIRE ICI (À l'intérieur de la fonction)
+        donnees_nettoyees = convert_types(donnees_dossier.get("donnees_pdc", {}))
+        donnees_pdc_json = json.dumps(donnees_nettoyees, ensure_ascii=False)
 
-        # Insertion de l'enregistrement
         cursor.execute("""
             INSERT INTO pdc_locaux (
                 code_ccc, 
