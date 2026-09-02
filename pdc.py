@@ -251,6 +251,44 @@ def evaluer_pdc(data):
 
 
 
+import json
+import numpy as np
+import pandas as pd
+
+class NpEncoder(json.JSONEncoder):
+    """Convertit tous les types d'objets non-JSON (int64, float64, arrays, etc.) en types natifs Python."""
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        if pd.isna(obj):
+            return None
+        return super(NpEncoder, self).default(obj)
+
+def nettoyer_pour_json(d):
+    """Nettoie récursivement un dictionnaire ou une liste pour la sérialisation JSON."""
+    if isinstance(d, dict):
+        # Filtre les clés Streamlit internes non sérialisables
+        return {
+            str(k): nettoyer_pour_json(v) 
+            for k, v in d.items() 
+            if not str(k).startswith("FormSubmitter") and not str(k).startswith("btn_")
+        }
+    elif isinstance(d, list):
+        return [nettoyer_pour_json(v) for v in d]
+    elif isinstance(d, (np.integer, int)):
+        return int(d)
+    elif isinstance(d, (np.floating, float)):
+        return float(d)
+    elif isinstance(d, bytes):
+        return None  # On évite d'inclure des octets bruts (comme les images/pdf) directement dans le JSON textuel
+    else:
+        return d
+
+
 import sqlite3
 import json
 import numpy as np
@@ -273,7 +311,7 @@ def convert_types(obj):
 
 def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_local.db"):
     """
-    Sauvegarde le dossier PDC dans la base SQLite locale.
+    Sauvegarde TOUT le dossier PDC (avec session intégrale et données nettoyées) dans la base SQLite locale.
     """
     try:
         conn = sqlite3.connect(db_path)
@@ -294,9 +332,11 @@ def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_loc
             )
         """)
 
-        # CONVERSION OBLIGATOIRE ICI (À l'intérieur de la fonction)
-        donnees_nettoyees = convert_types(donnees_dossier.get("donnees_pdc", {}))
-        donnees_pdc_json = json.dumps(donnees_nettoyees, ensure_ascii=False)
+        # 1. Nettoyage et conversion exhaustive de TOUT le dictionnaire
+        donnees_completes_nettoyees = nettoyer_pour_json(donnees_dossier)
+        
+        # 2. Sérialisation JSON de TOUTES les données (donnees_pdc + etat_session_integral)
+        donnees_pdc_json = json.dumps(donnees_completes_nettoyees, cls=NpEncoder, ensure_ascii=False)
 
         cursor.execute("""
             INSERT INTO pdc_locaux (
@@ -314,7 +354,7 @@ def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_loc
             donnees_dossier.get("nom_producteur", ""),
             donnees_dossier.get("zone", ""),
             donnees_dossier.get("score_faisabilite", 0),
-            donnees_pdc_json,
+            donnees_pdc_json,  # Contient désormais tout l'état de session et le dossier complet
             donnees_dossier.get("croquis_base64", ""),
             donnees_dossier.get("facteurs_succes", ""),
             donnees_dossier.get("statut_synchro", "En attente de synchro")
@@ -326,6 +366,7 @@ def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_loc
     except Exception as e:
         print(f"Erreur lors de la sauvegarde SQLite locale : {e}")
         raise e
+
 
 
 
@@ -2496,43 +2537,61 @@ if st.session_state.get("pdf_bytes_pdc"):
 # =========================================================
 # ENREGISTREMENT LOCAL DANS LA TABLETTE (SQLITE)
 # =========================================================
+
 st.markdown("---")
 st.info("📌 **Enregistrement du PDC sur la tablette** (Le dossier complet sera stocké localement en attente de synchronisation).")
 
 if st.button("💾 Enregistrer le PDC dans la tablette", type="primary", key="btn_sauvegarder_pdc_local", use_container_width=True):
     import time
 
+    # 1. Extraction exhaustive de TOUT le session_state
+    session_complete = {}
+    for key, val in st.session_state.items():
+        # Exclure les clés temporaires/binaires qui n'ont pas besoin d'être sérialisées en JSON
+        if key not in ["pdf_bytes_pdc"] and not key.startswith("btn_"):
+            session_complete[key] = val
+
+    # 2. Construction du dossier PDC exhaustif
     donnees_dossier_pdc = {
         "type_document": "PDC_COMPLET",
         "code_ccc": code_prod_input,
         "nom_producteur": nom_prod_input,
         "zone": section_zone,
-        "score_faisabilite": score_final,
-        "donnees_pdc": st.session_state.get("reponses_pdc", {}),
+        "score_faisabilite": st.session_state.get("score_pdc", score if 'score' in locals() else 0),
+        
+        # Capture de TOUTES les données saisies au fil des étapes
+        "reponses_pdc": st.session_state.get("reponses_pdc", {}),
+        
+        # Capture globale de TOUT l'état de la session Streamlit
+        "etat_session_integral": nettoyer_pour_json(session_complete),
+        
         "croquis_base64": st.session_state.get("croquis_genere", None),
         "facteurs_succes": st.session_state.get("facteurs_succes_pdc", ""),
         "statut_synchro": "En attente de synchro"
     }
 
     try:
+        # 3. Sauvegarde dans SQLite avec l'encodeur personnalisé NpEncoder
         sauvegarder_en_local_sqlite(donnees_dossier_pdc)
 
-        st.success(f"💾 Dossier PDC de **{nom_prod_input}** ({code_prod_input}) sauvegardé avec succès sur la tablette !")
+        st.success(f"💾 Dossier PDC complet de **{nom_prod_input}** ({code_prod_input}) sauvegardé avec succès sur la tablette !")
         st.balloons()
         
         time.sleep(1.5)
 
-        # Réinitialisation propre des états
+        # 4. Réinitialisation des états pour le prochain formulaire
         st.session_state.etape_pdc = 1
         st.session_state.reponses_pdc = {}
         st.session_state.pop("croquis_genere", None)
         st.session_state.pop("facteurs_succes_pdc", None)
         st.session_state.pop("pdf_bytes_pdc", None)
 
+        # 5. Rechargement de l'application (met à jour le compteur à 1)
         st.rerun()
 
     except Exception as e:
         st.error(f"❌ Erreur lors de l'enregistrement en local sur la tablette : {e}")
+
 
 
 
