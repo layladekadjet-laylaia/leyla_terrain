@@ -125,6 +125,102 @@ choix_module = st.selectbox(
     ]
 )
 
+import streamlit as st
+import time
+
+# =========================================================
+# BARRE LATÉRALE (SIDEBAR) : ACTIONS FINALES (PDF & SAUVEGARDE)
+# =========================================================
+with st.sidebar:
+    st.markdown("## 📄 Actions PDC")
+    
+    # 1. BOUTON : VALIDER & GÉNÉRER LE PDF
+    if st.button("🎓 Générer le PDF Final", key="sb_btn_generer_pdf", type="primary", use_container_width=True):
+        # Récupération sécurisée du score et des identifiants
+        score_final = st.session_state.get("score_pdc", 0)
+        code_prod = st.session_state.get("code_producteur", "CCC-001")
+        nom_prod = st.session_state.get("nom_producteur", "Inconnu")
+        section_zone = st.session_state.get("section", "Zone Centre")
+
+        payload_pdf = {
+            "nom_producteur": nom_prod,
+            "code_ccc": code_prod,
+            "zone": section_zone,
+            "score_faisabilite": score_final,
+            "reponses": st.session_state.get("reponses_pdc", {})
+        }
+        
+        try:
+            # Génération du PDF
+            pdf_bytes = generer_pdf_pdc_fonction(payload_pdf)
+            st.session_state["pdf_bytes_pdc"] = pdf_bytes
+            st.success("✅ PDF généré avec succès !")
+            st.balloons()
+        except Exception as e:
+            st.error(f"❌ Erreur PDF : {e}")
+
+    # 2. BOUTON : TÉLÉCHARGER LE PDF (Affiche le bouton de téléchargement si le PDF a été généré)
+    if st.session_state.get("pdf_bytes_pdc"):
+        code_prod = st.session_state.get("code_producteur", "CCC-001")
+        nom_prod = st.session_state.get("nom_producteur", "Inconnu")
+        
+        st.download_button(
+            label="📥 Télécharger le PDF",
+            data=st.session_state["pdf_bytes_pdc"],
+            file_name=f"PDC_{code_prod}_{nom_prod}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+            key="sb_btn_download_pdf"
+        )
+
+    st.markdown("---")
+
+    # 3. BOUTON : ENREGISTRER SUR LA TABLETTE (SQLITE)
+    if st.button("💾 Enregistrer dans la tablette", type="secondary", key="sb_btn_sauvegarder_sqlite", use_container_width=True):
+        code_prod = st.session_state.get("code_producteur", "CCC-001")
+        nom_prod = st.session_state.get("nom_producteur", "Inconnu")
+        section_zone = st.session_state.get("section", "Zone Centre")
+        score_final = st.session_state.get("score_pdc", 0)
+
+        # Extraction propre du session_state complet
+        session_complete = {}
+        for key, val in st.session_state.items():
+            if key not in ["pdf_bytes_pdc"] and not key.startswith("btn_") and not key.startswith("sb_"):
+                session_complete[key] = val
+
+        donnees_dossier_pdc = {
+            "type_document": "PDC_COMPLET",
+            "code_ccc": code_prod,
+            "nom_producteur": nom_prod,
+            "zone": section_zone,
+            "score_faisabilite": score_final,
+            "reponses_pdc": st.session_state.get("reponses_pdc", {}),
+            "etat_session_integral": nettoyer_pour_json(session_complete),
+            "croquis_base64": st.session_state.get("croquis_genere", None),
+            "facteurs_succes": st.session_state.get("facteurs_succes_pdc", ""),
+            "statut_synchro": "En attente de synchro"
+        }
+
+        try:
+            sauvegarder_en_local_sqlite(donnees_dossier_pdc)
+            st.success(f"💾 Dossier sauvegardé en local !")
+            st.balloons()
+            
+            time.sleep(1.5)
+
+            # Réinitialisation propre
+            st.session_state.etape_pdc = 1
+            st.session_state.reponses_pdc = {}
+            st.session_state.pop("croquis_genere", None)
+            st.session_state.pop("facteurs_succes_pdc", None)
+            st.session_state.pop("pdf_bytes_pdc", None)
+
+            st.rerun()
+
+        except Exception as e:
+            st.error(f"❌ Erreur SQLite : {e}")
+
+
 st.markdown("---")
 
 # --- APPEL DES MODULES ---
