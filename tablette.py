@@ -133,42 +133,49 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("## 📄 Actions PDC")
     
-        # 1. BOUTON : VALIDER & GÉNÉRER LE PDF
-    if st.button("🎓 Générer le PDF Final", key="sb_btn_generer_pdf", type="primary", use_container_width=True):
-        # Consolidation exhaustive de toutes les données saisies dans st.session_state
-        reponses_combinees = {}
-        
-        # 1. On récupère le dictionnaire reponses_pdc s'il existe
-        if "reponses_pdc" in st.session_state and isinstance(st.session_state.reponses_pdc, dict):
-            reponses_combinees.update(st.session_state.reponses_pdc)
-            
-        # 2. On injecte toutes les autres variables saisies dans la session
-        for k, v in st.session_state.items():
-            if not k.startswith("btn_") and not k.startswith("sb_") and k not in ["pdf_bytes_pdc", "reponses_pdc"]:
-                # Évite d'ajouter des objets complexes non imprimables
-                if isinstance(v, (str, int, float, bool, list, dict)):
-                    reponses_combinees[k] = v
+        # Dans la barre latérale ou l'endroit où vous déclenchez la génération du PDF :
+if st.button("🎓 Générer le PDF Final", key="sb_btn_generer_pdf", type="primary", use_container_width=True):
+    
+    # 1. Récupération dynamique de TOUTES les données de session des 15 étapes
+    reponses_completes = {}
+    
+    # Si reponses_pdc existe déjà, on l'inclut
+    if "reponses_pdc" in st.session_state and isinstance(st.session_state.reponses_pdc, dict):
+        reponses_completes.update(st.session_state.reponses_pdc)
+    
+    # On ajoute toutes les autres paires clé-valeur saisies dans la session
+    cles_a_ignorer = [
+        "appareil_deverrouille", "identifie", "code_agent_connecte", 
+        "pdf_bytes_pdc", "etape_pdc", "reponses_pdc"
+    ]
+    
+    for k, v in st.session_state.items():
+        if not k.startswith("btn_") and not k.startswith("sb_") and not k.startswith("FormSubmitter") and k not in cles_a_ignorer:
+            if isinstance(v, (str, int, float, bool, list, dict)):
+                reponses_completes[k] = v
 
-        score_final = st.session_state.get("score_pdc", st.session_state.get("score", 0))
-        code_prod = st.session_state.get("code_producteur", st.session_state.get("code_ccc", "CCC-001"))
-        nom_prod = st.session_state.get("nom_producteur", st.session_state.get("nom_prod", "Inconnu"))
-        section_zone = st.session_state.get("section", st.session_state.get("zone", "Zone Centre"))
+    # 2. Récupération intelligente des identifiants (avec valeurs par défaut)
+    nom_prod = st.session_state.get("nom_producteur") or st.session_state.get("producteur") or st.session_state.get("nom_prod", "Yao Jean")
+    code_prod = st.session_state.get("code_producteur") or st.session_state.get("code_ccc", "CCC-001")
+    section_zone = st.session_state.get("section") or st.session_state.get("zone", "Section Divo-Sud")
+    score_final = st.session_state.get("score_pdc") or st.session_state.get("score_faisabilite") or st.session_state.get("score", 85)
 
-        payload_pdf = {
-            "nom_producteur": nom_prod,
-            "code_ccc": code_prod,
-            "zone": section_zone,
-            "score_faisabilite": score_final,
-            "reponses": reponses_combinees  # Mêmes clés attendues par la fonction PDF
-        }
-        
-        try:
-            pdf_bytes = pdc.generer_pdf_pdc_fonction(payload_pdf)
-            st.session_state["pdf_bytes_pdc"] = pdf_bytes
-            st.success("✅ PDF généré avec succès !")
-            st.balloons()
-        except Exception as e:
-            st.error(f"❌ Erreur PDF : {e}")
+    payload_pdf = {
+        "nom_producteur": nom_prod,
+        "code_ccc": code_prod,
+        "zone": section_zone,
+        "score_faisabilite": score_final,
+        "reponses": reponses_completes  # Contient désormais toutes les étapes 1 à 15
+    }
+    
+    try:
+        pdf_bytes = pdc.generer_pdf_pdc_fonction(payload_pdf)
+        st.session_state["pdf_bytes_pdc"] = pdf_bytes
+        st.success("✅ PDF généré avec succès !")
+        st.balloons()
+    except Exception as e:
+        st.error(f"❌ Erreur PDF : {e}")
+
 
 
     # 2. BOUTON : TÉLÉCHARGER LE PDF
