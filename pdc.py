@@ -2400,54 +2400,59 @@ def afficher():
 
 
                 # =========================================================
-        # 15.4 SAUVEGARDE LOCALE SQLITE & SYNCHRONISATION
-        # =========================================================
-        st.markdown("---")
-        st.info("📌 **Enregistrement du PDC sur la tablette** (Le dossier complet sera stocké localement en attente de synchronisation).")
+# 15.4 SAUVEGARDE LOCALE SQLITE & SYNCHRONISATION
+# =========================================================
+st.markdown("---")
+st.info("📌 **Enregistrement du PDC sur la tablette** (Le dossier complet sera stocké localement en attente de synchronisation).")
 
-        # Récupération automatique des identifiants
-        code_producteur = st.session_state.get("code_producteur", "CCC-001")
-        nom_producteur = st.session_state.get("nom_producteur", "Inconnu")
-        section_zone = st.session_state.get("section", "Zone Centre")
+# Récupération automatique des identifiants
+code_producteur = st.session_state.get("code_producteur", "CCC-001")
+nom_producteur = st.session_state.get("nom_producteur", "Inconnu")
+section_zone = st.session_state.get("section", "Zone Centre")
 
-        col_p1, col_p2 = st.columns(2)
-        nom_prod_input = col_p1.text_input("Nom & Prénoms du Producteur", value=nom_producteur, key="input_nom_prod_pdc")
-        code_prod_input = col_p2.text_input("Code CCC / Identifiant", value=code_producteur, key="input_code_prod_pdc")
+col_p1, col_p2 = st.columns(2)
+nom_prod_input = col_p1.text_input("Nom & Prénoms du Producteur", value=nom_producteur, key="input_nom_prod_pdc")
+code_prod_input = col_p2.text_input("Code CCC / Identifiant", value=code_producteur, key="input_code_prod_pdc")
 
-        if st.button("💾 Enregistrer le PDC dans la tablette", type="primary", key="btn_sauvegarder_pdc_local", use_container_width=True):
-            import json
-            import time
+if st.button("💾 Enregistrer le PDC dans la tablette", type="primary", key="btn_sauvegarder_pdc_local", use_container_width=True):
+    import json
+    import time
 
-            # Compilation complète du dossier PDC
-            donnees_dossier_pdc = {
-                "type_document": "PDC_COMPLET",
-                "code_ccc": code_prod_input,
-                "nom_producteur": nom_prod_input,
-                "zone": section_zone,
-                "score_faisabilite": score,
-                "donnees_pdc": st.session_state.get("reponses_pdc", {}),
-                "croquis_base64": st.session_state.get("croquis_genere", None),
-                "facteurs_succes": st.session_state.get("facteurs_succes_pdc", ""),
-                "statut_synchro": "En attente de synchro"
-            }
+    # Compilation complète du dossier PDC
+    donnees_dossier_pdc = {
+        "type_document": "PDC_COMPLET",
+        "code_ccc": code_prod_input,
+        "nom_producteur": nom_prod_input,
+        "zone": section_zone,
+        "score_faisabilite": score,
+        "donnees_pdc": st.session_state.get("reponses_pdc", {}),
+        "croquis_base64": st.session_state.get("croquis_genere", None),
+        "facteurs_succes": st.session_state.get("facteurs_succes_pdc", ""),
+        "statut_synchro": "En attente de synchro"
+    }
 
-            try:
-                # Enregistrement dans la base SQLite locale
-                sauvegarder_en_local_sqlite(donnees_dossier_pdc)
+    try:
+        # 1. Enregistrement en BDD locale
+        sauvegarder_en_local_sqlite(donnees_dossier_pdc)
 
-                st.success(f"💾 Dossier PDC de **{nom_prod_input}** ({code_prod_input}) sauvegardé avec succès sur la tablette !")
-                st.balloons()
+        # 2. Notification visuelle
+        st.success(f"💾 Dossier PDC de **{nom_prod_input}** ({code_prod_input}) sauvegardé avec succès sur la tablette !")
+        st.balloons()
+        
+        # Pause courte pour laisser l'utilisateur voir le message
+        time.sleep(1.5)
 
-                # Réinitialisation du module PDC
-                time.sleep(2)
-                st.session_state.etape_pdc = 1
-                st.session_state.reponses_pdc = {}
-                if "croquis_genere" in st.session_state:
-                    del st.session_state["croquis_genere"]
-                
-                st.rerun()
+        # 3. Réinitialisation des variables de formulaire
+        st.session_state.etape_pdc = 1
+        st.session_state.reponses_pdc = {}
+        st.session_state.pop("croquis_genere", None)
+        st.session_state.pop("facteurs_succes_pdc", None)
 
-            except Exception as e:
-                st.error(f"❌ Erreur lors de l'enregistrement en local sur la tablette : {e}")
+        # 4. Relance de l'interface pour actualiser les compteurs
+        st.rerun()
+
+    except Exception as e:
+        st.error(f"❌ Erreur lors de l'enregistrement en local sur la tablette : {e}")
+
 
 
