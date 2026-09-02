@@ -2444,6 +2444,9 @@ def afficher():
 # =========================================================
 st.markdown("### 📄 4. Finalisation et Impression du PDC Final")
 
+# Récupération sécurisée du score calculé (avec valeur par défaut à 0 si absent)
+score_final = st.session_state.get("score_pdc", 0)
+
 # Récupération automatique et sécurisée des identifiants du producteur
 code_producteur = st.session_state.get("code_producteur", "CCC-001")
 nom_producteur = st.session_state.get("nom_producteur", "Inconnu")
@@ -2462,25 +2465,18 @@ with col_final1:
 
 with col_final2:
     if st.button("🎓 Valider & Générer le PDF Final du PDC", key="btn_generer_pdf_pdc", type="primary", use_container_width=True):
-        # Construction complète du payload
         payload_pdf = {
             "nom_producteur": nom_prod_input,
             "code_ccc": code_prod_input,
             "zone": section_zone,
-            "score_faisabilite": score,  # S'assurer que 'score' est calculé plus haut via evaluer_pdc()
+            "score_faisabilite": score_final,
             "reponses": st.session_state.get("reponses_pdc", {})
         }
         
         # 1. Génération des octets
         pdf_bytes = generer_pdf_pdc_fonction(payload_pdf)
         
-        # 2. Conservation en session state pour téléchargement
-        st.session_state["pdf_bytes_pdc"] = pdf_bytes
-        st.success("Le Plan de Développement de Conseil (PDC) est validé et prêt à être téléchargé !")
-        st.balloons()
-
-        
-        # 2. Stockage en session
+        # 2. Stockage en session pour affichage du bouton de téléchargement
         st.session_state["pdf_bytes_pdc"] = pdf_bytes
         st.success("Le Plan de Développement de Conseil (PDC) est validé et prêt à être téléchargé !")
         st.balloons()
@@ -2506,13 +2502,12 @@ st.info("📌 **Enregistrement du PDC sur la tablette** (Le dossier complet sera
 if st.button("💾 Enregistrer le PDC dans la tablette", type="primary", key="btn_sauvegarder_pdc_local", use_container_width=True):
     import time
 
-    # Compilation complète du dossier PDC
     donnees_dossier_pdc = {
         "type_document": "PDC_COMPLET",
         "code_ccc": code_prod_input,
         "nom_producteur": nom_prod_input,
         "zone": section_zone,
-        "score_faisabilite": score,
+        "score_faisabilite": score_final,
         "donnees_pdc": st.session_state.get("reponses_pdc", {}),
         "croquis_base64": st.session_state.get("croquis_genere", None),
         "facteurs_succes": st.session_state.get("facteurs_succes_pdc", ""),
@@ -2520,27 +2515,25 @@ if st.button("💾 Enregistrer le PDC dans la tablette", type="primary", key="bt
     }
 
     try:
-        # 1. Enregistrement SQLite (convertit les types NumPy/Pandas en natif)
         sauvegarder_en_local_sqlite(donnees_dossier_pdc)
 
-        # 2. Notification
         st.success(f"💾 Dossier PDC de **{nom_prod_input}** ({code_prod_input}) sauvegardé avec succès sur la tablette !")
         st.balloons()
         
         time.sleep(1.5)
 
-        # 3. Réinitialisation propre du formulaire et suppression des états temporaires
+        # Réinitialisation propre des états
         st.session_state.etape_pdc = 1
         st.session_state.reponses_pdc = {}
         st.session_state.pop("croquis_genere", None)
         st.session_state.pop("facteurs_succes_pdc", None)
         st.session_state.pop("pdf_bytes_pdc", None)
 
-        # 4. Rafraîchissement complet de l'application
         st.rerun()
 
     except Exception as e:
         st.error(f"❌ Erreur lors de l'enregistrement en local sur la tablette : {e}")
+
 
 
 
