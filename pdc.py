@@ -2374,7 +2374,7 @@ def afficher():
 
         st.markdown("---")
 
-        # =========================================================
+                # =========================================================
         # 15.4 GÉNÉRATION & TÉLÉCHARGEMENT DU DOCUMENT PDC
         # =========================================================
         st.markdown("### 📄 4. Finalisation et Impression du PDC Final")
@@ -2388,8 +2388,27 @@ def afficher():
 
         with col_final2:
             if st.button("🎓 Valider & Générer le PDF Final du PDC", key="btn_generer_pdf_pdc", type="primary", use_container_width=True):
+                # 1. Génération effective des octets du PDF
+                # (Remplacez cette ligne par l'appel à votre fonction réelle de génération PDF)
+                pdf_bytes = generer_pdf_pdc_fonction(st.session_state.get("reponses_pdc", {}))
+                
+                # 2. Stockage temporaire en session pour afficher le bouton de téléchargement
+                st.session_state["pdf_bytes_pdc"] = pdf_bytes
+                st.success("Le Plan de Développement de Conseil (PDC) est validé et prêt à être téléchargé !")
                 st.balloons()
-                st.success("Le Plan de Développement de Conseil (PDC) est validé et enregistré dans le système Leyla !")
+
+        # --- TÉLÉCHARGEMENT DU PDF SUR LA TABLETTE ---
+        if "pdf_bytes_pdc" in st.session_state and st.session_state["pdf_bytes_pdc"]:
+            st.markdown("---")
+            st.download_button(
+                label="📥 Télécharger le PDF du PDC sur la tablette",
+                data=st.session_state["pdf_bytes_pdc"],
+                file_name=f"PDC_{code_prod_input}_{nom_prod_input}.pdf",
+                mime="application/pdf",
+                use_container_width=True,
+                key="btn_download_pdf_pdc"
+            )
+
 
 
                 # =========================================================
