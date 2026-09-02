@@ -331,35 +331,41 @@ def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_loc
 
 from fpdf import FPDF
 
-def generer_pdf_pdc_fonction(data):
-    """
-    Génère un rapport PDF simple à partir des données du PDC.
-    """
+def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
     
-    # Titre du document
-    pdf.set_font("Arial", 'B', 16)
+    # En-tête
+    pdf.set_font("Arial", "B", 16)
     pdf.cell(0, 10, "PLAN DE DEVELOPPEMENT DE CONSEIL (PDC)", ln=True, align="C")
-    pdf.ln(10)
-    
-    # Informations de base
-    pdf.set_font("Arial", size=11)
-    pdf.cell(0, 8, f"Producteur : {data.get('nom_producteur', 'N/A')}", ln=True)
-    pdf.cell(0, 8, f"Code CCC : {data.get('code_ccc', 'N/A')}", ln=True)
-    pdf.cell(0, 8, f"Zone : {data.get('zone', 'N/A')}", ln=True)
-    pdf.cell(0, 8, f"Ville / Localite : {data.get('ville', 'N/A')}", ln=True)
     pdf.ln(5)
     
-    # Évaluation du PDC
-    score = data.get("score", "N/A")
-    pdf.set_font("Arial", 'B', 12)
-    pdf.cell(0, 8, f"Score de faisabilite : {score} / 100", ln=True)
+    # Informations Générales
+    pdf.set_font("Arial", "B", 11)
+    pdf.cell(0, 7, f"Producteur : {data.get('nom_producteur', 'N/A')}", ln=True)
+    pdf.cell(0, 7, f"Code CCC : {data.get('code_ccc', 'N/A')}", ln=True)
+    pdf.cell(0, 7, f"Zone : {data.get('zone', 'N/A')}", ln=True)
+    pdf.cell(0, 7, f"Score de Faisabilite : {data.get('score', 'N/A')} / 100", ln=True)
     pdf.ln(5)
     
-    # Export en bytes
+    # Section Détails des Réponses
+    pdf.set_font("Arial", "B", 13)
+    pdf.cell(0, 8, "DETAILS DES OBSERVATIONS & REPONSES :", ln=True)
+    pdf.set_font("Arial", size=10)
+    
+    reponses = data.get("reponses", {})
+    if isinstance(reponses, dict) and reponses:
+        for cle, valeur in reponses.items():
+            # Nettoyage des chaînes pour éviter les erreurs d'encodage latin-1 de FPDF
+            cle_str = str(cle).encode('latin-1', 'replace').decode('latin-1')
+            val_str = str(valeur).encode('latin-1', 'replace').decode('latin-1')
+            pdf.multi_cell(0, 6, f"- {cle_str} : {val_str}")
+    else:
+        pdf.cell(0, 6, "Aucune donnee de formulaire enregistree.", ln=True)
+        
     return bytes(pdf.output())
+
 
 
 
@@ -2418,17 +2424,23 @@ with col_final1:
 
 with col_final2:
     if st.button("🎓 Valider & Générer le PDF Final du PDC", key="btn_generer_pdf_pdc", type="primary", use_container_width=True):
-        # Dictionnaire d'informations pour le PDF
+        # Construction complète du payload
         payload_pdf = {
             "nom_producteur": nom_prod_input,
             "code_ccc": code_prod_input,
             "zone": section_zone,
-            "score_faisabilite": score,
+            "score_faisabilite": score,  # S'assurer que 'score' est calculé plus haut via evaluer_pdc()
             "reponses": st.session_state.get("reponses_pdc", {})
         }
         
-        # 1. Génération effective des octets du PDF
+        # 1. Génération des octets
         pdf_bytes = generer_pdf_pdc_fonction(payload_pdf)
+        
+        # 2. Conservation en session state pour téléchargement
+        st.session_state["pdf_bytes_pdc"] = pdf_bytes
+        st.success("Le Plan de Développement de Conseil (PDC) est validé et prêt à être téléchargé !")
+        st.balloons()
+
         
         # 2. Stockage en session
         st.session_state["pdf_bytes_pdc"] = pdf_bytes
