@@ -331,40 +331,78 @@ def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_loc
 
 from fpdf import FPDF
 
+def nettoyer_texte(texte):
+    """Convertit en chaîne et gère le codage latin-1 sans faire planter FPDF sur les accents."""
+    if texte is None:
+        return ""
+    # Remplacement des caractères non-latin-1 fréquents
+    s = str(texte)
+    s = s.replace("’", "'").replace("–", "-").replace("—", "-")
+    return s.encode('latin-1', 'replace').decode('latin-1')
+
 def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
     
-    # En-tête
+    # En-tête principal
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, "PLAN DE DEVELOPPEMENT DE CONSEIL (PDC)", ln=True, align="C")
+    pdf.cell(0, 10, nettoyer_texte("PLAN DE DÉVELOPPEMENT DE CONSEIL (PDC)"), ln=True, align="C")
     pdf.ln(5)
     
-    # Informations Générales
+    # Bloc Identité
     pdf.set_font("Arial", "B", 11)
-    pdf.cell(0, 7, f"Producteur : {data.get('nom_producteur', 'N/A')}", ln=True)
-    pdf.cell(0, 7, f"Code CCC : {data.get('code_ccc', 'N/A')}", ln=True)
-    pdf.cell(0, 7, f"Zone : {data.get('zone', 'N/A')}", ln=True)
-    pdf.cell(0, 7, f"Score de Faisabilite : {data.get('score', 'N/A')} / 100", ln=True)
+    pdf.cell(0, 7, nettoyer_texte(f"Producteur : {data.get('nom_producteur', 'Inconnu')}"), ln=True)
+    pdf.cell(0, 7, nettoyer_texte(f"Code CCC : {data.get('code_ccc', 'N/A')}"), ln=True)
+    pdf.cell(0, 7, nettoyer_texte(f"Zone d'intervention : {data.get('zone', 'N/A')}"), ln=True)
+    pdf.cell(0, 7, nettoyer_texte(f"Score de Faisabilité : {data.get('score_faisabilite', 'N/A')} / 100"), ln=True)
     pdf.ln(5)
     
-    # Section Détails des Réponses
-    pdf.set_font("Arial", "B", 13)
-    pdf.cell(0, 8, "DETAILS DES OBSERVATIONS & REPONSES :", ln=True)
+    # Séparateur visual
+    pdf.set_draw_color(180, 180, 180)
+    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+    pdf.ln(5)
+    
+    # Détails du Formulaire PDC
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, nettoyer_texte("SYNTHÈSE DES DONNÉES DU FORMULAIRE :"), ln=True)
     pdf.set_font("Arial", size=10)
     
     reponses = data.get("reponses", {})
+    
     if isinstance(reponses, dict) and reponses:
-        for cle, valeur in reponses.items():
-            # Nettoyage des chaînes pour éviter les erreurs d'encodage latin-1 de FPDF
-            cle_str = str(cle).encode('latin-1', 'replace').decode('latin-1')
-            val_str = str(valeur).encode('latin-1', 'replace').decode('latin-1')
-            pdf.multi_cell(0, 6, f"- {cle_str} : {val_str}")
+        for cle, val in reponses.items():
+            nom_cle = nettoyer_texte(str(cle).replace("_", " ").capitalize())
+            
+            # Gestion si la valeur est une liste (ex: parcelles, équipements, engrais)
+            if isinstance(val, list):
+                pdf.set_font("Arial", "B", 10)
+                pdf.cell(0, 6, nettoyer_texte(f"• {nom_cle} ({len(val)} élément(s)) :"), ln=True)
+                pdf.set_font("Arial", size=9)
+                for i, item in enumerate(val, 1):
+                    if isinstance(item, dict):
+                        details = ", ".join([f"{k}: {v}" for k, v in item.items()])
+                        pdf.multi_cell(0, 5, nettoyer_texte(f"   - [{i}] {details}"))
+                    else:
+                        pdf.multi_cell(0, 5, nettoyer_texte(f"   - [{i}] {item}"))
+            
+            # Gestion si la valeur est un dictionnaire
+            elif isinstance(val, dict):
+                pdf.set_font("Arial", "B", 10)
+                pdf.cell(0, 6, nettoyer_texte(f"• {nom_cle} :"), ln=True)
+                pdf.set_font("Arial", size=9)
+                for k_sub, v_sub in val.items():
+                    pdf.multi_cell(0, 5, nettoyer_texte(f"   - {k_sub}: {v_sub}"))
+            
+            # Valeurs simples (texte, nombres)
+            else:
+                pdf.set_font("Arial", size=10)
+                pdf.multi_cell(0, 6, nettoyer_texte(f"• {nom_cle} : {val}"))
     else:
-        pdf.cell(0, 6, "Aucune donnee de formulaire enregistree.", ln=True)
+        pdf.cell(0, 6, nettoyer_texte("Aucune donnée saisie dans le PDC."), ln=True)
         
     return bytes(pdf.output())
+
 
 
 
