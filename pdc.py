@@ -2396,49 +2396,11 @@ def afficher():
         st.markdown("---")
 
                 # =========================================================
-        # 15.4 GÉNÉRATION & TÉLÉCHARGEMENT DU DOCUMENT PDC
-        # =========================================================
-        st.markdown("### 📄 4. Finalisation et Impression du PDC Final")
-
-        col_final1, col_final2 = st.columns([1, 1])
-
-        with col_final1:
-            if st.button("⬅️ Retour (Étape 14 : Planification)", key="btn_retour_etape15", use_container_width=True):
-                st.session_state.etape_pdc = 14
-                st.rerun()
-
-        with col_final2:
-            if st.button("🎓 Valider & Générer le PDF Final du PDC", key="btn_generer_pdf_pdc", type="primary", use_container_width=True):
-                # 1. Génération effective des octets du PDF
-                # (Remplacez cette ligne par l'appel à votre fonction réelle de génération PDF)
-                pdf_bytes = generer_pdf_pdc_fonction(st.session_state.get("reponses_pdc", {}))
-                
-                # 2. Stockage temporaire en session pour afficher le bouton de téléchargement
-                st.session_state["pdf_bytes_pdc"] = pdf_bytes
-                st.success("Le Plan de Développement de Conseil (PDC) est validé et prêt à être téléchargé !")
-                st.balloons()
-
-        # --- TÉLÉCHARGEMENT DU PDF SUR LA TABLETTE ---
-        if "pdf_bytes_pdc" in st.session_state and st.session_state["pdf_bytes_pdc"]:
-            st.markdown("---")
-            st.download_button(
-                label="📥 Télécharger le PDF du PDC sur la tablette",
-                data=st.session_state["pdf_bytes_pdc"],
-                file_name=f"PDC_{code_prod_input}_{nom_prod_input}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-                key="btn_download_pdf_pdc"
-            )
-
-
-
-                # =========================================================
-# 15.4 SAUVEGARDE LOCALE SQLITE & SYNCHRONISATION
+# 15.4 FINALISATION, PDF & SAUVEGARDE LOCALE SQLITE
 # =========================================================
-st.markdown("---")
-st.info("📌 **Enregistrement du PDC sur la tablette** (Le dossier complet sera stocké localement en attente de synchronisation).")
+st.markdown("### 📄 4. Finalisation et Impression du PDC Final")
 
-# Récupération automatique des identifiants
+# Récupération automatique et sécurisée des identifiants du producteur
 code_producteur = st.session_state.get("code_producteur", "CCC-001")
 nom_producteur = st.session_state.get("nom_producteur", "Inconnu")
 section_zone = st.session_state.get("section", "Zone Centre")
@@ -2447,8 +2409,51 @@ col_p1, col_p2 = st.columns(2)
 nom_prod_input = col_p1.text_input("Nom & Prénoms du Producteur", value=nom_producteur, key="input_nom_prod_pdc")
 code_prod_input = col_p2.text_input("Code CCC / Identifiant", value=code_producteur, key="input_code_prod_pdc")
 
+col_final1, col_final2 = st.columns([1, 1])
+
+with col_final1:
+    if st.button("⬅️ Retour (Étape 14 : Planification)", key="btn_retour_etape15", use_container_width=True):
+        st.session_state.etape_pdc = 14
+        st.rerun()
+
+with col_final2:
+    if st.button("🎓 Valider & Générer le PDF Final du PDC", key="btn_generer_pdf_pdc", type="primary", use_container_width=True):
+        # Dictionnaire d'informations pour le PDF
+        payload_pdf = {
+            "nom_producteur": nom_prod_input,
+            "code_ccc": code_prod_input,
+            "zone": section_zone,
+            "score_faisabilite": score,
+            "reponses": st.session_state.get("reponses_pdc", {})
+        }
+        
+        # 1. Génération effective des octets du PDF
+        pdf_bytes = generer_pdf_pdc_fonction(payload_pdf)
+        
+        # 2. Stockage en session
+        st.session_state["pdf_bytes_pdc"] = pdf_bytes
+        st.success("Le Plan de Développement de Conseil (PDC) est validé et prêt à être téléchargé !")
+        st.balloons()
+
+# --- TÉLÉCHARGEMENT DU PDF SUR LA TABLETTE ---
+if st.session_state.get("pdf_bytes_pdc"):
+    st.markdown("---")
+    st.download_button(
+        label="📥 Télécharger le PDF du PDC sur la tablette",
+        data=st.session_state["pdf_bytes_pdc"],
+        file_name=f"PDC_{code_prod_input}_{nom_prod_input}.pdf",
+        mime="application/pdf",
+        use_container_width=True,
+        key="btn_download_pdf_pdc"
+    )
+
+# =========================================================
+# ENREGISTREMENT LOCAL DANS LA TABLETTE (SQLITE)
+# =========================================================
+st.markdown("---")
+st.info("📌 **Enregistrement du PDC sur la tablette** (Le dossier complet sera stocké localement en attente de synchronisation).")
+
 if st.button("💾 Enregistrer le PDC dans la tablette", type="primary", key="btn_sauvegarder_pdc_local", use_container_width=True):
-    import json
     import time
 
     # Compilation complète du dossier PDC
@@ -2465,27 +2470,28 @@ if st.button("💾 Enregistrer le PDC dans la tablette", type="primary", key="bt
     }
 
     try:
-        # 1. Enregistrement en BDD locale
+        # 1. Enregistrement SQLite (convertit les types NumPy/Pandas en natif)
         sauvegarder_en_local_sqlite(donnees_dossier_pdc)
 
-        # 2. Notification visuelle
+        # 2. Notification
         st.success(f"💾 Dossier PDC de **{nom_prod_input}** ({code_prod_input}) sauvegardé avec succès sur la tablette !")
         st.balloons()
         
-        # Pause courte pour laisser l'utilisateur voir le message
         time.sleep(1.5)
 
-        # 3. Réinitialisation des variables de formulaire
+        # 3. Réinitialisation propre du formulaire et suppression des états temporaires
         st.session_state.etape_pdc = 1
         st.session_state.reponses_pdc = {}
         st.session_state.pop("croquis_genere", None)
         st.session_state.pop("facteurs_succes_pdc", None)
+        st.session_state.pop("pdf_bytes_pdc", None)
 
-        # 4. Relance de l'interface pour actualiser les compteurs
+        # 4. Rafraîchissement complet de l'application
         st.rerun()
 
     except Exception as e:
         st.error(f"❌ Erreur lors de l'enregistrement en local sur la tablette : {e}")
+
 
 
 
