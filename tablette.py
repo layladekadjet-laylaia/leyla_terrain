@@ -380,3 +380,13 @@ if st.sidebar.button("🚀 SYNCHRONISER AHORA", use_container_width=True, key="s
     else:
         st.sidebar.info("Aucune donnée en attente de synchronisation.")
 
+
+if st.sidebar.button("🔍 Tester la connexion Supabase"):
+    try:
+        url_sup = st.secrets["supabase"]["url"]
+        res = requests.get(url_sup, timeout=5)
+        st.sidebar.success(f"Connexion réussie ! Code : {res.status_code}")
+    except Exception as err:
+        st.sidebar.error(f"Échec de connexion : {err}")
+
+
