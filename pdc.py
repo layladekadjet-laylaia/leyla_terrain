@@ -372,13 +372,34 @@ def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_loc
 
 from fpdf import FPDF
 
-def nettoyer_texte(texte):
-    """Convertit en chaîne et gère le codage latin-1 sans faire planter FPDF sur les accents."""
-    if texte is None:
+import json
+from fpdf import FPDF
+
+def nettoyer_texte_pdf(chaine: str) -> str:
+    """
+    Nettoie les caractères UTF-8 non pris en charge par l'encodage latin-1 de FPDF.
+    Remplace les puces complexes et les emojis par des équivalents ASCII.
+    """
+    if chaine is None:
         return ""
-    s = str(texte)
-    s = s.replace("’", "'").replace("–", "-").replace("—", "-")
-    return s.encode('latin-1', 'replace').decode('latin-1')
+    s = str(chaine)
+    # Remplacement des puces et caractères spéciaux fréquents
+    replacements = {
+        "•": "-",
+        "–": "-",
+        "—": "-",
+        "’": "'",
+        "“": '"',
+        "”": '"',
+        "…": "...",
+        "\u200b": "",  # Espace de largeur nulle
+    }
+    for k, v in replacements.items():
+        s = s.replace(k, v)
+    
+    # Conversion forcée en latin-1 avec remplacement des caractères inconnus
+    return s.encode("latin-1", "replace").decode("latin-1")
+
 
 def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf = FPDF()
@@ -387,16 +408,21 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     
     # En-tête principal
     pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, nettoyer_texte("PLAN DE DÉVELOPPEMENT DE CONSEIL (PDC)"), ln=True, align="C")
+    pdf.cell(0, 10, nettoyer_texte_pdf("PLAN DE DÉVELOPPEMENT DE CONSEIL (PDC)"), ln=True, align="C")
     pdf.ln(5)
     
     # Bloc Identité
-    pdf.set_font("Arial", "B", 11)
-    pdf.cell(0, 7, nettoyer_texte(f"Producteur : {data.get('nom_producteur', 'Inconnu')}"), ln=True)
-    pdf.cell(0, 7, nettoyer_texte(f"Code CCC : {data.get('code_ccc', 'N/A')}"), ln=True)
-    pdf.cell(0, 7, nettoyer_texte(f"Zone d'intervention : {data.get('zone', 'N/A')}"), ln=True)
-    pdf.cell(0, 7, nettoyer_texte(f"Score de Faisabilité : {data.get('score_faisabilite', 'N/A')} / 100"), ln=True)
-    pdf.ln(5)
+    pdf.set_font("Arial", "B", 10)
+    nom_prod = data.get('nom_producteur') or data.get('producteur') or 'Inconnu'
+    code_ccc = data.get('code_ccc') or data.get('code_producteur') or 'N/A'
+    zone = data.get('zone') or data.get('section') or 'N/A'
+    score = data.get('score_faisabilite', 'N/A')
+    
+    pdf.cell(0, 6, nettoyer_texte_pdf(f"Producteur : {nom_prod}"), ln=True)
+    pdf.cell(0, 6, nettoyer_texte_pdf(f"Code CCC : {code_ccc}"), ln=True)
+    pdf.cell(0, 6, nettoyer_texte_pdf(f"Zone d'intervention : {zone}"), ln=True)
+    pdf.cell(0, 6, nettoyer_texte_pdf(f"Score de Faisabilité : {score} / 100"), ln=True)
+    pdf.ln(3)
     
     # Séparateur visuel
     pdf.set_draw_color(180, 180, 180)
@@ -405,51 +431,58 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     
     # Synthèse des Données du PDC
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, nettoyer_texte("SYNTHÈSE DES DONNÉES DU FORMULAIRE :"), ln=True)
+    pdf.cell(0, 8, nettoyer_texte_pdf("SYNTHÈSE DES DONNÉES DU FORMULAIRE :"), ln=True)
     pdf.ln(2)
     
     reponses = data.get("reponses", {})
+    if not reponses and "donnees_module" in data:
+        # Si 'reponses' est une chaîne JSON stockée dans SQLite
+        if isinstance(data["donnees_module"], str):
+            try:
+                reponses = json.loads(data["donnees_module"])
+            except Exception:
+                reponses = {}
+        elif isinstance(data["donnees_module"], dict):
+            reponses = data["donnees_module"]
     
     if isinstance(reponses, dict) and reponses:
         for cle, val in reponses.items():
-            # Formater le nom du champ
-            nom_cle = nettoyer_texte(str(cle).replace("_", " ").capitalize())
+            nom_cle = nettoyer_texte_pdf(str(cle).replace("_", " ").capitalize())
             
-            # 1. Si la valeur est une liste (ex: listes de parcelles, équipements)
+            # 1. Si la valeur est une liste
             if isinstance(val, list):
                 if len(val) > 0:
                     pdf.set_font("Arial", "B", 10)
-                    pdf.cell(0, 6, nettoyer_texte(f"• {nom_cle} ({len(val)} élément(s)) :"), ln=True)
+                    pdf.cell(0, 6, nettoyer_texte_pdf(f"- {nom_cle} ({len(val)} élément(s)) :"), ln=True)
                     pdf.set_font("Arial", size=9)
                     for i, item in enumerate(val, 1):
                         if isinstance(item, dict):
                             details = ", ".join([f"{k}: {v}" for k, v in item.items()])
-                            pdf.multi_cell(0, 5, nettoyer_texte(f"   - [{i}] {details}"))
+                            pdf.multi_cell(0, 5, nettoyer_texte_pdf(f"   * [{i}] {details}"))
                         else:
-                            pdf.multi_cell(0, 5, nettoyer_texte(f"   - [{i}] {item}"))
+                            pdf.multi_cell(0, 5, nettoyer_texte_pdf(f"   * [{i}] {item}"))
             
             # 2. Si la valeur est un dictionnaire
             elif isinstance(val, dict):
                 if len(val) > 0:
                     pdf.set_font("Arial", "B", 10)
-                    pdf.cell(0, 6, nettoyer_texte(f"• {nom_cle} :"), ln=True)
+                    pdf.cell(0, 6, nettoyer_texte_pdf(f"- {nom_cle} :"), ln=True)
                     pdf.set_font("Arial", size=9)
                     for k_sub, v_sub in val.items():
-                        pdf.multi_cell(0, 5, nettoyer_texte(f"   - {k_sub}: {v_sub}"))
+                        pdf.multi_cell(0, 5, nettoyer_texte_pdf(f"   * {k_sub}: {v_sub}"))
             
-            # 3. Valeurs simples (texte, nombres, booléens)
+            # 3. Valeurs simples (remplacement de write() par multi_cell())
             else:
-                if str(val).strip() != "":
-                    pdf.set_font("Arial", "B", 10)
-                    pdf.write(6, nettoyer_texte(f"• {nom_cle} : "))
-                    pdf.set_font("Arial", size=10)
-                    pdf.write(6, nettoyer_texte(f"{val}\n"))
-                    pdf.ln(1)
+                str_val = str(val).strip()
+                if str_val != "":
+                    pdf.set_font("Arial", size=9)
+                    pdf.multi_cell(0, 5, nettoyer_texte_pdf(f"- {nom_cle} : {str_val}"))
     else:
         pdf.set_font("Arial", size=10)
-        pdf.cell(0, 6, nettoyer_texte("Aucune donnée saisie dans le PDC."), ln=True)
+        pdf.cell(0, 6, nettoyer_texte_pdf("Aucune donnée saisie dans le PDC."), ln=True)
         
     return bytes(pdf.output())
+
 
 
 
