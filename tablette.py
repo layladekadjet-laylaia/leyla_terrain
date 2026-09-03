@@ -181,48 +181,53 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # 3. BOUTON : ENREGISTRER SUR LA TABLETTE (SQLITE)
+        # 3. BOUTON : ENREGISTRER SUR LA TABLETTE (SQLITE)
     if st.button("💾 Enregistrer dans la tablette", type="secondary", key="sb_btn_sauvegarder_sqlite", use_container_width=True):
-        code_prod = st.session_state.get("code_producteur", "CCC-001")
-        nom_prod = st.session_state.get("nom_producteur", "Inconnu")
-        section_zone = st.session_state.get("section", "Zone Centre")
-        score_final = st.session_state.get("score_pdc", 0)
+        # Récupération sécurisée des variables depuis le session_state
+        coop = st.session_state.get("cooperative", "SCACO")
+        sec = st.session_state.get("section", "Section Divo-Sud")
+        tech = st.session_state.get("technicien", "Agent Kouamé")
+        
+        nom_prod = st.session_state.get("nom_producteur") or st.session_state.get("producteur") or "Yao Jean"
+        code_prod = st.session_state.get("code_producteur") or st.session_state.get("code_ccc") or "CCC-001"
+        superficie = st.session_state.get("superficie") or st.session_state.get("superficie_ha") or 1.0
+        age_p = str(st.session_state.get("age_parcelle") or st.session_state.get("age_cacaoyere") or "10 ans")
 
+        # Rassemblement de l'intégralité des réponses saisies
         session_complete = {}
-        for key, val in st.session_state.items():
-            if key not in ["pdf_bytes_pdc"] and not str(key).startswith("btn_") and not str(key).startswith("sb_"):
-                session_complete[key] = val
+        if "reponses_pdc" in st.session_state and isinstance(st.session_state.reponses_pdc, dict):
+            session_complete.update(st.session_state.reponses_pdc)
+            
+        cles_a_ignorer = ["appareil_deverrouille", "identifie", "code_agent_connecte", "pdf_bytes_pdc"]
+        for k, v in st.session_state.items():
+            if not str(k).startswith("btn_") and not str(k).startswith("sb_") and not str(k).startswith("FormSubmitter") and k not in cles_a_ignorer:
+                if isinstance(v, (str, int, float, bool, list, dict)):
+                    session_complete[k] = v
 
-        donnees_dossier_pdc = {
-            "type_document": "PDC_COMPLET",
-            "code_ccc": code_prod,
-            "nom_producteur": nom_prod,
-            "zone": section_zone,
-            "score_faisabilite": score_final,
-            "reponses_pdc": st.session_state.get("reponses_pdc", {}),
-            "etat_session_integral": nettoyer_pour_json(session_complete),
-            "croquis_base64": st.session_state.get("croquis_genere", None),
-            "facteurs_succes": st.session_state.get("facteurs_succes_pdc", ""),
-            "statut_synchro": "En attente de synchro"
-        }
+        donnees_json_str = json.dumps(nettoyer_pour_json(session_complete), cls=NpEncoder, ensure_ascii=False)
+        date_saisie = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         try:
-            pdc.sauvegarder_en_local_sqlite(donnees_dossier_pdc)
-            st.success("💾 Dossier sauvegardé en local !")
-            st.balloons()
+            conn = sqlite3.connect("leyla_terrain.db")
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO rapports_locaux (
+                    cooperative, section, technicien, producteur, code_producteur, 
+                    superficie, age_parcelle, module_type, donnees_module, date_saisie, statut
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'En attente')
+            """, (coop, sec, tech, nom_prod, code_prod, float(superficie), age_p, "PDC", donnees_json_str, date_saisie))
             
-            time.sleep(1.5)
+            conn.commit()
+            conn.close()
 
-            st.session_state.etape_pdc = 1
-            st.session_state.reponses_pdc = {}
-            st.session_state.pop("croquis_genere", None)
-            st.session_state.pop("facteurs_succes_pdc", None)
-            st.session_state.pop("pdf_bytes_pdc", None)
-
+            st.success("💾 Dossier PDC enregistré avec succès sur la tablette !")
+            st.balloons()
+            time.sleep(1)
             st.rerun()
 
         except Exception as e:
-            st.error(f"❌ Erreur SQLite : {e}")
+            st.error(f"❌ Erreur lors de la sauvegarde SQLite : {e}")
+
 
 # --- 2. ÉCRAN DE DÉVERROUILLAGE TECHNICIEN ---
 MOT_DE_PASSE_VALIDE = "leyla2.6" 
