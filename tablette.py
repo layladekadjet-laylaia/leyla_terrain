@@ -296,7 +296,7 @@ try:
     cursor.execute("SELECT COUNT(*) FROM rapports_locaux WHERE statut='En attente'")
     nombre_attente = cursor.fetchone()[0]
     conn.close()
-except Exception as e:
+except Exception:
     nombre_attente = 0
 
 st.sidebar.write(f"📦 Rapports en attente : **{nombre_attente}**")
@@ -331,24 +331,29 @@ if st.sidebar.button("🚀 SYNCHRONISER AHORA", use_container_width=True, key="s
             for ligne in lignes:
                 row_id, coop, sec, tech, prod, code_p, sup, age_p, mod_t, donnees_m = ligne
                 
-                # Extrait uniquement les chiffres de l'âge
+                # Extraire uniquement les chiffres de l'âge
                 try:
                     age_int = int(''.join(filter(str.isdigit, str(age_p))))
                 except ValueError:
                     age_int = 0
 
-                # Payload corrigé pour transmettre l'intégralité des 15 étapes PDC à Leïla
+                # Formater le contenu sous forme de chaîne JSON propre
+                if isinstance(donnees_m, (dict, list)):
+                    donnees_str = json.dumps(donnees_m)
+                else:
+                    donnees_str = str(donnees_m) if donnees_m else "{}"
+
+                # Payload nettoyé pour éviter tout rejet HTTP 400
                 payload = {
-                    "cooperative_id": coop,
-                    "section_id": sec,
-                    "agent_id": tech,
-                    "nom_producteur": prod,
+                    "cooperative_id": str(coop) if coop else "",
+                    "section_id": str(sec) if sec else "",
+                    "agent_id": str(tech) if tech else "",
+                    "nom_producteur": str(prod) if prod else "",
                     "code_producteur": str(code_p) if code_p else "",
                     "superficie": float(sup) if sup else 0.0,
                     "age_cacaoyere": age_int,
-                    "module_execute": mod_t,
-                    "reponses_pdc": donnees_m,           # Transmission intégrale des 15 étapes du PDC
-                    "observations_diagnostic": donnees_m, # Rétrocompatibilité
+                    "module_execute": str(mod_t) if mod_t else "",
+                    "observations_diagnostic": donnees_str,
                     "rdue_conforme": True
                 }
                 
@@ -359,35 +364,28 @@ if st.sidebar.button("🚀 SYNCHRONISER AHORA", use_container_width=True, key="s
                         cursor.execute("UPDATE rapports_locaux SET statut='Envoyé' WHERE id=?", (row_id,))
                         nb_succes += 1
                     else:
-                        st.sidebar.error(f"⚠️ Erreur HTTP {response.status_code}")
+                        st.sidebar.error(f"⚠️ Erreur HTTP {response.status_code} : {response.text}")
                         break
                         
                 except requests.exceptions.ConnectionError:
-                    st.sidebar.warning("📡 Impossible de joindre le serveur. Vérifiez votre connexion Internet.")
+                    st.sidebar.warning("📡 Connexion réseau indisponible.")
                     break
                 except requests.exceptions.Timeout:
-                    st.sidebar.warning("⏱️ Le serveur met trop de temps à répondre (Délai dépassé).")
+                    st.sidebar.warning("⏱️ Délai d'attente dépassé.")
                     break
             
             conn.commit()
             conn.close()
             
             if nb_succes > 0:
-                st.sidebar.success(f"✅ {nb_succes} rapport(s) synchronisé(s) avec succès !")
+                st.sidebar.success(f"✅ {nb_succes} rapport(s) synchronisé(s) !")
                 st.rerun()
             
         except Exception as e:
-            st.sidebar.error(f"❌ Erreur lors de la transmission : {e}")
+            st.sidebar.error(f"❌ Erreur de transmission : {e}")
     else:
-        st.sidebar.info("Aucune donnée en attente de synchronisation.")
+        st.sidebar.info("Aucun rapport en attente.")
 
-if st.sidebar.button("🔍 Tester la connexion Supabase"):
-    try:
-        url_sup = st.secrets["supabase"]["url"]
-        res = requests.get(url_sup, timeout=5)
-        st.sidebar.success(f"Connexion réussie ! Code : {res.status_code}")
-    except Exception as err:
-        st.sidebar.error(f"Échec de connexion : {err}")
 
 
 
