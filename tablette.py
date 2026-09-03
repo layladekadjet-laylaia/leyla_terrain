@@ -337,6 +337,7 @@ if st.sidebar.button("🚀 SYNCHRONISER AHORA", use_container_width=True, key="s
                 except ValueError:
                     age_int = 0
 
+                # Payload corrigé pour transmettre l'intégralité des 15 étapes PDC à Leïla
                 payload = {
                     "cooperative_id": coop,
                     "section_id": sec,
@@ -346,12 +347,12 @@ if st.sidebar.button("🚀 SYNCHRONISER AHORA", use_container_width=True, key="s
                     "superficie": float(sup) if sup else 0.0,
                     "age_cacaoyere": age_int,
                     "module_execute": mod_t,
-                    "observations_diagnostic": donnees_m,
+                    "reponses_pdc": donnees_m,           # Transmission intégrale des 15 étapes du PDC
+                    "observations_diagnostic": donnees_m, # Rétrocompatibilité
                     "rdue_conforme": True
                 }
                 
                 try:
-                    # Ajout d'un timeout de 10 secondes pour éviter de bloquer l'application
                     response = requests.post(endpoint, json=payload, headers=headers, timeout=10)
                     
                     if response.status_code in [200, 201, 204]:
@@ -380,7 +381,6 @@ if st.sidebar.button("🚀 SYNCHRONISER AHORA", use_container_width=True, key="s
     else:
         st.sidebar.info("Aucune donnée en attente de synchronisation.")
 
-
 if st.sidebar.button("🔍 Tester la connexion Supabase"):
     try:
         url_sup = st.secrets["supabase"]["url"]
@@ -388,5 +388,6 @@ if st.sidebar.button("🔍 Tester la connexion Supabase"):
         st.sidebar.success(f"Connexion réussie ! Code : {res.status_code}")
     except Exception as err:
         st.sidebar.error(f"Échec de connexion : {err}")
+
 
 
