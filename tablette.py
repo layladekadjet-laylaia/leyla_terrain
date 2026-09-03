@@ -283,21 +283,26 @@ elif choix_module == "3. Estimation de Rendement":
 
 elif choix_module == "4. PDC":
     pdc.afficher()
+# ==============================================================================
+# SYNCHRONISATION EN BARRE LATÉRALE (SIDEBAR)
+# ==============================================================================
+st.sidebar.markdown("---")
+st.sidebar.subheader("🔄 Synchronisation Supabase")
 
-# --- 4. SYNCHRONISATION / ENVOI AU SERVEUR CENTRAL ---
-st.markdown("---")
-st.header("🔄 Synchronisation / Envoi au Serveur Central")
-st.info("Lorsque vous disposez d'une connexion Internet, cliquez ci-dessous pour envoyer les données vers le serveur central Supabase.")
+# 1. Compter les rapports en attente
+try:
+    conn = sqlite3.connect("leyla_terrain.db")
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM rapports_locaux WHERE statut='En attente'")
+    nombre_attente = cursor.fetchone()[0]
+    conn.close()
+except Exception as e:
+    nombre_attente = 0
 
-conn = sqlite3.connect("leyla_terrain.db")
-cursor = conn.cursor()
-cursor.execute("SELECT COUNT(*) FROM rapports_locaux WHERE statut='En attente'")
-nombre_attente = cursor.fetchone()[0]
-conn.close()
+st.sidebar.write(f"📦 Rapports en attente : **{nombre_attente}**")
 
-st.write(f"📦 Rapports en attente d'envoi dans la tablette : **{nombre_attente}**")
-
-if st.button("🚀 SYNCHRONISER / ENVOYER AU SERVEUR CENTRAL", use_container_width=True, key="btn_synchro_supabase"):
+# 2. Bouton de synchronisation
+if st.sidebar.button("🚀 SYNCHRONISER AHORA", use_container_width=True, key="sb_btn_synchro_supabase"):
     if nombre_attente > 0:
         try:
             url_supabase = st.secrets["supabase"]["url"]
@@ -313,16 +318,23 @@ if st.button("🚀 SYNCHRONISER / ENVOYER AU SERVEUR CENTRAL", use_container_wid
 
             conn = sqlite3.connect("leyla_terrain.db")
             cursor = conn.cursor()
-            cursor.execute("SELECT id, cooperative, section, technicien, producteur, code_producteur, superficie, age_parcelle, module_type, donnees_module FROM rapports_locaux WHERE statut='En attente'")
+            cursor.execute("""
+                SELECT id, cooperative, section, technicien, producteur, code_producteur, 
+                       superficie, age_parcelle, module_type, donnees_module 
+                FROM rapports_locaux 
+                WHERE statut='En attente'
+            """)
             lignes = cursor.fetchall()
+            
+            nb_succes = 0
             
             for ligne in lignes:
                 row_id, coop, sec, tech, prod, code_p, sup, age_p, mod_t, donnees_m = ligne
                 
-                age_int = 0
+                # Extrait uniquement les chiffres de l'âge
                 try:
                     age_int = int(''.join(filter(str.isdigit, str(age_p))))
-                except:
+                except ValueError:
                     age_int = 0
 
                 payload = {
@@ -331,27 +343,40 @@ if st.button("🚀 SYNCHRONISER / ENVOYER AU SERVEUR CENTRAL", use_container_wid
                     "agent_id": tech,
                     "nom_producteur": prod,
                     "code_producteur": str(code_p) if code_p else "",
-                    "superficie": float(sup),
+                    "superficie": float(sup) if sup else 0.0,
                     "age_cacaoyere": age_int,
                     "module_execute": mod_t,
                     "observations_diagnostic": donnees_m,
                     "rdue_conforme": True
                 }
                 
-                response = requests.post(endpoint, json=payload, headers=headers)
-                
-                if response.status_code in [200, 201, 204]:
-                    cursor.execute("UPDATE rapports_locaux SET statut='Envoyé' WHERE id=?", (row_id,))
-                else:
-                    st.error(f"Erreur HTTP {response.status_code}: {response.text}")
+                try:
+                    # Ajout d'un timeout de 10 secondes pour éviter de bloquer l'application
+                    response = requests.post(endpoint, json=payload, headers=headers, timeout=10)
+                    
+                    if response.status_code in [200, 201, 204]:
+                        cursor.execute("UPDATE rapports_locaux SET statut='Envoyé' WHERE id=?", (row_id,))
+                        nb_succes += 1
+                    else:
+                        st.sidebar.error(f"⚠️ Erreur HTTP {response.status_code}")
+                        break
+                        
+                except requests.exceptions.ConnectionError:
+                    st.sidebar.warning("📡 Impossible de joindre le serveur. Vérifiez votre connexion Internet.")
+                    break
+                except requests.exceptions.Timeout:
+                    st.sidebar.warning("⏱️ Le serveur met trop de temps à répondre (Délai dépassé).")
                     break
             
             conn.commit()
             conn.close()
-            st.success("Synchronisation réussie ! Toutes les données ont été transmises à Supabase.")
-            st.rerun()
+            
+            if nb_succes > 0:
+                st.sidebar.success(f"✅ {nb_succes} rapport(s) synchronisé(s) avec succès !")
+                st.rerun()
             
         except Exception as e:
-            st.error(f"Erreur lors de la transmission : {e}")
+            st.sidebar.error(f"❌ Erreur lors de la transmission : {e}")
     else:
-        st.warning("Aucune nouvelle donnée en attente de synchronisation.")
+        st.sidebar.info("Aucune donnée en attente de synchronisation.")
+
