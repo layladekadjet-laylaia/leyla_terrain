@@ -1763,7 +1763,13 @@ def afficher():
                 st.session_state.etape_pdc = 10
                 st.rerun()
 
-                with col2:
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("⬅️ Retour (Étape 10 : Bilan & Diagnostic)", key="btn_retour_etape11", use_container_width=True):
+                st.session_state.etape_pdc = 10
+                st.rerun()
+
+        with col2:
             if st.button("Suivant (Vers Étape 12 : Info Ménage) ➡️", key="btn_suivant_etape11", type="primary", use_container_width=True):
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
@@ -1782,12 +1788,13 @@ def afficher():
                     "campement": campement
                 })
                 
-                # Inscription immédiate au niveau racine
+                # Inscription directe dans la session racine pour SQLite/Supabase
                 st.session_state["nom_producteur"] = nom_prenoms
                 st.session_state["code_producteur"] = code_national
                 
                 st.session_state.etape_pdc = 12
                 st.rerun()
+
 
 
 
