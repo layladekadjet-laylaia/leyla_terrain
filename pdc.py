@@ -783,9 +783,6 @@ def afficher():
 
 
 
-
-
-
         # ---------------------------------------------------------
     # ÉTAPE 5 : DENSITÉ ET RENDEMENT (FICHE 3 - PARTIE 1)
     # ---------------------------------------------------------
@@ -1766,7 +1763,7 @@ def afficher():
                 st.session_state.etape_pdc = 10
                 st.rerun()
 
-        with col2:
+                with col2:
             if st.button("Suivant (Vers Étape 12 : Info Ménage) ➡️", key="btn_suivant_etape11", type="primary", use_container_width=True):
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
@@ -1784,8 +1781,14 @@ def afficher():
                     "village": village,
                     "campement": campement
                 })
+                
+                # Inscription immédiate au niveau racine
+                st.session_state["nom_producteur"] = nom_prenoms
+                st.session_state["code_producteur"] = code_national
+                
                 st.session_state.etape_pdc = 12
                 st.rerun()
+
 
 
         # ---------------------------------------------------------
