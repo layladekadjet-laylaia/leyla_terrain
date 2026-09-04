@@ -51,6 +51,20 @@ def nettoyer_pour_json(d):
     else:
         return d
 
+
+def charger_donnees_par_module(nom_module):
+    """Charge et filtre uniquement les enregistrements du module actif."""
+    try:
+        conn = sqlite3.connect("leyla_terrain.db")
+        query = "SELECT * FROM rapports_locaux WHERE module_type = ?"
+        df = pd.read_sql_query(query, conn, params=(nom_module,))
+        conn.close()
+        return df
+    except Exception as e:
+        st.error(f"Erreur lors de la lecture : {e}")
+        return pd.DataFrame()
+
+
 # --- INITIALISATION DE LA SESSION ---
 if "appareil_deverrouille" not in st.session_state:
     st.session_state.appareil_deverrouille = False
