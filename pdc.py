@@ -1730,7 +1730,7 @@ def afficher():
                 st.session_state.etape_pdc = 11
                 st.rerun()
 
-    # ---------------------------------------------------------
+        # ---------------------------------------------------------
     # ÉTAPE 11 : IDENTIFICATION DU PRODUCTEUR & LOCALISATION (PARTIE 2)
     # (PARTIE VI : STRUCTURATION DU PDC - 1.1 Identification)
     # ---------------------------------------------------------
@@ -1757,20 +1757,16 @@ def afficher():
 
         st.markdown("---")
 
+        # Layout unique pour la navigation (1 seule déclaration pour col1 et col2)
         col1, col2 = st.columns([1, 1])
+        
         with col1:
-            if st.button("⬅️ Retour (Étape 10 : Bilan & Diagnostic)", key="btn_retour_etape11", use_container_width=True):
-                st.session_state.etape_pdc = 10
-                st.rerun()
-
-        col1, col2 = st.columns([1, 1])
-        with col1:
-            if st.button("⬅️ Retour (Étape 10 : Bilan & Diagnostic)", key="btn_retour_etape11", use_container_width=True):
+            if st.button("⬅️ Retour (Étape 10 : Bilan & Diagnostic)", key="btn_retour_pdc_etape11", use_container_width=True):
                 st.session_state.etape_pdc = 10
                 st.rerun()
 
         with col2:
-            if st.button("Suivant (Vers Étape 12 : Info Ménage) ➡️", key="btn_suivant_etape11", type="primary", use_container_width=True):
+            if st.button("Suivant (Vers Étape 12 : Info Ménage) ➡️", key="btn_suivant_pdc_etape11", type="primary", use_container_width=True):
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
                     
@@ -1794,6 +1790,7 @@ def afficher():
                 
                 st.session_state.etape_pdc = 12
                 st.rerun()
+
 
 
 
