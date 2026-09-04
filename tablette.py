@@ -181,78 +181,178 @@ with st.sidebar:
 
     st.markdown("---")
 
-            # 3. BOUTON : ENREGISTRER SUR LA TABLETTE (SQLITE)
-if st.button("💾 Enregistrer dans la tablette", type="secondary", key="sb_btn_sauvegarder_sqlite", use_container_width=True):
-    # Identification du profil
-    coop = st.session_state.get("cooperative", "SCACO")
-    sec = st.session_state.get("section", "Section Divo-Sud")
-    tech = st.session_state.get("technicien", "Agent Kouamé")
-    
-    # Récupération depuis les étapes du PDC
-    reponses = st.session_state.get("reponses_pdc", {})
-    
-    # 1. Extraction du nom (Priorité à l'Étape 11)
-    nom_prod = (
-        reponses.get("nom_prenoms_producteur") 
-        or st.session_state.get("nom_prenoms_producteur")
-        or reponses.get("nom_membre")
-        or st.session_state.get("nom_producteur")
-        or "Producteur Inconnu"
-    )
-    
-    # 2. Extraction du code (Priorité à l'Étape 11)
-    code_prod = (
-        reponses.get("code_national_producteur") 
-        or st.session_state.get("code_national_producteur")
-        or reponses.get("code_groupe")
-        or st.session_state.get("code_producteur")
-        or "CCC-000"
-    )
-    
-    superficie = st.session_state.get("superficie") or st.session_state.get("superficie_ha") or 0.0
-    age_p = str(st.session_state.get("age_parcelle") or st.session_state.get("age_cacaoyere") or "0")
-
-    # Mise à jour globale dans la session
-    st.session_state["nom_producteur"] = nom_prod
-    st.session_state["code_producteur"] = code_prod
-
-    # Rassemblement complet des réponses
-    session_complete = {}
-    if isinstance(reponses, dict):
-        session_complete.update(reponses)
+    # 3. BOUTON : ENREGISTRER SUR LA TABLETTE (SQLITE)
+    if st.button("💾 Enregistrer dans la tablette", type="secondary", key="sb_btn_sauvegarder_sqlite", use_container_width=True):
+        # Identification du profil
+        coop = st.session_state.get("cooperative", "SCACO")
+        sec = st.session_state.get("section", "Section Divo-Sud")
+        tech = st.session_state.get("technicien", "Agent Kouamé")
         
-    cles_a_ignorer = ["appareil_deverrouille", "identifie", "code_agent_connecte", "pdf_bytes_pdc"]
-    for k, v in st.session_state.items():
-        if not str(k).startswith("btn_") and not str(k).startswith("sb_") and not str(k).startswith("FormSubmitter") and k not in cles_a_ignorer:
-            if isinstance(v, (str, int, float, bool, list, dict)):
-                session_complete[k] = v
+        # Récupération depuis les étapes du PDC
+        reponses = st.session_state.get("reponses_pdc", {})
+        
+        # 1. Extraction du nom (Priorité à l'Étape 11)
+        nom_prod = (
+            reponses.get("nom_prenoms_producteur") 
+            or st.session_state.get("nom_prenoms_producteur")
+            or reponses.get("nom_membre")
+            or st.session_state.get("nom_producteur")
+            or "Producteur Inconnu"
+        )
+        
+        # 2. Extraction du code (Priorité à l'Étape 11)
+        code_prod = (
+            reponses.get("code_national_producteur") 
+            or st.session_state.get("code_national_producteur")
+            or reponses.get("code_groupe")
+            or st.session_state.get("code_producteur")
+            or "CCC-000"
+        )
+        
+        superficie = st.session_state.get("superficie") or st.session_state.get("superficie_ha") or 0.0
+        age_p = str(st.session_state.get("age_parcelle") or st.session_state.get("age_cacaoyere") or "0")
 
-    donnees_json_str = json.dumps(nettoyer_pour_json(session_complete), cls=NpEncoder, ensure_ascii=False)
-    date_saisie = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Mise à jour globale dans la session
+        st.session_state["nom_producteur"] = nom_prod
+        st.session_state["code_producteur"] = code_prod
 
+        # Rassemblement complet des réponses
+        session_complete = {}
+        if isinstance(reponses, dict):
+            session_complete.update(reponses)
+            
+        cles_a_ignorer = ["appareil_deverrouille", "identifie", "code_agent_connecte", "pdf_bytes_pdc"]
+        for k, v in st.session_state.items():
+            if not str(k).startswith("btn_") and not str(k).startswith("sb_") and not str(k).startswith("FormSubmitter") and k not in cles_a_ignorer:
+                if isinstance(v, (str, int, float, bool, list, dict)):
+                    session_complete[k] = v
+
+        donnees_json_str = json.dumps(nettoyer_pour_json(session_complete), cls=NpEncoder, ensure_ascii=False)
+        date_saisie = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+        try:
+            conn = sqlite3.connect("leyla_terrain.db")
+            cursor = conn.cursor()
+            cursor.execute("""
+                INSERT INTO rapports_locaux (
+                    cooperative, section, technicien, producteur, code_producteur, 
+                    superficie, age_parcelle, module_type, donnees_module, date_saisie, statut
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'En attente')
+            """, (coop, sec, tech, nom_prod, code_prod, float(superficie), age_p, "PDC", donnees_json_str, date_saisie))
+            
+            conn.commit()
+            conn.close()
+
+            st.success(f"💾 Fiche PDC enregistrée pour : **{nom_prod}** ({code_prod})")
+            st.balloons()
+            time.sleep(1)
+            st.rerun()
+
+        except Exception as e:
+            st.error(f"❌ Erreur lors de la sauvegarde SQLite : {e}")
+
+    # ==============================================================================
+    # SYNCHRONISATION EN BARRE LATÉRALE (SIDEBAR)
+    # ==============================================================================
+    st.markdown("---")
+    st.subheader("🔄 Synchronisation Supabase")
+
+    # 1. Compter les rapports en attente
     try:
         conn = sqlite3.connect("leyla_terrain.db")
         cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO rapports_locaux (
-                cooperative, section, technicien, producteur, code_producteur, 
-                superficie, age_parcelle, module_type, donnees_module, date_saisie, statut
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'En attente')
-        """, (coop, sec, tech, nom_prod, code_prod, float(superficie), age_p, "PDC", donnees_json_str, date_saisie))
-        
-        conn.commit()
+        cursor.execute("SELECT COUNT(*) FROM rapports_locaux WHERE statut='En attente'")
+        nombre_attente = cursor.fetchone()[0]
         conn.close()
+    except Exception:
+        nombre_attente = 0
 
-        st.success(f"💾 Fiche PDC enregistrée pour : **{nom_prod}** ({code_prod})")
-        st.balloons()
-        time.sleep(1)
-        st.rerun()
+    st.write(f"📦 Rapports en attente : **{nombre_attente}**")
 
-    except Exception as e:
-        st.error(f"❌ Erreur lors de la sauvegarde SQLite : {e}")
+    # 2. Bouton de synchronisation
+    if st.button("🚀 SYNCHRONISER AHORA", use_container_width=True, key="sb_btn_synchro_supabase"):
+        if nombre_attente > 0:
+            try:
+                url_supabase = st.secrets["supabase"]["url"]
+                key_supabase = st.secrets["supabase"]["key"]
+                
+                headers = {
+                    "apikey": key_supabase,
+                    "Authorization": f"Bearer {key_supabase}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=minimal"
+                }
+                endpoint = f"{url_supabase}/rest/v1/producteurs_parcelles"
 
+                conn = sqlite3.connect("leyla_terrain.db")
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT id, cooperative, section, technicien, producteur, code_producteur, 
+                           superficie, age_parcelle, module_type, donnees_module 
+                    FROM rapports_locaux 
+                    WHERE statut='En attente'
+                """)
+                lignes = cursor.fetchall()
+                
+                nb_succes = 0
+                
+                for ligne in lignes:
+                    row_id, coop, sec, tech, prod, code_p, sup, age_p, mod_t, donnees_m = ligne
+                    
+                    # Extraire uniquement les chiffres de l'âge
+                    try:
+                        age_int = int(''.join(filter(str.isdigit, str(age_p))))
+                    except ValueError:
+                        age_int = 0
 
+                    # Formater le contenu sous forme de chaîne JSON propre
+                    if isinstance(donnees_m, (dict, list)):
+                        donnees_str = json.dumps(donnees_m)
+                    else:
+                        donnees_str = str(donnees_m) if donnees_m else "{}"
 
+                    # Payload nettoyé pour éviter tout rejet HTTP 400
+                    payload = {
+                        "cooperative_id": str(coop) if coop else "",
+                        "section_id": str(sec) if sec else "",
+                        "agent_id": str(tech) if tech else "",
+                        "nom_producteur": str(prod) if prod else "",
+                        "code_producteur": str(code_p) if code_p else "",
+                        "superficie": float(sup) if sup else 0.0,
+                        "age_cacaoyere": age_int,
+                        "module_execute": str(mod_t) if mod_t else "",
+                        "observations_diagnostic": donnees_str,
+                        "rdue_conforme": True
+                    }
+                    
+                    try:
+                        response = requests.post(endpoint, json=payload, headers=headers, timeout=10)
+                        
+                        if response.status_code in [200, 201, 204]:
+                            cursor.execute("UPDATE rapports_locaux SET statut='Envoyé' WHERE id=?", (row_id,))
+                            nb_succes += 1
+                        else:
+                            st.sidebar.error(f"⚠️ Erreur HTTP {response.status_code} : {response.text}")
+                            break
+                            
+                    except requests.exceptions.ConnectionError:
+                        st.sidebar.warning("📡 Connexion réseau indisponible.")
+                        break
+                    except requests.exceptions.Timeout:
+                        st.sidebar.warning("⏱️ Délai d'attente dépassé.")
+                        break
+                
+                conn.commit()
+                conn.close()
+                
+                if nb_succes > 0:
+                    st.sidebar.success(f"✅ {nb_succes} rapport(s) synchronisé(s) !")
+                    st.rerun()
+                
+            except Exception as e:
+                st.sidebar.error(f"❌ Erreur de transmission : {e}")
+        else:
+            st.sidebar.info("Aucun rapport en attente.")
 
 # --- 2. ÉCRAN DE DÉVERROUILLAGE TECHNICIEN ---
 MOT_DE_PASSE_VALIDE = "leyla2.6" 
@@ -308,109 +408,3 @@ elif choix_module == "3. Estimation de Rendement":
 
 elif choix_module == "4. PDC":
     pdc.afficher()
-# ==============================================================================
-# SYNCHRONISATION EN BARRE LATÉRALE (SIDEBAR)
-# ==============================================================================
-st.sidebar.markdown("---")
-st.sidebar.subheader("🔄 Synchronisation Supabase")
-
-# 1. Compter les rapports en attente
-try:
-    conn = sqlite3.connect("leyla_terrain.db")
-    cursor = conn.cursor()
-    cursor.execute("SELECT COUNT(*) FROM rapports_locaux WHERE statut='En attente'")
-    nombre_attente = cursor.fetchone()[0]
-    conn.close()
-except Exception:
-    nombre_attente = 0
-
-st.sidebar.write(f"📦 Rapports en attente : **{nombre_attente}**")
-
-# 2. Bouton de synchronisation
-if st.sidebar.button("🚀 SYNCHRONISER AHORA", use_container_width=True, key="sb_btn_synchro_supabase"):
-    if nombre_attente > 0:
-        try:
-            url_supabase = st.secrets["supabase"]["url"]
-            key_supabase = st.secrets["supabase"]["key"]
-            
-            headers = {
-                "apikey": key_supabase,
-                "Authorization": f"Bearer {key_supabase}",
-                "Content-Type": "application/json",
-                "Prefer": "return=minimal"
-            }
-            endpoint = f"{url_supabase}/rest/v1/producteurs_parcelles"
-
-            conn = sqlite3.connect("leyla_terrain.db")
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT id, cooperative, section, technicien, producteur, code_producteur, 
-                       superficie, age_parcelle, module_type, donnees_module 
-                FROM rapports_locaux 
-                WHERE statut='En attente'
-            """)
-            lignes = cursor.fetchall()
-            
-            nb_succes = 0
-            
-            for ligne in lignes:
-                row_id, coop, sec, tech, prod, code_p, sup, age_p, mod_t, donnees_m = ligne
-                
-                # Extraire uniquement les chiffres de l'âge
-                try:
-                    age_int = int(''.join(filter(str.isdigit, str(age_p))))
-                except ValueError:
-                    age_int = 0
-
-                # Formater le contenu sous forme de chaîne JSON propre
-                if isinstance(donnees_m, (dict, list)):
-                    donnees_str = json.dumps(donnees_m)
-                else:
-                    donnees_str = str(donnees_m) if donnees_m else "{}"
-
-                # Payload nettoyé pour éviter tout rejet HTTP 400
-                payload = {
-                    "cooperative_id": str(coop) if coop else "",
-                    "section_id": str(sec) if sec else "",
-                    "agent_id": str(tech) if tech else "",
-                    "nom_producteur": str(prod) if prod else "",
-                    "code_producteur": str(code_p) if code_p else "",
-                    "superficie": float(sup) if sup else 0.0,
-                    "age_cacaoyere": age_int,
-                    "module_execute": str(mod_t) if mod_t else "",
-                    "observations_diagnostic": donnees_str,
-                    "rdue_conforme": True
-                }
-                
-                try:
-                    response = requests.post(endpoint, json=payload, headers=headers, timeout=10)
-                    
-                    if response.status_code in [200, 201, 204]:
-                        cursor.execute("UPDATE rapports_locaux SET statut='Envoyé' WHERE id=?", (row_id,))
-                        nb_succes += 1
-                    else:
-                        st.sidebar.error(f"⚠️ Erreur HTTP {response.status_code} : {response.text}")
-                        break
-                        
-                except requests.exceptions.ConnectionError:
-                    st.sidebar.warning("📡 Connexion réseau indisponible.")
-                    break
-                except requests.exceptions.Timeout:
-                    st.sidebar.warning("⏱️ Délai d'attente dépassé.")
-                    break
-            
-            conn.commit()
-            conn.close()
-            
-            if nb_succes > 0:
-                st.sidebar.success(f"✅ {nb_succes} rapport(s) synchronisé(s) !")
-                st.rerun()
-            
-        except Exception as e:
-            st.sidebar.error(f"❌ Erreur de transmission : {e}")
-    else:
-        st.sidebar.info("Aucun rapport en attente.")
-
-
-
-
