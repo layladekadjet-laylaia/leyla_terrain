@@ -182,80 +182,75 @@ with st.sidebar:
     st.markdown("---")
 
             # 3. BOUTON : ENREGISTRER SUR LA TABLETTE (SQLITE)
-    if st.button("💾 Enregistrer dans la tablette", type="secondary", key="sb_btn_sauvegarder_sqlite", use_container_width=True):
-        # Récupération des données d'identification du profil
-        coop = st.session_state.get("cooperative", "SCACO")
-        sec = st.session_state.get("section", "Section Divo-Sud")
-        tech = st.session_state.get("technicien", "Agent Kouamé")
+if st.button("💾 Enregistrer dans la tablette", type="secondary", key="sb_btn_sauvegarder_sqlite", use_container_width=True):
+    # Identification du profil
+    coop = st.session_state.get("cooperative", "SCACO")
+    sec = st.session_state.get("section", "Section Divo-Sud")
+    tech = st.session_state.get("technicien", "Agent Kouamé")
+    
+    # Récupération depuis les étapes du PDC
+    reponses = st.session_state.get("reponses_pdc", {})
+    
+    # 1. Extraction du nom (Priorité à l'Étape 11)
+    nom_prod = (
+        reponses.get("nom_prenoms_producteur") 
+        or st.session_state.get("nom_prenoms_producteur")
+        or reponses.get("nom_membre")
+        or st.session_state.get("nom_producteur")
+        or "Producteur Inconnu"
+    )
+    
+    # 2. Extraction du code (Priorité à l'Étape 11)
+    code_prod = (
+        reponses.get("code_national_producteur") 
+        or st.session_state.get("code_national_producteur")
+        or reponses.get("code_groupe")
+        or st.session_state.get("code_producteur")
+        or "CCC-000"
+    )
+    
+    superficie = st.session_state.get("superficie") or st.session_state.get("superficie_ha") or 0.0
+    age_p = str(st.session_state.get("age_parcelle") or st.session_state.get("age_cacaoyere") or "0")
+
+    # Mise à jour globale dans la session
+    st.session_state["nom_producteur"] = nom_prod
+    st.session_state["code_producteur"] = code_prod
+
+    # Rassemblement complet des réponses
+    session_complete = {}
+    if isinstance(reponses, dict):
+        session_complete.update(reponses)
         
-        # Récupération dynamique du producteur avec recherche multi-clés sans fallback "Yao Jean"
-        nom_prod = (
-            st.session_state.get("nom_producteur") 
-            or st.session_state.get("producteur") 
-            or st.session_state.get("nom_prod") 
-            or st.session_state.get("nom_planteur") 
-            or st.session_state.get("pdc_nom_producteur")
-            or "Producteur Non Spécifié"
-        )
+    cles_a_ignorer = ["appareil_deverrouille", "identifie", "code_agent_connecte", "pdf_bytes_pdc"]
+    for k, v in st.session_state.items():
+        if not str(k).startswith("btn_") and not str(k).startswith("sb_") and not str(k).startswith("FormSubmitter") and k not in cles_a_ignorer:
+            if isinstance(v, (str, int, float, bool, list, dict)):
+                session_complete[k] = v
+
+    donnees_json_str = json.dumps(nettoyer_pour_json(session_complete), cls=NpEncoder, ensure_ascii=False)
+    date_saisie = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    try:
+        conn = sqlite3.connect("leyla_terrain.db")
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO rapports_locaux (
+                cooperative, section, technicien, producteur, code_producteur, 
+                superficie, age_parcelle, module_type, donnees_module, date_saisie, statut
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'En attente')
+        """, (coop, sec, tech, nom_prod, code_prod, float(superficie), age_p, "PDC", donnees_json_str, date_saisie))
         
-        code_prod = (
-            st.session_state.get("code_producteur") 
-            or st.session_state.get("code_ccc") 
-            or st.session_state.get("code_prod") 
-            or "CCC-000"
-        )
-        
-        superficie = (
-            st.session_state.get("superficie") 
-            or st.session_state.get("superficie_ha") 
-            or st.session_state.get("superficie_parcelle") 
-            or 0.0
-        )
-        
-        age_p = str(
-            st.session_state.get("age_parcelle") 
-            or st.session_state.get("age_cacaoyere") 
-            or "0"
-        )
+        conn.commit()
+        conn.close()
 
-        # Rassemblement de l'intégralité des réponses saisies
-        session_complete = {}
-        if "reponses_pdc" in st.session_state and isinstance(st.session_state.reponses_pdc, dict):
-            session_complete.update(st.session_state.reponses_pdc)
-            
-        cles_a_ignorer = ["appareil_deverrouille", "identifie", "code_agent_connecte", "pdf_bytes_pdc"]
-        for k, v in st.session_state.items():
-            if not str(k).startswith("btn_") and not str(k).startswith("sb_") and not str(k).startswith("FormSubmitter") and k not in cles_a_ignorer:
-                if isinstance(v, (str, int, float, bool, list, dict)):
-                    session_complete[k] = v
+        st.success(f"💾 Fiche PDC enregistrée pour : **{nom_prod}** ({code_prod})")
+        st.balloons()
+        time.sleep(1)
+        st.rerun()
 
-        # Si le nom est toujours dans les réponses du module PDC
-        if nom_prod == "Producteur Non Spécifié" and "nom_producteur" in session_complete:
-            nom_prod = session_complete["nom_producteur"]
+    except Exception as e:
+        st.error(f"❌ Erreur lors de la sauvegarde SQLite : {e}")
 
-        donnees_json_str = json.dumps(nettoyer_pour_json(session_complete), cls=NpEncoder, ensure_ascii=False)
-        date_saisie = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-        try:
-            conn = sqlite3.connect("leyla_terrain.db")
-            cursor = conn.cursor()
-            cursor.execute("""
-                INSERT INTO rapports_locaux (
-                    cooperative, section, technicien, producteur, code_producteur, 
-                    superficie, age_parcelle, module_type, donnees_module, date_saisie, statut
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'En attente')
-            """, (coop, sec, tech, nom_prod, code_prod, float(superficie), age_p, "PDC", donnees_json_str, date_saisie))
-            
-            conn.commit()
-            conn.close()
-
-            st.success(f"💾 Dossier PDC ({nom_prod}) enregistré avec succès sur la tablette !")
-            st.balloons()
-            time.sleep(1)
-            st.rerun()
-
-        except Exception as e:
-            st.error(f"❌ Erreur lors de la sauvegarde SQLite : {e}")
 
 
 
