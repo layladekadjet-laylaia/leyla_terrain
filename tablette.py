@@ -181,17 +181,42 @@ with st.sidebar:
 
     st.markdown("---")
 
-        # 3. BOUTON : ENREGISTRER SUR LA TABLETTE (SQLITE)
+            # 3. BOUTON : ENREGISTRER SUR LA TABLETTE (SQLITE)
     if st.button("💾 Enregistrer dans la tablette", type="secondary", key="sb_btn_sauvegarder_sqlite", use_container_width=True):
-        # Récupération sécurisée des variables depuis le session_state
+        # Récupération des données d'identification du profil
         coop = st.session_state.get("cooperative", "SCACO")
         sec = st.session_state.get("section", "Section Divo-Sud")
         tech = st.session_state.get("technicien", "Agent Kouamé")
         
-        nom_prod = st.session_state.get("nom_producteur") or st.session_state.get("producteur") or "Yao Jean"
-        code_prod = st.session_state.get("code_producteur") or st.session_state.get("code_ccc") or "CCC-001"
-        superficie = st.session_state.get("superficie") or st.session_state.get("superficie_ha") or 1.0
-        age_p = str(st.session_state.get("age_parcelle") or st.session_state.get("age_cacaoyere") or "10 ans")
+        # Récupération dynamique du producteur avec recherche multi-clés sans fallback "Yao Jean"
+        nom_prod = (
+            st.session_state.get("nom_producteur") 
+            or st.session_state.get("producteur") 
+            or st.session_state.get("nom_prod") 
+            or st.session_state.get("nom_planteur") 
+            or st.session_state.get("pdc_nom_producteur")
+            or "Producteur Non Spécifié"
+        )
+        
+        code_prod = (
+            st.session_state.get("code_producteur") 
+            or st.session_state.get("code_ccc") 
+            or st.session_state.get("code_prod") 
+            or "CCC-000"
+        )
+        
+        superficie = (
+            st.session_state.get("superficie") 
+            or st.session_state.get("superficie_ha") 
+            or st.session_state.get("superficie_parcelle") 
+            or 0.0
+        )
+        
+        age_p = str(
+            st.session_state.get("age_parcelle") 
+            or st.session_state.get("age_cacaoyere") 
+            or "0"
+        )
 
         # Rassemblement de l'intégralité des réponses saisies
         session_complete = {}
@@ -203,6 +228,10 @@ with st.sidebar:
             if not str(k).startswith("btn_") and not str(k).startswith("sb_") and not str(k).startswith("FormSubmitter") and k not in cles_a_ignorer:
                 if isinstance(v, (str, int, float, bool, list, dict)):
                     session_complete[k] = v
+
+        # Si le nom est toujours dans les réponses du module PDC
+        if nom_prod == "Producteur Non Spécifié" and "nom_producteur" in session_complete:
+            nom_prod = session_complete["nom_producteur"]
 
         donnees_json_str = json.dumps(nettoyer_pour_json(session_complete), cls=NpEncoder, ensure_ascii=False)
         date_saisie = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -220,13 +249,14 @@ with st.sidebar:
             conn.commit()
             conn.close()
 
-            st.success("💾 Dossier PDC enregistré avec succès sur la tablette !")
+            st.success(f"💾 Dossier PDC ({nom_prod}) enregistré avec succès sur la tablette !")
             st.balloons()
             time.sleep(1)
             st.rerun()
 
         except Exception as e:
             st.error(f"❌ Erreur lors de la sauvegarde SQLite : {e}")
+
 
 
 # --- 2. ÉCRAN DE DÉVERROUILLAGE TECHNICIEN ---
