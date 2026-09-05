@@ -406,17 +406,16 @@ import streamlit as st
 from fpdf import FPDF
 
 # =========================================================================
-# --- FONCTION UTILITAIRE DE NETTOYAGE DU TEXTE POUR FPDF ---
+# 1. FONCTIONS UTILITAIRES ET GÉNÉRATION PDF (EN DEHORS DE AFFICHER)
 # =========================================================================
+
 def nettoyer_texte_pdf(texte):
     """Nettoie et encode le texte pour éviter les erreurs d'encodage Latin-1 dans FPDF."""
     if not isinstance(texte, str):
         texte = str(texte)
     return texte.encode("latin-1", "replace").decode("latin-1")
 
-# =========================================================================
-# --- FONCTION DE GÉNÉRATION DE PDF POUR LE PDC ---
-# =========================================================================
+
 def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf = FPDF()
     pdf.add_page()
@@ -452,7 +451,6 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     
     reponses = data.get("reponses", {})
     if not reponses and "donnees_module" in data:
-        # Si 'reponses' est une chaîne JSON stockée dans SQLite
         if isinstance(data["donnees_module"], str):
             try:
                 reponses = json.loads(data["donnees_module"])
@@ -500,9 +498,6 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     return bytes(pdf.output())
 
 
-# =========================================================================
-# --- FONCTION UTILITAIRE DE CHARGEMENT SQLITE ---
-# =========================================================================
 def charger_donnees_par_module(nom_module):
     """Charge et filtre uniquement les enregistrements du module actif."""
     try:
@@ -523,10 +518,11 @@ def charger_donnees_par_module(nom_module):
 
 
 # =========================================================================
-# --- FONCTION PRINCIPALE DE L'AFFICHAGE ---
+# 2. INTERFACE STREAMLIT
 # =========================================================================
+
 def afficher():
-    # 1. Chargement des données filtrées UNIQUEMENT pour le PDC
+    # 1. Chargement des données
     df = charger_donnees_par_module("PDC")
 
     st.title("📋 PDC - Diagnostic & Plan de Développement")
@@ -571,6 +567,7 @@ def afficher():
             "Iffou (Daoukro)": ["Daoukro", "M'Bahiakro", "Prikro"],
             "N'Zi (Dimbokro)": ["Dimbokro", "Bocanda", "Kouassi-Kouassikro"]
         }
+
 
 
         region = st.selectbox("Région cacaoyère *", options=list(REGIONS_CACAO.keys()), key="region_input")
