@@ -540,26 +540,40 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 
-def afficher():
-    # 1. Bouton de retour à l'accueil
-    if st.button("⬅️ Retour à l'accueil Leyla", key="btn_retour_diag"):
-        st.session_state.module_actif = "accueil"
-        st.rerun()
+# --- FONCTION UTILITAIRE DE CHARGEMENT SQLITE ---
+def charger_donnees_par_module(nom_module):
+    """Charge et filtre uniquement les enregistrements du module actif."""
+    try:
+        conn = sqlite3.connect("leyla_terrain.db")
+        query = "SELECT * FROM rapports_locaux WHERE module_execute = ?"
+        df = pd.read_sql_query(query, conn, params=(nom_module,))
+        conn.close()
+        return df
+    except Exception:
+        try:
+            conn = sqlite3.connect("leyla_terrain.db")
+            query = "SELECT * FROM rapports_locaux WHERE module_type = ?"
+            df = pd.read_sql_query(query, conn, params=(nom_module,))
+            conn.close()
+            return df
+        except Exception:
+            return pd.DataFrame()
 
-    # 2. Chargement sécurisé des données du Diagnostic Phytosanitaire
+# --- INTERFACE UTILISATEUR (STREAMLIT) ---
+def afficher():
+    # 1. Chargement sécurisé des données du Diagnostic Phytosanitaire
     df = charger_donnees_par_module("Diagnostic Phytosanitaire")
 
-    # 3. En-tête et interface utilisateur
+    # 2. En-tête et interface utilisateur
     st.title("🩺 Leyla - Ingénieur Agronome")
     st.write("Salut ! C'est Leyla. Écris-moi ce que tu observes sur tes cacaoyers. Quand tu as terminé, tape **« c'est terminé »**.")
 
-    # 4. Affichage optionnel du tableau des données brutes
+    # 3. Affichage optionnel du tableau des données brutes
     with st.expander(f"📁 Afficher / Masquer les données brutes ({len(df)} enregistrement(s))"):
         if not df.empty:
             st.dataframe(df, use_container_width=True)
         else:
             st.info("Aucun enregistrement trouvé pour le Diagnostic Phytosanitaire.")
-
 
     if "messages_diag_leyla" not in st.session_state:
         msg_accueil = "Salut à toi l'ami ! Dis-moi, qu'est-ce que tu observes d'anormal sur tes cacaoyers ?"
@@ -631,38 +645,10 @@ def afficher():
         st.session_state.messages_diag_leyla.append({"role": "assistant", "content": reponse_leyla})
         st.rerun()
 
-    # --- ENREGISTREMENT EN BASE LOCALE (SQLITE) ---
+    # Information pour l'agent
     if st.session_state.diagnostic_final_cache_leyla:
-        st.markdown("---")
-        st.info("📌 **Enregistrement local** (Le rapport sera stocké sur la tablette en attente de synchronisation).")
-        
-        info_prod = st.session_state.get("info_producteur", {})
-        col_n, col_z = st.columns(2)
-        nom_prod = col_n.text_input("Nom du Producteur", value=info_prod.get("nom", "Producteur Local"), key="input_nom_prod_diag")
-        zone_prod = col_z.text_input("Zone / Localité", value=st.session_state.get("section", "Zone Centre"), key="input_zone_prod_diag")
-
-        if st.button("💾 Sauvegarder localement (En attente de synchro)", type="primary", key="btn_envoi_chef_diag"):
-            nouveau_rapport = {
-                "nom": nom_prod,
-                "zone": zone_prod,
-                "diagnostic": st.session_state.diagnostic_final_cache_leyla["diagnostic"],
-                "symptomes_observes": st.session_state.diagnostic_final_cache_leyla["symptomes"],
-                "statut_eudr": "Conforme / Diagnostiqué par Leyla"
-            }
-
-            # Sauvegarde dans leyla_terrain.db pour la synchronisation
-            sauvegarder_en_local_sqlite(nouveau_rapport)
-
-            st.success("💾 Rapport phytosanitaire sauvegardé dans la tablette ! Prêt pour la synchronisation.")
-            
-            # Réinitialisation
-            st.session_state.diagnostic_final_cache_leyla = None
-            st.session_state.symptomes_detectes_leila = []
-            st.session_state.messages_diag_leyla = [
-                {"role": "assistant", "content": "Nouveau diagnostic initialisé. Qu'est-ce qui cloche sur la parcelle ?"}
-            ]
-            time.sleep(1.5)
-            st.rerun()
+        st.info("💡 **Diagnostic terminé !** Pour sauvegarder ce rapport sur la tablette, utilisez le menu **« Sauvegarde Terrain »** dans la barre latérale à gauche.")
 
 if __name__ == "__main__":
     afficher()
+
