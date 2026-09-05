@@ -483,6 +483,26 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
 
 
 
+# --- FONCTION UTILITAIRE DE CHARGEMENT SQLITE ---
+def charger_donnees_par_module(nom_module):
+    """Charge et filtre uniquement les enregistrements du module actif."""
+    try:
+        conn = sqlite3.connect("leyla_terrain.db")
+        query = "SELECT * FROM rapports_locaux WHERE module_execute = ?"
+        df = pd.read_sql_query(query, conn, params=(nom_module,))
+        conn.close()
+        return df
+    except Exception:
+        try:
+            conn = sqlite3.connect("leyla_terrain.db")
+            query = "SELECT * FROM rapports_locaux WHERE module_type = ?"
+            df = pd.read_sql_query(query, conn, params=(nom_module,))
+            conn.close()
+            return df
+        except Exception:
+            return pd.DataFrame()
+
+# --- FONCTION PRINCIPALE DE L'AFFICHAGE ---
 def afficher():
     # 1. Chargement des données filtrées UNIQUEMENT pour le PDC
     df = charger_donnees_par_module("PDC")
@@ -507,6 +527,7 @@ def afficher():
 
     total_etapes = 15
     st.progress(st.session_state.etape_pdc / total_etapes)
+
 
 
     # ---------------------------------------------------------
