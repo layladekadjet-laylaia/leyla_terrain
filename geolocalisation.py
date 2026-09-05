@@ -290,7 +290,64 @@ def composant_tracker_garmin():
 # =========================================================================
 # --- 4. FONCTION PRINCIPALE DE L'APPLICATION ---
 # =========================================================================
+import sqlite3
+import pandas as pd
+import streamlit as st
+import pydeck as pdk
+
+# --- FONCTION UTILITAIRE DE CHARGEMENT SQLITE ---
+def charger_donnees_par_module(nom_module):
+    """Charge et filtre uniquement les enregistrements du module actif."""
+    try:
+        conn = sqlite3.connect("leyla_terrain.db")
+        query = "SELECT * FROM rapports_locaux WHERE module_execute = ?"
+        df = pd.read_sql_query(query, conn, params=(nom_module,))
+        conn.close()
+        return df
+    except Exception:
+        try:
+            conn = sqlite3.connect("leyla_terrain.db")
+            query = "SELECT * FROM rapports_locaux WHERE module_type = ?"
+            df = pd.read_sql_query(query, conn, params=(nom_module,))
+            conn.close()
+            return df
+        except Exception:
+            return pd.DataFrame()
+
+# =========================================================================
+# --- FONCTION PRINCIPALE DU MODULE ---
+# =========================================================================
+import sqlite3
+import pandas as pd
+import streamlit as st
+import pydeck as pdk
+
+# --- FONCTION UTILITAIRE DE CHARGEMENT SQLITE ---
+def charger_donnees_par_module(nom_module):
+    """Charge et filtre uniquement les enregistrements du module actif."""
+    try:
+        conn = sqlite3.connect("leyla_terrain.db")
+        query = "SELECT * FROM rapports_locaux WHERE module_execute = ?"
+        df = pd.read_sql_query(query, conn, params=(nom_module,))
+        conn.close()
+        return df
+    except Exception:
+        try:
+            conn = sqlite3.connect("leyla_terrain.db")
+            query = "SELECT * FROM rapports_locaux WHERE module_type = ?"
+            df = pd.read_sql_query(query, conn, params=(nom_module,))
+            conn.close()
+            return df
+        except Exception:
+            return pd.DataFrame()
+
+# =========================================================================
+# --- FONCTION PRINCIPALE DU MODULE ---
+# =========================================================================
 def afficher():
+    # 1. Chargement des données filtrées UNIQUEMENT pour la Géolocalisation & RDUE
+    df = charger_donnees_par_module("Géo-intelligence & RDUE")
+
     # Initialisation sécurisée de toutes les clés de session
     if "etape_module" not in st.session_state:
         st.session_state.etape_module = 1
@@ -301,10 +358,16 @@ def afficher():
     if "geolocalisation" not in st.session_state:
         st.session_state.geolocalisation = {}
 
-    # Chargement des données locales
-    df = charger_donnees_par_module("Géo-intelligence & RDUE")
-
     st.title("🛰️ LEYLA — Cartographie & Topographie Terrain")
+
+    # Consultation des relevés locaux enregistrés
+    with st.expander(f"📁 Afficher / Masquer les cartes enregistrées ({len(df)} enregistrement(s))"):
+        if not df.empty:
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("Aucun enregistrement cartographique disponible.")
+
+    st.markdown("---")
 
     # ÉTAPE 1 : Configuration
     if st.session_state.etape_module == 1:
@@ -415,6 +478,8 @@ def afficher():
 
 if __name__ == "__main__":
     afficher()
+
+
 
 
 
