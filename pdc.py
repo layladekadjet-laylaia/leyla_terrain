@@ -399,6 +399,24 @@ def nettoyer_texte_pdf(chaine: str) -> str:
     return s.encode("latin-1", "replace").decode("latin-1")
 
 
+import sqlite3
+import json
+import pandas as pd
+import streamlit as st
+from fpdf import FPDF
+
+# =========================================================================
+# --- FONCTION UTILITAIRE DE NETTOYAGE DU TEXTE POUR FPDF ---
+# =========================================================================
+def nettoyer_texte_pdf(texte):
+    """Nettoie et encode le texte pour éviter les erreurs d'encodage Latin-1 dans FPDF."""
+    if not isinstance(texte, str):
+        texte = str(texte)
+    return texte.encode("latin-1", "replace").decode("latin-1")
+
+# =========================================================================
+# --- FONCTION DE GÉNÉRATION DE PDF POUR LE PDC ---
+# =========================================================================
 def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf = FPDF()
     pdf.add_page()
@@ -469,7 +487,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                     for k_sub, v_sub in val.items():
                         pdf.multi_cell(0, 5, nettoyer_texte_pdf(f"   * {k_sub}: {v_sub}"))
             
-            # 3. Valeurs simples (remplacement de write() par multi_cell())
+            # 3. Valeurs simples
             else:
                 str_val = str(val).strip()
                 if str_val != "":
@@ -482,8 +500,9 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     return bytes(pdf.output())
 
 
-
+# =========================================================================
 # --- FONCTION UTILITAIRE DE CHARGEMENT SQLITE ---
+# =========================================================================
 def charger_donnees_par_module(nom_module):
     """Charge et filtre uniquement les enregistrements du module actif."""
     try:
@@ -502,7 +521,10 @@ def charger_donnees_par_module(nom_module):
         except Exception:
             return pd.DataFrame()
 
+
+# =========================================================================
 # --- FONCTION PRINCIPALE DE L'AFFICHAGE ---
+# =========================================================================
 def afficher():
     # 1. Chargement des données filtrées UNIQUEMENT pour le PDC
     df = charger_donnees_par_module("PDC")
@@ -528,8 +550,6 @@ def afficher():
     total_etapes = 15
     st.progress(st.session_state.etape_pdc / total_etapes)
 
-
-
     # ---------------------------------------------------------
     # ÉTAPE 1 : INFORMATIONS GÉNÉRALES
     # ---------------------------------------------------------
@@ -551,6 +571,7 @@ def afficher():
             "Iffou (Daoukro)": ["Daoukro", "M'Bahiakro", "Prikro"],
             "N'Zi (Dimbokro)": ["Dimbokro", "Bocanda", "Kouassi-Kouassikro"]
         }
+
 
         region = st.selectbox("Région cacaoyère *", options=list(REGIONS_CACAO.keys()), key="region_input")
         villes_disponibles = REGIONS_CACAO.get(region, [])
