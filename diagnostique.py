@@ -6,7 +6,6 @@ import time
 
 # --- GESTION DE LA BASE DE DONNÉES LOCALE (SQLITE TERRAIN) ---
 DB_LOCAL_PATH = "leyla_terrain.db"
-df = charger_donnees_par_module("Diagnostic Phytosanitaire")
 
 
 def sauvegarder_en_local_sqlite(donnees):
@@ -537,15 +536,31 @@ def moteur_cognitif_leyla(liste_symptomes_bruts, texte_integral=""):
 
 # --- INTERFACE UTILISATEUR (STREAMLIT) ---
 
+import streamlit as st
+import pandas as pd
+import sqlite3
+
 def afficher():
-    if st.button("⬅️ Retour à l'accueil Leyla"):
+    # 1. Bouton de retour à l'accueil
+    if st.button("⬅️ Retour à l'accueil Leyla", key="btn_retour_diag"):
         st.session_state.module_actif = "accueil"
         st.rerun()
 
+    # 2. Chargement sécurisé des données du Diagnostic Phytosanitaire
+    df = charger_donnees_par_module("Diagnostic Phytosanitaire")
+
+    # 3. En-tête et interface utilisateur
     st.title("🩺 Leyla - Ingénieur Agronome")
     st.write("Salut ! C'est Leyla. Écris-moi ce que tu observes sur tes cacaoyers. Quand tu as terminé, tape **« c'est terminé »**.")
 
-    # Session states
+    # 4. Affichage optionnel du tableau des données brutes
+    with st.expander(f"📁 Afficher / Masquer les données brutes ({len(df)} enregistrement(s))"):
+        if not df.empty:
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("Aucun enregistrement trouvé pour le Diagnostic Phytosanitaire.")
+
+
     if "messages_diag_leyla" not in st.session_state:
         msg_accueil = "Salut à toi l'ami ! Dis-moi, qu'est-ce que tu observes d'anormal sur tes cacaoyers ?"
         st.session_state.messages_diag_leyla = [{"role": "assistant", "content": msg_accueil}]
