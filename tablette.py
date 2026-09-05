@@ -15,7 +15,7 @@ import estimation_de_rendement
 import pdc
 from generate_croquis import generer_croquis_parcelle
 
-# --- CONFIGURATION DE LA PAGE (UNE SEULE FOIS AU DÉBUT) ---
+# --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(page_title="Leyla Agri - Tablette Terrain", page_icon="📱", layout="centered")
 
 # --- FONCTIONS UTILITAIRES POUR JSON ET SQLITE ---
@@ -51,18 +51,16 @@ def nettoyer_pour_json(d):
     else:
         return d
 
-
 def charger_donnees_par_module(nom_module):
     """Charge et filtre uniquement les enregistrements du module actif."""
     try:
         conn = sqlite3.connect("leyla_terrain.db")
-        # ✅ Utilisation de module_execute au lieu de module_type
+        # Priorité à module_execute
         query = "SELECT * FROM rapports_locaux WHERE module_execute = ?"
         df = pd.read_sql_query(query, conn, params=(nom_module,))
         conn.close()
         return df
-    except Exception as e:
-        # Si la colonne s'appelle encore module_type selon la table
+    except Exception:
         try:
             conn = sqlite3.connect("leyla_terrain.db")
             query = "SELECT * FROM rapports_locaux WHERE module_type = ?"
@@ -71,8 +69,6 @@ def charger_donnees_par_module(nom_module):
             return df
         except Exception:
             return pd.DataFrame()
-
-
 
 # --- INITIALISATION DE LA SESSION ---
 if "appareil_deverrouille" not in st.session_state:
@@ -95,12 +91,18 @@ def init_local_db():
             code_producteur TEXT,
             superficie REAL,
             age_parcelle TEXT,
-            module_type TEXT,
+            module_execute TEXT,
             donnees_module TEXT,
             date_saisie TEXT,
             statut TEXT DEFAULT 'En attente'
         )
     """)
+    # Migration douce au cas où l'ancienne colonne module_type existait
+    try:
+        cursor.execute("ALTER TABLE rapports_locaux ADD COLUMN module_execute TEXT")
+    except sqlite3.OperationalError:
+        pass # La colonne existe déjà
+        
     conn.commit()
     conn.close()
 
@@ -110,7 +112,7 @@ init_local_db()
 st.title("📱 Leyla Agri - Mode Terrain")
 st.markdown("---")
 
-# --- 1. PROFIL D'IDENTIFICATION (VERROUILLÉ AU DÉMARRAGE) ---
+# --- 1. PROFIL D'IDENTIFICATION ---
 if not st.session_state.identifie:
     st.subheader("🔒 Profil d'identification du Technicien")
     with st.form("form_identification"):
@@ -130,7 +132,7 @@ if not st.session_state.identifie:
                 st.error("Veuillez remplir tous les champs d'identification.")
     st.stop()
 
-# --- BARRE LATÉRALE (UNIQUE) ---
+# --- BARRE LATÉRALE ---
 with st.sidebar:
     st.markdown("### 👤 Session Active")
     st.write(f"**Coop :** {st.session_state.get('cooperative', 'N/A')}")
@@ -150,7 +152,7 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("## 📄 Actions PDC")
     
-    # 1. BOUTON : GENERER LE PDF FINAL
+    # 1. GENERER LE PDF FINAL
     if st.button("🎓 Générer le PDF Final", key="sb_btn_generer_pdf", type="primary", use_container_width=True):
         reponses_completes = {}
         
@@ -188,7 +190,7 @@ with st.sidebar:
         except Exception as e:
             st.error(f"❌ Erreur PDF : {e}")
 
-    # 2. BOUTON : TÉLÉCHARGER LE PDF
+    # 2. TÉLÉCHARGER LE PDF
     if st.session_state.get("pdf_bytes_pdc"):
         code_p = st.session_state.get("code_producteur", "CCC-001")
         nom_p = st.session_state.get("nom_producteur", "Inconnu")
@@ -202,15 +204,10 @@ with st.sidebar:
             key="sb_btn_download_pdf"
         )
 
-    st.markdown("---")
-
-     # ==============================================================================
-    # 3. CENTRE D'ENREGISTRMENT MULTI-MODULES (SQLITE)
-    # ==============================================================================
+    # 3. CENTRE D'ENREGISTREMENT MULTI-MODULES (SQLITE)
     st.markdown("---")
     st.markdown("## 💾 Sauvegarde Terrain")
     
-    # 1. Choix explicite du module à sauvegarder
     module_a_enregistrer = st.selectbox(
         "Module à enregistrer :",
         [
@@ -222,17 +219,13 @@ with st.sidebar:
         key="sb_select_module_enregistrement"
     )
 
-    # 2. Bouton de sauvegarde
     if st.button("💾 Enregistrer dans la tablette", type="secondary", key="sb_btn_sauvegarder_sqlite", use_container_width=True):
-        # Identification du profil
         coop = st.session_state.get("cooperative", "SCACO")
         sec = st.session_state.get("section", "Section Divo-Sud")
         tech = st.session_state.get("technicien", "Agent Kouamé")
         
-        # Récupération selon le module sélectionné
         reponses = st.session_state.get("reponses_pdc", {})
         
-        # Extraction du nom du producteur
         nom_prod = (
             reponses.get("nom_prenoms_producteur") 
             or st.session_state.get("nom_prenoms_producteur")
@@ -241,7 +234,6 @@ with st.sidebar:
             or "Producteur Inconnu"
         )
         
-        # Extraction du code producteur
         code_prod = (
             reponses.get("code_national_producteur") 
             or st.session_state.get("code_national_producteur")
@@ -253,11 +245,9 @@ with st.sidebar:
         superficie = st.session_state.get("superficie") or st.session_state.get("superficie_ha") or 0.0
         age_p = str(st.session_state.get("age_parcelle") or st.session_state.get("age_cacaoyere") or "0")
 
-        # Mise à jour globale dans la session
         st.session_state["nom_producteur"] = nom_prod
         st.session_state["code_producteur"] = code_prod
 
-        # Rassemblement complet des données de session
         session_complete = {}
         if isinstance(reponses, dict):
             session_complete.update(reponses)
@@ -275,11 +265,11 @@ with st.sidebar:
             conn = sqlite3.connect("leyla_terrain.db")
             cursor = conn.cursor()
             
-            # INSCRIPTION AVEC LA VALEUR DU MODULE SELECTIONNE (module_a_enregistrer)
+            # INSCRIPTION CORRIGÉE AVEC 'module_execute'
             cursor.execute("""
                 INSERT INTO rapports_locaux (
                     cooperative, section, technicien, producteur, code_producteur, 
-                    superficie, age_parcelle, module_type, donnees_module, date_saisie, statut
+                    superficie, age_parcelle, module_execute, donnees_module, date_saisie, statut
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'En attente')
             """, (coop, sec, tech, nom_prod, code_prod, float(superficie), age_p, module_a_enregistrer, donnees_json_str, date_saisie))
             
@@ -294,14 +284,10 @@ with st.sidebar:
         except Exception as e:
             st.error(f"❌ Erreur lors de la sauvegarde SQLite : {e}")
 
-
-    # ==============================================================================
-    # SYNCHRONISATION EN BARRE LATÉRALE (SIDEBAR)
-    # ==============================================================================
+    # SYNCHRONISATION SUPABASE
     st.markdown("---")
     st.subheader("🔄 Synchronisation Supabase")
 
-    # 1. Compter les rapports en attente
     try:
         conn = sqlite3.connect("leyla_terrain.db")
         cursor = conn.cursor()
@@ -313,8 +299,7 @@ with st.sidebar:
 
     st.write(f"📦 Rapports en attente : **{nombre_attente}**")
 
-    # 2. Bouton de synchronisation
-    if st.button("🚀 SYNCHRONISER AHORA", use_container_width=True, key="sb_btn_synchro_supabase"):
+    if st.button("🚀 SYNCHRONISER MAINTENANT", use_container_width=True, key="sb_btn_synchro_supabase"):
         if nombre_attente > 0:
             try:
                 url_supabase = st.secrets["supabase"]["url"]
@@ -332,7 +317,7 @@ with st.sidebar:
                 cursor = conn.cursor()
                 cursor.execute("""
                     SELECT id, cooperative, section, technicien, producteur, code_producteur, 
-                           superficie, age_parcelle, module_type, donnees_module 
+                           superficie, age_parcelle, module_execute, donnees_module 
                     FROM rapports_locaux 
                     WHERE statut='En attente'
                 """)
@@ -343,19 +328,16 @@ with st.sidebar:
                 for ligne in lignes:
                     row_id, coop, sec, tech, prod, code_p, sup, age_p, mod_t, donnees_m = ligne
                     
-                    # Extraire uniquement les chiffres de l'âge
                     try:
                         age_int = int(''.join(filter(str.isdigit, str(age_p))))
                     except ValueError:
                         age_int = 0
 
-                    # Formater le contenu sous forme de chaîne JSON propre
                     if isinstance(donnees_m, (dict, list)):
                         donnees_str = json.dumps(donnees_m)
                     else:
                         donnees_str = str(donnees_m) if donnees_m else "{}"
 
-                    # Payload nettoyé pour éviter tout rejet HTTP 400
                     payload = {
                         "cooperative_id": str(coop) if coop else "",
                         "section_id": str(sec) if sec else "",
@@ -422,7 +404,7 @@ if not st.session_state.appareil_deverrouille:
     st.warning("⚠️ L'application est verrouillée. Entrez le mot de passe pour continuer.")
     st.stop()
 
-# --- 3. ACCÈS AUX MODULES (UNE FOIS DÉVERROUILLÉ) ---
+# --- 3. ACCÈS AUX MODULES ---
 st.header("🛠️ Modules de Saisie")
 st.caption(f"👤 Session Agent : **{st.session_state.get('code_agent_connecte', 'Inconnu')}**")
 
