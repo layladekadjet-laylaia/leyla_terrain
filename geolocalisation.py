@@ -301,6 +301,9 @@ def afficher():
     if "geolocalisation" not in st.session_state:
         st.session_state.geolocalisation = {}
 
+df = charger_donnees_par_module("Géo-intelligence & RDUE")
+
+
     st.title("🛰️ LEYLA — Cartographie & Topographie Terrain")
 
     # ÉTAPE 1 : Configuration
