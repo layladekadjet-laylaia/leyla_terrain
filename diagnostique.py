@@ -6,7 +6,7 @@ import time
 
 # --- GESTION DE LA BASE DE DONNÉES LOCALE (SQLITE TERRAIN) ---
 DB_LOCAL_PATH = "leyla_terrain.db"
-df = charger_donnees_par_module("PDC")
+df = charger_donnees_par_module("Diagnostic Phytosanitaire")
 
 
 def sauvegarder_en_local_sqlite(donnees):
