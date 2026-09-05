@@ -6,6 +6,8 @@ import time
 
 # --- GESTION DE LA BASE DE DONNÉES LOCALE (SQLITE TERRAIN) ---
 DB_LOCAL_PATH = "leyla_terrain.db"
+df = charger_donnees_par_module("PDC")
+
 
 def sauvegarder_en_local_sqlite(donnees):
     """Insère le rapport directement dans la base leyla_terrain.db de la tablette avec le statut 'En attente'."""
