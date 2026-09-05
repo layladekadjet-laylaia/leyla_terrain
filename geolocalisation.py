@@ -301,8 +301,8 @@ def afficher():
     if "geolocalisation" not in st.session_state:
         st.session_state.geolocalisation = {}
 
-df = charger_donnees_par_module("Géo-intelligence & RDUE")
-
+    # Chargement des données locales
+    df = charger_donnees_par_module("Géo-intelligence & RDUE")
 
     st.title("🛰️ LEYLA — Cartographie & Topographie Terrain")
 
@@ -415,5 +415,6 @@ df = charger_donnees_par_module("Géo-intelligence & RDUE")
 
 if __name__ == "__main__":
     afficher()
+
 
 
