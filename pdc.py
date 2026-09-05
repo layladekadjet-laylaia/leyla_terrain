@@ -367,7 +367,7 @@ def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_loc
         print(f"Erreur lors de la sauvegarde SQLite locale : {e}")
         raise e
 
-
+df = charger_donnees_par_module("PDC")
 
 
 from fpdf import FPDF
