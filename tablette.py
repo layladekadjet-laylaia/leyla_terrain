@@ -56,13 +56,22 @@ def charger_donnees_par_module(nom_module):
     """Charge et filtre uniquement les enregistrements du module actif."""
     try:
         conn = sqlite3.connect("leyla_terrain.db")
-        query = "SELECT * FROM rapports_locaux WHERE module_type = ?"
+        # ✅ Utilisation de module_execute au lieu de module_type
+        query = "SELECT * FROM rapports_locaux WHERE module_execute = ?"
         df = pd.read_sql_query(query, conn, params=(nom_module,))
         conn.close()
         return df
     except Exception as e:
-        st.error(f"Erreur lors de la lecture : {e}")
-        return pd.DataFrame()
+        # Si la colonne s'appelle encore module_type selon la table
+        try:
+            conn = sqlite3.connect("leyla_terrain.db")
+            query = "SELECT * FROM rapports_locaux WHERE module_type = ?"
+            df = pd.read_sql_query(query, conn, params=(nom_module,))
+            conn.close()
+            return df
+        except Exception:
+            return pd.DataFrame()
+
 
 
 # --- INITIALISATION DE LA SESSION ---
