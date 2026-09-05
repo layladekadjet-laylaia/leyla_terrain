@@ -286,14 +286,32 @@ def afficher_estimation():
 
 # --- Flux Principal du Module ---
 def afficher():
+    # 1. Chargement des données filtrées UNIQUEMENT pour l'Estimation de Rendement
+    df = charger_donnees_par_module("Estimation de Rendement")
+
     st.title("📊 Estimation de Rendement")
-    
+
+    # 2. Section de consultation des enregistrements de rendement
+    with st.expander(f"📁 Afficher / Masquer les données brutes ({len(df)} enregistrement(s))"):
+        if not df.empty:
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("Aucun enregistrement disponible pour l'estimation de rendement.")
+
+    st.markdown("---")
+
+    # 3. Initialisation de la gestion des étapes
+    if "etape_courante" not in st.session_state:
+        st.session_state.etape_courante = 1
+
+    # 4. Navigation dans les étapes du module
     if st.session_state.etape_courante == 1:
         afficher_partie_1()
     elif st.session_state.etape_courante == 2:
         afficher_partie_2()
     elif st.session_state.etape_courante == 3:
-        afficher_estimation()  
+        afficher_estimation()
 
 if __name__ == "__main__":
     afficher()
+
