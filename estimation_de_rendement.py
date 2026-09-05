@@ -284,7 +284,32 @@ def afficher_estimation():
             st.rerun()
 
 
-# --- Flux Principal du Module ---
+import sqlite3
+import pandas as pd
+import streamlit as st
+
+# --- FONCTION UTILITAIRE DE CHARGEMENT SQLITE ---
+def charger_donnees_par_module(nom_module):
+    """Charge et filtre uniquement les enregistrements du module actif."""
+    try:
+        conn = sqlite3.connect("leyla_terrain.db")
+        query = "SELECT * FROM rapports_locaux WHERE module_execute = ?"
+        df = pd.read_sql_query(query, conn, params=(nom_module,))
+        conn.close()
+        return df
+    except Exception:
+        try:
+            conn = sqlite3.connect("leyla_terrain.db")
+            query = "SELECT * FROM rapports_locaux WHERE module_type = ?"
+            df = pd.read_sql_query(query, conn, params=(nom_module,))
+            conn.close()
+            return df
+        except Exception:
+            return pd.DataFrame()
+
+# =========================================================================
+# --- FLUX PRINCIPAL DU MODULE ---
+# =========================================================================
 def afficher():
     # 1. Chargement des données filtrées UNIQUEMENT pour l'Estimation de Rendement
     df = charger_donnees_par_module("Estimation de Rendement")
@@ -314,4 +339,5 @@ def afficher():
 
 if __name__ == "__main__":
     afficher()
+
 
