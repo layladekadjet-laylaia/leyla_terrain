@@ -485,21 +485,31 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
 
 
 
-
-
 def afficher():
+    # 1. Chargement des données filtrées UNIQUEMENT pour le PDC
+    df = charger_donnees_par_module("PDC")
+
     st.title("📋 PDC - Diagnostic & Plan de Développement")
 
-    # Initialisation de l'étape courante
+    # 2. Section de consultation des PDC enregistrés
+    with st.expander(f"📁 Afficher / Masquer les données brutes ({len(df)} enregistrement(s))"):
+        if not df.empty:
+            st.dataframe(df, use_container_width=True)
+        else:
+            st.info("Aucun enregistrement PDC disponible.")
+
+    st.markdown("---")
+
+    # 3. Initialisation du questionnaire / workflow PDC
     if 'etape_pdc' not in st.session_state:
         st.session_state.etape_pdc = 1
 
-    # Dictionnaire pour stocker les réponses
     if 'reponses_pdc' not in st.session_state:
         st.session_state.reponses_pdc = {}
 
     total_etapes = 15
     st.progress(st.session_state.etape_pdc / total_etapes)
+
 
     # ---------------------------------------------------------
     # ÉTAPE 1 : INFORMATIONS GÉNÉRALES
