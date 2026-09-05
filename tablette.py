@@ -195,17 +195,35 @@ with st.sidebar:
 
     st.markdown("---")
 
-    # 3. BOUTON : ENREGISTRER SUR LA TABLETTE (SQLITE)
+     # ==============================================================================
+    # 3. CENTRE D'ENREGISTRMENT MULTI-MODULES (SQLITE)
+    # ==============================================================================
+    st.markdown("---")
+    st.markdown("## 💾 Sauvegarde Terrain")
+    
+    # 1. Choix explicite du module à sauvegarder
+    module_a_enregistrer = st.selectbox(
+        "Module à enregistrer :",
+        [
+            "PDC",
+            "Diagnostic Phytosanitaire",
+            "Géo-intelligence & RDUE",
+            "Estimation de Rendement"
+        ],
+        key="sb_select_module_enregistrement"
+    )
+
+    # 2. Bouton de sauvegarde
     if st.button("💾 Enregistrer dans la tablette", type="secondary", key="sb_btn_sauvegarder_sqlite", use_container_width=True):
         # Identification du profil
         coop = st.session_state.get("cooperative", "SCACO")
         sec = st.session_state.get("section", "Section Divo-Sud")
         tech = st.session_state.get("technicien", "Agent Kouamé")
         
-        # Récupération depuis les étapes du PDC
+        # Récupération selon le module sélectionné
         reponses = st.session_state.get("reponses_pdc", {})
         
-        # 1. Extraction du nom (Priorité à l'Étape 11)
+        # Extraction du nom du producteur
         nom_prod = (
             reponses.get("nom_prenoms_producteur") 
             or st.session_state.get("nom_prenoms_producteur")
@@ -214,7 +232,7 @@ with st.sidebar:
             or "Producteur Inconnu"
         )
         
-        # 2. Extraction du code (Priorité à l'Étape 11)
+        # Extraction du code producteur
         code_prod = (
             reponses.get("code_national_producteur") 
             or st.session_state.get("code_national_producteur")
@@ -230,7 +248,7 @@ with st.sidebar:
         st.session_state["nom_producteur"] = nom_prod
         st.session_state["code_producteur"] = code_prod
 
-        # Rassemblement complet des réponses
+        # Rassemblement complet des données de session
         session_complete = {}
         if isinstance(reponses, dict):
             session_complete.update(reponses)
@@ -247,23 +265,26 @@ with st.sidebar:
         try:
             conn = sqlite3.connect("leyla_terrain.db")
             cursor = conn.cursor()
+            
+            # INSCRIPTION AVEC LA VALEUR DU MODULE SELECTIONNE (module_a_enregistrer)
             cursor.execute("""
                 INSERT INTO rapports_locaux (
                     cooperative, section, technicien, producteur, code_producteur, 
                     superficie, age_parcelle, module_type, donnees_module, date_saisie, statut
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'En attente')
-            """, (coop, sec, tech, nom_prod, code_prod, float(superficie), age_p, "PDC", donnees_json_str, date_saisie))
+            """, (coop, sec, tech, nom_prod, code_prod, float(superficie), age_p, module_a_enregistrer, donnees_json_str, date_saisie))
             
             conn.commit()
             conn.close()
 
-            st.success(f"💾 Fiche PDC enregistrée pour : **{nom_prod}** ({code_prod})")
+            st.success(f"💾 Fiche enregistrée pour [{module_a_enregistrer}] : **{nom_prod}** ({code_prod})")
             st.balloons()
             time.sleep(1)
             st.rerun()
 
         except Exception as e:
             st.error(f"❌ Erreur lors de la sauvegarde SQLite : {e}")
+
 
     # ==============================================================================
     # SYNCHRONISATION EN BARRE LATÉRALE (SIDEBAR)
