@@ -504,7 +504,6 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     if isinstance(pdf_buffer, str):
         return pdf_buffer.encode('latin-1', 'replace')
     return bytes(pdf_buffer)
-)
 
 
 
