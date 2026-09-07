@@ -432,7 +432,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     # En-tête principal
     pdf.set_font("Arial", "B", 16)
     pdf.cell(0, 10, nettoyer_texte_pdf("PLAN DE DÉVELOPPEMENT DE CONSEIL (PDC)"), ln=True, align="C")
-    pdf.ln(5)
+    pdf.ln(3)
     
     # Bloc Identité
     pdf.set_font("Arial", "B", 10)
@@ -452,21 +452,12 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(5)
     
-    # Synthèse des Données du PDC
+    # --- SECTION 1 : SYNTHÈSE DES DONNÉES EN SESSION ---
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, nettoyer_texte_pdf("SYNTHÈSE DES DONNÉES DU FORMULAIRE :"), ln=True)
+    pdf.cell(0, 8, nettoyer_texte_pdf("1. SYNTHÈSE DES DONNÉES DU FORMULAIRE EN SESSION :"), ln=True)
     pdf.ln(2)
     
     reponses = data.get("reponses", {})
-    if not reponses and "donnees_module" in data:
-        if isinstance(data["donnees_module"], str):
-            try:
-                reponses = json.loads(data["donnees_module"])
-            except Exception:
-                reponses = {}
-        elif isinstance(data["donnees_module"], dict):
-            reponses = data["donnees_module"]
-    
     if isinstance(reponses, dict) and reponses:
         for cle, val in reponses.items():
             nom_cle = nettoyer_texte_pdf(str(cle).replace("_", " ").capitalize())
@@ -477,12 +468,8 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                     pdf.cell(0, 6, nettoyer_texte_pdf(f"- {nom_cle} ({len(val)} élément(s)) :"), ln=True)
                     pdf.set_font("Arial", size=9)
                     for i, item in enumerate(val, 1):
-                        if isinstance(item, dict):
-                            details = ", ".join([f"{k}: {v}" for k, v in item.items()])
-                            pdf.write(5, nettoyer_texte_pdf(f"   * [{i}] {details}\n"))
-                        else:
-                            pdf.write(5, nettoyer_texte_pdf(f"   * [{i}] {item}\n"))
-            
+                        details = ", ".join([f"{k}: {v}" for k, v in item.items()]) if isinstance(item, dict) else str(item)
+                        pdf.write(5, nettoyer_texte_pdf(f"   * [{i}] {details}\n"))
             elif isinstance(val, dict):
                 if len(val) > 0:
                     pdf.set_font("Arial", "B", 10)
@@ -490,7 +477,6 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                     pdf.set_font("Arial", size=9)
                     for k_sub, v_sub in val.items():
                         pdf.write(5, nettoyer_texte_pdf(f"   * {k_sub}: {v_sub}\n"))
-            
             else:
                 str_val = str(val).strip()
                 if str_val != "":
@@ -498,12 +484,47 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                     pdf.write(5, nettoyer_texte_pdf(f"- {nom_cle} : {str_val}\n"))
     else:
         pdf.set_font("Arial", size=10)
-        pdf.cell(0, 6, nettoyer_texte_pdf("Aucune donnée saisie dans le PDC."), ln=True)
+        pdf.cell(0, 6, nettoyer_texte_pdf("Aucune donnée de formulaire directe."), ln=True)
+
+    pdf.ln(5)
+
+    # --- SECTION 2 : RAPPORTS SQLITE LOCAUX (DIAGNOSTICS & MODULES) ---
+    historique = data.get("historique_modules", [])
+    if historique:
+        pdf.set_draw_color(180, 180, 180)
+        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.ln(5)
         
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, nettoyer_texte_pdf("2. RAPPORTS TERRAIN & DIAGNOSTICS ENREGISTRÉS :"), ln=True)
+        pdf.ln(2)
+
+        for idx, rap in enumerate(historique, 1):
+            mod_nom = rap.get("module", "Module")
+            d_date = rap.get("date", "")
+            details = rap.get("details", {})
+
+            pdf.set_font("Arial", "B", 10)
+            pdf.cell(0, 6, nettoyer_texte_pdf(f"Fiche #{idx} - {mod_nom} ({d_date}) :"), ln=True)
+            pdf.set_font("Arial", size=9)
+
+            if isinstance(details, dict):
+                for k_d, v_d in details.items():
+                    k_clean = str(k_d).replace("_", " ").capitalize()
+                    if isinstance(v_d, (dict, list)):
+                        v_str = json.dumps(v_d, ensure_ascii=False)
+                    else:
+                        v_str = str(v_d)
+                    pdf.write(5, nettoyer_texte_pdf(f"   * {k_clean} : {v_str}\n"))
+            else:
+                pdf.write(5, nettoyer_texte_pdf(f"   * Contenu : {details}\n"))
+            pdf.ln(2)
+
     pdf_buffer = pdf.output(dest='S')
     if isinstance(pdf_buffer, str):
         return pdf_buffer.encode('latin-1', 'replace')
     return bytes(pdf_buffer)
+
 
 
 
