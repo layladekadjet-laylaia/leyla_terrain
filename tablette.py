@@ -153,13 +153,15 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("## 📄 Actions PDC")
     
-    # GÉNÉRATION DU PDF FINAL
+        # GÉNÉRATION DU PDF FINAL (ENRICHIE AVEC SQLITE & SESSION)
     if st.button("🎓 Générer le PDF Final", key="sb_btn_generer_pdf", type="primary", use_container_width=True):
         reponses_completes = {}
         
+        # 1. Récupération des réponses explicites du PDC
         if "reponses_pdc" in st.session_state and isinstance(st.session_state.reponses_pdc, dict):
             reponses_completes.update(st.session_state.reponses_pdc)
         
+        # 2. Parcours complet du session_state pour capturer les diagnostics et formulaires
         cles_a_ignorer = [
             "appareil_deverrouille", "identifie", "code_agent_connecte", 
             "pdf_bytes_pdc", "etape_pdc", "reponses_pdc"
@@ -175,22 +177,51 @@ with st.sidebar:
         section_zone = st.session_state.get("section") or st.session_state.get("zone", "Section Divo-Sud")
         score_final = st.session_state.get("score_pdc") or st.session_state.get("score_faisabilite") or st.session_state.get("score", 0)
 
+        # 3. Récupération de tous les rapports enregistrés en local SQLite pour ce producteur / cette session
+        rapports_sqlite = []
+        try:
+            conn = sqlite3.connect("leyla_terrain.db")
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT module_execute, donnees_module, date_saisie 
+                FROM rapports_locaux 
+                ORDER BY id DESC
+            """)
+            lignes = cursor.fetchall()
+            conn.close()
+            
+            for mod_exe, d_json, d_saisie in lignes:
+                try:
+                    data_parsed = json.loads(d_json) if isinstance(d_json, str) else d_json
+                except Exception:
+                    data_parsed = str(d_json)
+                rapports_sqlite.append({
+                    "module": mod_exe,
+                    "date": d_saisie,
+                    "details": data_parsed
+                })
+        except Exception as e:
+            st.warning(f"Note SQLite : {e}")
+
+        # Assemblage de l'ensemble du contenu pour le moteur PDF
         payload_pdf = {
             "nom_producteur": nom_prod,
             "code_ccc": code_prod,
             "zone": section_zone,
             "score_faisabilite": score_final,
-            "reponses": reponses_completes
+            "reponses": reponses_completes,
+            "historique_modules": rapports_sqlite
         }
         
         try:
             pdf_data = pdc.generer_pdf_pdc_fonction(payload_pdf)
             st.session_state["pdf_bytes_pdc"] = pdf_data
-            st.success("✅ PDF généré !")
+            st.success("✅ PDF complet généré !")
             st.balloons()
             st.rerun()
         except Exception as e:
             st.error(f"❌ Erreur PDF : {e}")
+
 
     # TÉLÉCHARGER LE PDF
     if st.session_state.get("pdf_bytes_pdc") is not None:
