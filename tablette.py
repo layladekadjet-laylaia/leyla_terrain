@@ -55,7 +55,6 @@ def charger_donnees_par_module(nom_module):
     """Charge et filtre uniquement les enregistrements du module actif."""
     try:
         conn = sqlite3.connect("leyla_terrain.db")
-        # Priorité à module_execute
         query = "SELECT * FROM rapports_locaux WHERE module_execute = ?"
         df = pd.read_sql_query(query, conn, params=(nom_module,))
         conn.close()
@@ -77,6 +76,9 @@ if "appareil_deverrouille" not in st.session_state:
 if "identifie" not in st.session_state:
     st.session_state.identifie = False
 
+if "pdf_bytes_pdc" not in st.session_state:
+    st.session_state["pdf_bytes_pdc"] = None
+
 # --- INITIALISATION DE LA BASE DE DONNÉES LOCALE (SQLite) ---
 def init_local_db():
     conn = sqlite3.connect("leyla_terrain.db")
@@ -97,11 +99,10 @@ def init_local_db():
             statut TEXT DEFAULT 'En attente'
         )
     """)
-    # Migration douce au cas où l'ancienne colonne module_type existait
     try:
         cursor.execute("ALTER TABLE rapports_locaux ADD COLUMN module_execute TEXT")
     except sqlite3.OperationalError:
-        pass # La colonne existe déjà
+        pass
         
     conn.commit()
     conn.close()
@@ -152,71 +153,60 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("## 📄 Actions PDC")
     
-    # 1. ÉTAT INITIAL DU PDF DANS LA SESSION
-if "pdf_bytes_pdc" not in st.session_state:
-    st.session_state["pdf_bytes_pdc"] = None
+    # GÉNÉRATION DU PDF FINAL
+    if st.button("🎓 Générer le PDF Final", key="sb_btn_generer_pdf", type="primary", use_container_width=True):
+        reponses_completes = {}
+        
+        if "reponses_pdc" in st.session_state and isinstance(st.session_state.reponses_pdc, dict):
+            reponses_completes.update(st.session_state.reponses_pdc)
+        
+        cles_a_ignorer = [
+            "appareil_deverrouille", "identifie", "code_agent_connecte", 
+            "pdf_bytes_pdc", "etape_pdc", "reponses_pdc"
+        ]
+        
+        for k, v in st.session_state.items():
+            if not str(k).startswith("btn_") and not str(k).startswith("sb_") and not str(k).startswith("FormSubmitter") and k not in cles_a_ignorer:
+                if isinstance(v, (str, int, float, bool, list, dict)):
+                    reponses_completes[k] = v
 
-# 2. GÉNÉRATION DU PDF FINAL
-if st.button("🎓 Générer le PDF Final", key="sb_btn_generer_pdf", type="primary", use_container_width=True):
-    reponses_completes = {}
-    
-    if "reponses_pdc" in st.session_state and isinstance(st.session_state.reponses_pdc, dict):
-        reponses_completes.update(st.session_state.reponses_pdc)
-    
-    cles_a_ignorer = [
-        "appareil_deverrouille", "identifie", "code_agent_connecte", 
-        "pdf_bytes_pdc", "etape_pdc", "reponses_pdc"
-    ]
-    
-    for k, v in st.session_state.items():
-        if not str(k).startswith("btn_") and not str(k).startswith("sb_") and not str(k).startswith("FormSubmitter") and k not in cles_a_ignorer:
-            if isinstance(v, (str, int, float, bool, list, dict)):
-                reponses_completes[k] = v
+        nom_prod = st.session_state.get("nom_producteur") or st.session_state.get("producteur") or st.session_state.get("nom_prod", "Inconnu")
+        code_prod = st.session_state.get("code_producteur") or st.session_state.get("code_ccc", "CCC-001")
+        section_zone = st.session_state.get("section") or st.session_state.get("zone", "Section Divo-Sud")
+        score_final = st.session_state.get("score_pdc") or st.session_state.get("score_faisabilite") or st.session_state.get("score", 0)
 
-    nom_prod = st.session_state.get("nom_producteur") or st.session_state.get("producteur") or st.session_state.get("nom_prod", "Inconnu")
-    code_prod = st.session_state.get("code_producteur") or st.session_state.get("code_ccc", "CCC-001")
-    section_zone = st.session_state.get("section") or st.session_state.get("zone", "Section Divo-Sud")
-    score_final = st.session_state.get("score_pdc") or st.session_state.get("score_faisabilite") or st.session_state.get("score", 0)
+        payload_pdf = {
+            "nom_producteur": nom_prod,
+            "code_ccc": code_prod,
+            "zone": section_zone,
+            "score_faisabilite": score_final,
+            "reponses": reponses_completes
+        }
+        
+        try:
+            pdf_data = pdc.generer_pdf_pdc_fonction(payload_pdf)
+            st.session_state["pdf_bytes_pdc"] = pdf_data
+            st.success("✅ PDF généré !")
+            st.balloons()
+            st.rerun()
+        except Exception as e:
+            st.error(f"❌ Erreur PDF : {e}")
 
-    payload_pdf = {
-        "nom_producteur": nom_prod,
-        "code_ccc": code_prod,
-        "zone": section_zone,
-        "score_faisabilite": score_final,
-        "reponses": reponses_completes
-    }
-    
-    try:
-        # Conversion explicite en bytes si nécessaire
-        pdf_data = pdc.generer_pdf_pdc_fonction(payload_pdf)
-        if isinstance(pdf_data, str):
-            pdf_data = pdf_data.encode('latin-1')
-        else:
-            pdf_data = bytes(pdf_data)
+    # TÉLÉCHARGER LE PDF
+    if st.session_state.get("pdf_bytes_pdc") is not None:
+        code_p = str(st.session_state.get("code_producteur", "CCC-001")).replace(" ", "_")
+        nom_p = str(st.session_state.get("nom_producteur", "Inconnu")).replace(" ", "_")
+        
+        st.download_button(
+            label="📥 Télécharger le PDF",
+            data=st.session_state["pdf_bytes_pdc"],
+            file_name=f"PDC_{code_p}_{nom_p}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+            key="sb_btn_download_pdf"
+        )
 
-        st.session_state["pdf_bytes_pdc"] = pdf_data
-        st.success("✅ PDF généré avec succès !")
-        st.balloons()
-        st.rerun()  # Force la mise à jour pour afficher immédiatement le bouton de téléchargement
-    except Exception as e:
-        st.error(f"❌ Erreur PDF : {e}")
-
-# 3. TÉLÉCHARGER LE PDF (HORS DU BLOC IF BUTTON)
-if st.session_state.get("pdf_bytes_pdc") is not None:
-    code_p = str(st.session_state.get("code_producteur", "CCC-001")).replace(" ", "_")
-    nom_p = str(st.session_state.get("nom_producteur", "Inconnu")).replace(" ", "_")
-    
-    st.download_button(
-        label="📥 Télécharger le PDF",
-        data=st.session_state["pdf_bytes_pdc"],
-        file_name=f"PDC_{code_p}_{nom_p}.pdf",
-        mime="application/pdf",
-        use_container_width=True,
-        key="sb_btn_download_pdf"
-    )
-
-
-    # 3. CENTRE D'ENREGISTREMENT MULTI-MODULES (SQLITE)
+    # CENTRE D'ENREGISTREMENT MULTI-MODULES (SQLITE)
     st.markdown("---")
     st.markdown("## 💾 Sauvegarde Terrain")
     
@@ -277,7 +267,6 @@ if st.session_state.get("pdf_bytes_pdc") is not None:
             conn = sqlite3.connect("leyla_terrain.db")
             cursor = conn.cursor()
             
-            # INSCRIPTION CORRIGÉE AVEC 'module_execute'
             cursor.execute("""
                 INSERT INTO rapports_locaux (
                     cooperative, section, technicien, producteur, code_producteur, 
