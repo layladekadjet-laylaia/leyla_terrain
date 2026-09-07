@@ -409,12 +409,20 @@ from fpdf import FPDF
 # 1. FONCTIONS UTILITAIRES ET GÉNÉRATION PDF (EN DEHORS DE AFFICHER)
 # =========================================================================
 
-def nettoyer_texte_pdf(texte):
-    """Nettoie et encode le texte pour éviter les erreurs d'encodage Latin-1 dans FPDF."""
-    if not isinstance(texte, str):
-        texte = str(texte)
-    return texte.encode("latin-1", "replace").decode("latin-1")
+from fpdf import FPDF
+import json
 
+def nettoyer_texte_pdf(chaine: str) -> str:
+    if chaine is None:
+        return ""
+    s = str(chaine)
+    replacements = {
+        "•": "-", "–": "-", "—": "-", "’": "'",
+        "“": '"', "”": '"', "…": "...", "\u200b": "",
+    }
+    for k, v in replacements.items():
+        s = s.replace(k, v)
+    return s.encode("latin-1", "replace").decode("latin-1")
 
 def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf = FPDF()
@@ -463,7 +471,6 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
         for cle, val in reponses.items():
             nom_cle = nettoyer_texte_pdf(str(cle).replace("_", " ").capitalize())
             
-            # 1. Si la valeur est une liste
             if isinstance(val, list):
                 if len(val) > 0:
                     pdf.set_font("Arial", "B", 10)
@@ -472,34 +479,32 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                     for i, item in enumerate(val, 1):
                         if isinstance(item, dict):
                             details = ", ".join([f"{k}: {v}" for k, v in item.items()])
-                            pdf.multi_cell(0, 5, nettoyer_texte_pdf(f"   * [{i}] {details}"))
+                            pdf.write(5, nettoyer_texte_pdf(f"   * [{i}] {details}\n"))
                         else:
-                            pdf.multi_cell(0, 5, nettoyer_texte_pdf(f"   * [{i}] {item}"))
+                            pdf.write(5, nettoyer_texte_pdf(f"   * [{i}] {item}\n"))
             
-            # 2. Si la valeur est un dictionnaire
             elif isinstance(val, dict):
                 if len(val) > 0:
                     pdf.set_font("Arial", "B", 10)
                     pdf.cell(0, 6, nettoyer_texte_pdf(f"- {nom_cle} :"), ln=True)
                     pdf.set_font("Arial", size=9)
                     for k_sub, v_sub in val.items():
-                        pdf.multi_cell(0, 5, nettoyer_texte_pdf(f"   * {k_sub}: {v_sub}"))
+                        pdf.write(5, nettoyer_texte_pdf(f"   * {k_sub}: {v_sub}\n"))
             
-            # 3. Valeurs simples
             else:
                 str_val = str(val).strip()
                 if str_val != "":
                     pdf.set_font("Arial", size=9)
-                    pdf.multi_cell(0, 5, nettoyer_texte_pdf(f"- {nom_cle} : {str_val}"))
+                    pdf.write(5, nettoyer_texte_pdf(f"- {nom_cle} : {str_val}\n"))
     else:
         pdf.set_font("Arial", size=10)
         pdf.cell(0, 6, nettoyer_texte_pdf("Aucune donnée saisie dans le PDC."), ln=True)
         
-    # CORRECTION ICI : Sortie sécurisée en Bytes
     pdf_buffer = pdf.output(dest='S')
     if isinstance(pdf_buffer, str):
-        return pdf_buffer.encode('latin-1')
+        return pdf_buffer.encode('latin-1', 'replace')
     return bytes(pdf_buffer)
+)
 
 
 
