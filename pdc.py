@@ -495,7 +495,12 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
         pdf.set_font("Arial", size=10)
         pdf.cell(0, 6, nettoyer_texte_pdf("Aucune donnée saisie dans le PDC."), ln=True)
         
-    return bytes(pdf.output())
+    # CORRECTION ICI : Sortie sécurisée en Bytes
+    pdf_buffer = pdf.output(dest='S')
+    if isinstance(pdf_buffer, str):
+        return pdf_buffer.encode('latin-1')
+    return bytes(pdf_buffer)
+
 
 
 def charger_donnees_par_module(nom_module):
