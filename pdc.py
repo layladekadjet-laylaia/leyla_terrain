@@ -2827,42 +2827,63 @@ with st.expander(
 
 
 
+      # ---------------------------------------------------------
+    # 2. AFFICHAGE DE L'ÉTAPE 13
     # ---------------------------------------------------------
-    # ÉTAPE 13 : CULTURES, AGROFORESTERIE & ÉQUIPEMENTS (CCC)
-    # (PARTIE VI : STRUCTURATION DU PDC - 1.4 Cultures & Matériels)
-    # ---------------------------------------------------------
-    elif st.session_state.etape_pdc == 13:
-        st.subheader("Étape 13/15 : Cultures, Agroforesterie & Matériel Agricole")
-        st.caption("Caractérisation des spéculations, inventaire des arbres d'ombrage et bilan des équipements de l'exploitation.")
+    if st.session_state.etape_pdc == 13:
+        st.subheader(
+            "Étape 13/15 : Cultures, Agroforesterie & Matériel Agricole"
+        )
+        st.caption(
+            "Caractérisation des spéculations, inventaire des arbres d'ombrage"
+            " et bilan des équipements de l'exploitation."
+        )
 
         # =========================================================
         # 13.1 SYSTÈME DE CULTURES & REVENUS
         # =========================================================
         st.markdown("### 🌾 1.3.1 Diversification & Cultures de l'Exploitation")
 
-        if 'df_cultures_pdc' not in st.session_state:
-            st.session_state.df_cultures_pdc = [
-                {"Culture": "Cacao - Parcelle 1", "Superficie (ha)": 3.5, "Année de création": 2012, "Source matériel végétal": "SATMACI / ANADER / CNRA", "Production campagne préc. (kg)": 2100, "Revenu (FCFA)": 3150000},
-                {"Culture": "Cacao - Parcelle 2", "Superficie (ha)": 1.0, "Année de création": 2023, "Source matériel végétal": "Pépiniériste privé", "Production campagne préc. (kg)": 0, "Revenu (FCFA)": 0},
-                {"Culture": "Hévéa", "Superficie (ha)": 0.0, "Année de création": 2020, "Source matériel végétal": "Tout venant", "Production campagne préc. (kg)": 0, "Revenu (FCFA)": 0},
-                {"Culture": "Palmier à huile", "Superficie (ha)": 0.0, "Année de création": 2020, "Source matériel végétal": "SATMACI / ANADER / CNRA", "Production campagne préc. (kg)": 0, "Revenu (FCFA)": 0},
-                {"Culture": "Vivriers (Banane/Maïs/Cassava)", "Superficie (ha)": 0.5, "Année de création": 2024, "Source matériel végétal": "Tout venant", "Production campagne préc. (kg)": 1200, "Revenu (FCFA)": 450000},
-                {"Culture": "Autres activités / Verger", "Superficie (ha)": 0.0, "Année de création": 2020, "Source matériel végétal": "Tout venant", "Production campagne préc. (kg)": 0, "Revenu (FCFA)": 0},
-            ]
-
         df_cultures_edite = st.data_editor(
             st.session_state.df_cultures_pdc,
             key="editor_cultures_pdc",
             column_config={
-                "Culture": st.column_config.TextColumn("Culture / Parcelle", disabled=False),
-                "Superficie (ha)": st.column_config.NumberColumn("Superficie (ha)", min_value=0.0, step=0.1, format="%.2f ha"),
-                "Année de création": st.column_config.NumberColumn("Année", min_value=1960, max_value=2030, step=1),
-                "Source matériel végétal": st.column_config.SelectboxColumn("Source plants/semences", options=["SATMACI / ANADER / CNRA", "Tout venant", "Pépiniériste privé"], default="SATMACI / ANADER / CNRA"),
-                "Production campagne préc. (kg)": st.column_config.NumberColumn("Prod. Précédente (kg)", min_value=0, step=50, format="%d kg"),
-                "Revenu (FCFA)": st.column_config.NumberColumn("Revenu estimé (FCFA)", min_value=0, step=25000, format="%d FCFA")
+                "Culture": st.column_config.TextColumn(
+                    "Culture / Parcelle", disabled=False
+                ),
+                "Superficie (ha)": st.column_config.NumberColumn(
+                    "Superficie (ha)",
+                    min_value=0.0,
+                    step=0.1,
+                    format="%.2f ha",
+                ),
+                "Année de création": st.column_config.NumberColumn(
+                    "Année", min_value=1960, max_value=2030, step=1
+                ),
+                "Source matériel végétal": st.column_config.SelectboxColumn(
+                    "Source plants/semences",
+                    options=[
+                        "SATMACI / ANADER / CNRA",
+                        "Tout venant",
+                        "Pépiniériste privé",
+                    ],
+                    default="SATMACI / ANADER / CNRA",
+                ),
+                "Production campagne préc. (kg)": st.column_config.NumberColumn(
+                    "Prod. Précédente (kg)",
+                    min_value=0,
+                    step=50,
+                    format="%d kg",
+                ),
+                "Revenu (FCFA)": st.column_config.NumberColumn(
+                    "Revenu estimé (FCFA)",
+                    min_value=0,
+                    step=25000,
+                    format="%d FCFA",
+                ),
             },
             use_container_width=True,
-            num_rows="dynamic"
+            num_rows="dynamic",
         )
 
         st.markdown("---")
@@ -2870,31 +2891,60 @@ with st.expander(
         # =========================================================
         # 13.2 ARBRES ASSOCIÉS & INVENTAIRE AGROFORESTIER
         # =========================================================
-        st.markdown("### 🌳 1.3.2 Inventaire des Arbres hors Cacaoyer (Normes CCC)")
-        st.caption("Renseignez les arbres d'ombrage ou forestiers présents dans la cacaoyère et la décision d'aménagement.")
-
-        if 'df_arbres_pdc' not in st.session_state:
-            st.session_state.df_arbres_pdc = [
-                {"Nom de l'arbre": "Akpi", "Nombre": 12, "Latitude (N)": 6.020668, "Longitude (W)": -4.3571323, "Statut actuel": "Préservé", "Rôle / Avantage": "Bois d'œuvre / Ombrage", "Décision": "À maintenir", "Remarque / Distance": "Bonne association"},
-                {"Nom de l'arbre": "Fraké", "Nombre": 4, "Latitude (N)": 6.020664, "Longitude (W)": -4.3569498, "Statut actuel": "Préservé", "Rôle / Avantage": "Bois d'œuvre", "Décision": "À éliminer", "Remarque / Distance": "Situé à 1,5m d'un cacaoyer"},
-                {"Nom de l'arbre": "Fromager", "Nombre": 2, "Latitude (N)": 6.020614, "Longitude (W)": -4.3561020, "Statut actuel": "Préservé", "Rôle / Avantage": "Ombrage haut", "Décision": "À maintenir", "Remarque / Distance": "En bordure de parcelle"},
-            ]
+        st.markdown(
+            "### 🌳 1.3.2 Inventaire des Arbres hors Cacaoyer (Normes CCC)"
+        )
+        st.caption(
+            "Renseignez les arbres d'ombrage ou forestiers présents dans la"
+            " cacaoyère et la décision d'aménagement."
+        )
 
         df_arbres_edite = st.data_editor(
             st.session_state.df_arbres_pdc,
             key="editor_arbres_pdc",
             column_config={
-                "Nom de l'arbre": st.column_config.TextColumn("Essence / Nom", required=True),
-                "Nombre": st.column_config.NumberColumn("Pieds", min_value=1, step=1),
-                "Latitude (N)": st.column_config.NumberColumn("Lat (N)", format="%.6f"),
-                "Longitude (W)": st.column_config.NumberColumn("Long (W)", format="%.6f"),
-                "Statut actuel": st.column_config.SelectboxColumn("Statut", options=["Préservé", "Planté", "Régénération naturelle"], default="Préservé"),
-                "Rôle / Avantage": st.column_config.SelectboxColumn("Rôle pour cacaoyer", options=["Bois d'œuvre", "Fertilité du sol", "Produit secondaire (PNFL)", "Ombrage excessif / Hôte pucerons"], default="Bois d'œuvre"),
-                "Décision": st.column_config.SelectboxColumn("Action préconisée", options=["À maintenir", "À éliminer", "À élaguer"], default="À maintenir"),
-                "Remarque / Distance": st.column_config.TextColumn("Remarques terrain")
+                "Nom de l'arbre": st.column_config.TextColumn(
+                    "Essence / Nom", required=True
+                ),
+                "Nombre": st.column_config.NumberColumn(
+                    "Pieds", min_value=1, step=1
+                ),
+                "Latitude (N)": st.column_config.NumberColumn(
+                    "Lat (N)", format="%.6f"
+                ),
+                "Longitude (W)": st.column_config.NumberColumn(
+                    "Long (W)", format="%.6f"
+                ),
+                "Statut actuel": st.column_config.SelectboxColumn(
+                    "Statut",
+                    options=[
+                        "Préservé",
+                        "Planté",
+                        "Régénération naturelle",
+                    ],
+                    default="Préservé",
+                ),
+                "Rôle / Avantage": st.column_config.SelectboxColumn(
+                    "Rôle pour cacaoyer",
+                    options=[
+                        "Bois d'œuvre",
+                        "Fertilité du sol",
+                        "Produit secondaire (PNFL)",
+                        "Ombrage excessif / Hôte pucerons",
+                    ],
+                    default="Bois d'œuvre",
+                ),
+                "Décision": st.column_config.SelectboxColumn(
+                    "Action préconisée",
+                    options=["À maintenir", "À éliminer", "À élaguer"],
+                    default="À maintenir",
+                ),
+                "Remarque / Distance": st.column_config.TextColumn(
+                    "Remarques terrain"
+                ),
             },
             use_container_width=True,
-            num_rows="dynamic"
+            num_rows="dynamic",
         )
 
         st.markdown("---")
@@ -2904,42 +2954,73 @@ with st.expander(
         # =========================================================
         st.markdown("### 🚜 1.3.3 Matériel Agricole & Équipements")
 
-        if 'df_materiel_pdc' not in st.session_state:
-            st.session_state.df_materiel_pdc = [
-                {"Type": "Matériel de traitement", "Désignation": "Pulvérisateur à dos", "Quantité": 1, "Année acquisition": 2022, "Coût (FCFA)": 25000, "État": "Bon"},
-                {"Type": "Matériel de traitement", "Désignation": "Atomiseur à moteur", "Quantité": 1, "Année acquisition": 2021, "Coût (FCFA)": 130000, "État": "Acceptable"},
-                {"Type": "Matériel de transport", "Désignation": "Brouette", "Quantité": 2, "Année acquisition": 2023, "Coût (FCFA)": 30000, "État": "Bon"},
-                {"Type": "Moyen de déplacement", "Désignation": "MOTO Tricycle / Moto 2 roues", "Quantité": 1, "Année acquisition": 2020, "Coût (FCFA)": 650000, "État": "Mauvais"},
-            ]
-
         df_mat_edite = st.data_editor(
             st.session_state.df_materiel_pdc,
             key="editor_materiel_pdc",
             column_config={
-                "Type": st.column_config.SelectboxColumn("Type d'équipement", options=["Matériel de traitement", "Matériel de récolte / Entretien", "Matériel de transport", "Moyen de déplacement"], default="Matériel de traitement"),
-                "Désignation": st.column_config.TextColumn("Désignation du matériel", required=True),
-                "Quantité": st.column_config.NumberColumn("Qté", min_value=0, step=1),
-                "Année acquisition": st.column_config.NumberColumn("Année", min_value=1990, max_value=2030, step=1),
-                "Coût (FCFA)": st.column_config.NumberColumn("Valeur / Coût", min_value=0, step=5000, format="%d FCFA"),
-                "État": st.column_config.SelectboxColumn("État d'usure", options=["Bon", "Acceptable", "Mauvais"], default="Bon")
+                "Type": st.column_config.SelectboxColumn(
+                    "Type d'équipement",
+                    options=[
+                        "Matériel de traitement",
+                        "Matériel de récolte / Entretien",
+                        "Matériel de transport",
+                        "Moyen de déplacement",
+                    ],
+                    default="Matériel de traitement",
+                ),
+                "Désignation": st.column_config.TextColumn(
+                    "Désignation du matériel", required=True
+                ),
+                "Quantité": st.column_config.NumberColumn(
+                    "Qté", min_value=0, step=1
+                ),
+                "Année acquisition": st.column_config.NumberColumn(
+                    "Année", min_value=1990, max_value=2030, step=1
+                ),
+                "Coût (FCFA)": st.column_config.NumberColumn(
+                    "Valeur / Coût", min_value=0, step=5000, format="%d FCFA"
+                ),
+                "État": st.column_config.SelectboxColumn(
+                    "État d'usure",
+                    options=["Bon", "Acceptable", "Mauvais"],
+                    default="Bon",
+                ),
             },
             use_container_width=True,
-            num_rows="dynamic"
+            num_rows="dynamic",
         )
 
         # ---------------------------------------------------------
         # SYNTHÈSE AUTOMATIQUE DE L'ÉTAPE 13
         # ---------------------------------------------------------
-        tot_revenu_agri = sum(item.get("Revenu (FCFA)", 0) for item in df_cultures_edite)
-        tot_prod_cacao = sum(item.get("Production campagne préc. (kg)", 0) for item in df_cultures_edite if "Cacao" in item.get("Culture", ""))
-        tot_arbres_maintenir = sum(item.get("Nombre", 1) for item in df_arbres_edite if item.get("Décision") == "À maintenir")
-        tot_arbres_eliminer = sum(item.get("Nombre", 1) for item in df_arbres_edite if item.get("Décision") == "À éliminer")
+        tot_revenu_agri = sum(
+            item.get("Revenu (FCFA)", 0) for item in df_cultures_edite
+        )
+        tot_prod_cacao = sum(
+            item.get("Production campagne préc. (kg)", 0)
+            for item in df_cultures_edite
+            if "Cacao" in item.get("Culture", "")
+        )
+        tot_arbres_maintenir = sum(
+            item.get("Nombre", 1)
+            for item in df_arbres_edite
+            if item.get("Décision") == "À maintenir"
+        )
+        tot_arbres_eliminer = sum(
+            item.get("Nombre", 1)
+            for item in df_arbres_edite
+            if item.get("Décision") in ["À éliminer", "À élaguer"]
+        )
 
         st.markdown("#### 📊 Bilan Synthétique de l'Étape 13")
         kpi_e1, kpi_e2, kpi_e3 = st.columns(3)
         kpi_e1.metric("Production Cacao Totale", f"{tot_prod_cacao:,} kg")
         kpi_e2.metric("Revenu Agricole Global", f"{tot_revenu_agri:,} FCFA")
-        kpi_e3.metric("Bilan Agroforesterie", f"{tot_arbres_maintenir} à maintenir", f"{tot_arbres_eliminer} à éliminer/élaguer")
+        kpi_e3.metric(
+            "Bilan Agroforesterie",
+            f"{tot_arbres_maintenir} à maintenir",
+            f"{tot_arbres_eliminer} à éliminer/élaguer",
+        )
 
         st.markdown("---")
 
@@ -2948,19 +3029,36 @@ with st.expander(
         # =========================================================
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
-            if st.button("⬅️ Retour (Étape 12 : Exploitation)", key="btn_retour_etape13", use_container_width=True):
+            if st.button(
+                "⬅️ Retour (Étape 12 : Exploitation)",
+                key="btn_retour_etape13",
+                use_container_width=True,
+            ):
                 st.session_state.etape_pdc = 12
                 st.rerun()
 
         with col_btn2:
-            if st.button("Suivant (Vers Étape 14) ➡️", key="btn_suivant_etape13", type="primary", use_container_width=True):
-                if "reponses_pdc" not in st.session_state:
-                    st.session_state.reponses_pdc = {}
+            if st.button(
+                "Suivant (Vers Étape 14) ➡️",
+                key="btn_suivant_etape13",
+                type="primary",
+                use_container_width=True,
+            ):
+                # Enregistrement des listes éditées
+                st.session_state.df_cultures_pdc = df_cultures_edite
+                st.session_state.df_arbres_pdc = df_arbres_edite
+                st.session_state.df_materiel_pdc = df_mat_edite
 
-                # Sauvegarde globale
-                st.session_state.reponses_pdc["cultures_et_revenus"] = df_cultures_edite
-                st.session_state.reponses_pdc["inventaire_arbres"] = df_arbres_edite
-                st.session_state.reponses_pdc["materiel_agricole"] = df_mat_edite
+                # Sauvegarde globale dans le dictionnaire de réponses
+                st.session_state.reponses_pdc["cultures_et_revenus"] = (
+                    df_cultures_edite
+                )
+                st.session_state.reponses_pdc["inventaire_arbres"] = (
+                    df_arbres_edite
+                )
+                st.session_state.reponses_pdc["materiel_agricole"] = (
+                    df_mat_edite
+                )
 
                 st.session_state.etape_pdc = 14
                 st.rerun()
