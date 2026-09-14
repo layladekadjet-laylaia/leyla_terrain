@@ -1150,8 +1150,7 @@ def afficher():
             " spéculations sur l'exploitation."
         )
 
-        # Structure de colonnes attendue par défaut
-        colonnes_attendues = [
+        colonnes_attendues_cult = [
             "Culture",
             "Superficie (ha)",
             "Année création",
@@ -1160,22 +1159,19 @@ def afficher():
             "En production",
         ]
 
-        # 1. Initialisation sécurisée du session state si inexistant ou vide
         if (
             "temp_tableau_cultures" not in st.session_state
             or not st.session_state.temp_tableau_cultures
         ):
           st.session_state.temp_tableau_cultures = pd.DataFrame(
-              columns=colonnes_attendues
+              columns=colonnes_attendues_cult
           ).to_dict("records")
 
-        # 2. Construction du DataFrame et garantie d'existence des colonnes
         df_cult_in = pd.DataFrame(st.session_state.temp_tableau_cultures)
-        for col in colonnes_attendues:
+        for col in colonnes_attendues_cult:
           if col not in df_cult_in.columns:
             df_cult_in[col] = None
 
-        # 3. Éditeur de données
         df_cult_out = st.data_editor(
             df_cult_in,
             num_rows="dynamic",
@@ -1230,28 +1226,22 @@ def afficher():
             key="editor_cultures",
         )
 
-        # 4. Calculs automatiques sécurisés avec vérification et conversion
-        if not df_cult_out.empty and "Culture" in df_cult_out.columns:
-          # Nettoyage et conversion des surfaces en valeurs numériques
-          df_cult_out["Superficie (ha)"] = pd.to_numeric(
-              df_cult_out["Superficie (ha)"], errors="coerce"
-          ).fillna(0.0)
+        # Calculs automatiques pour les cultures
+        superficie_totale_cacao = 0.0
+        superficie_autres = 0.0
 
+        if not df_cult_out.empty and "Culture" in df_cult_out.columns:
+          sup_series = pd.to_numeric(
+              df_cult_out.get("Superficie (ha)"), errors="coerce"
+          ).fillna(0.0)
           mask_cacao = (
               df_cult_out["Culture"]
               .astype(str)
               .str.contains("Cacao", case=False, na=False)
           )
 
-          superficie_totale_cacao = float(
-              df_cult_out[mask_cacao]["Superficie (ha)"].sum()
-          )
-          superficie_autres = float(
-              df_cult_out[~mask_cacao]["Superficie (ha)"].sum()
-          )
-        else:
-          superficie_totale_cacao = 0.0
-          superficie_autres = 0.0
+          superficie_totale_cacao = float(sup_series[mask_cacao].sum())
+          superficie_autres = float(sup_series[~mask_cacao].sum())
 
         col_c1, col_c2, col_c3 = st.columns(3)
         col_c1.metric(
@@ -1275,7 +1265,28 @@ def afficher():
             " déplacement."
         )
 
+        cols_eq_attendues = [
+            "Type",
+            "Désignation",
+            "Quantité",
+            "Année d'acquisition",
+            "Coût (FCFA)",
+            "État",
+        ]
+
+        if (
+            "temp_tableau_equipements" not in st.session_state
+            or not st.session_state.temp_tableau_equipements
+        ):
+          st.session_state.temp_tableau_equipements = pd.DataFrame(
+              columns=cols_eq_attendues
+          ).to_dict("records")
+
         df_eq_in = pd.DataFrame(st.session_state.temp_tableau_equipements)
+        for col in cols_eq_attendues:
+          if col not in df_eq_in.columns:
+            df_eq_in[col] = None
+
         df_eq_out = st.data_editor(
             df_eq_in,
             num_rows="dynamic",
@@ -1295,7 +1306,10 @@ def afficher():
                     "Quantité", min_value=0, step=1
                 ),
                 "Année d'acquisition": st.column_config.NumberColumn(
-                    "Année d'acquisition", min_value=1980, max_value=2026, step=1
+                    "Année d'acquisition",
+                    min_value=1980,
+                    max_value=2026,
+                    step=1,
                 ),
                 "Coût (FCFA)": st.column_config.NumberColumn(
                     "Coût d'achat (FCFA)",
@@ -1311,24 +1325,26 @@ def afficher():
         )
 
         # Calculs équipements
-        valeur_equipements = float(
-            (
-                df_eq_out["Quantité"].fillna(0)
-                * df_eq_out["Coût (FCFA)"].fillna(0)
-            ).sum()
-        )
-        nb_pulverisateurs = int(
-            df_eq_out[
-                (
-                    df_eq_out["Désignation"].str.contains(
-                        "Pulvérisateur|Atomiseur", case=False, na=False
-                    )
-                )
-                & (df_eq_out["État"] != "Mauvais")
-            ]["Quantité"]
-            .fillna(0)
-            .sum()
-        )
+        valeur_equipements = 0.0
+        nb_pulverisateurs = 0
+
+        if not df_eq_out.empty:
+          qte_series = pd.to_numeric(
+              df_eq_out.get("Quantité"), errors="coerce"
+          ).fillna(0)
+          cout_series = pd.to_numeric(
+              df_eq_out.get("Coût (FCFA)"), errors="coerce"
+          ).fillna(0)
+
+          valeur_equipements = float((qte_series * cout_series).sum())
+
+          if "Désignation" in df_eq_out.columns and "État" in df_eq_out.columns:
+            mask_pulve = (
+                df_eq_out["Désignation"]
+                .astype(str)
+                .str.contains("Pulvérisateur|Atomiseur", case=False, na=False)
+            ) & (df_eq_out["État"].astype(str) != "Mauvais")
+            nb_pulverisateurs = int(qte_series[mask_pulve].sum())
 
         col_eq1, col_eq2 = st.columns(2)
         col_eq1.metric(
@@ -1342,6 +1358,7 @@ def afficher():
 
         st.markdown("---")
 
+
         # =========================================================
         # 3. TABLEAU : DIAGNOSTIC DES ARBRES D'OMBRAGE SUR L'EXPLOITATION
         # =========================================================
@@ -1351,7 +1368,34 @@ def afficher():
             " avantages et décision d'aménagement)."
         )
 
+        cols_arb_attendues = [
+            "Espèce",
+            "Nombre",
+            "Latitude",
+            "Longitude",
+            "Statut",
+            "Avantages Cacaoyère",
+            "Usage",
+            "Décision",
+            "Remarque",
+        ]
+
+        # 1. Initialisation sécurisée du session_state
+        if (
+            "temp_tableau_arbres" not in st.session_state
+            or not st.session_state.temp_tableau_arbres
+        ):
+          st.session_state.temp_tableau_arbres = pd.DataFrame(
+              columns=cols_arb_attendues
+          ).to_dict("records")
+
+        # 2. Construction du DataFrame et garantie des colonnes
         df_arb_in = pd.DataFrame(st.session_state.temp_tableau_arbres)
+        for col in cols_arb_attendues:
+          if col not in df_arb_in.columns:
+            df_arb_in[col] = None
+
+        # 3. Éditeur de données
         df_arb_out = st.data_editor(
             df_arb_in,
             num_rows="dynamic",
@@ -1405,15 +1449,21 @@ def afficher():
             key="editor_arbres",
         )
 
-        # Calculs agroforestiers
-        total_arbres = int(df_arb_out["Nombre"].fillna(0).sum())
-        arbres_conserves = int(
-            df_arb_out[df_arb_out["Décision"].isin(["A maintenir", "A élaguer"])][
-                "Nombre"
-            ]
-            .fillna(0)
-            .sum()
-        )
+        # 4. Calculs agroforestiers sécurisés
+        total_arbres = 0
+        arbres_conserves = 0
+
+        if not df_arb_out.empty:
+          nb_arb_series = pd.to_numeric(
+              df_arb_out.get("Nombre"), errors="coerce"
+          ).fillna(0)
+          total_arbres = int(nb_arb_series.sum())
+
+          if "Décision" in df_arb_out.columns:
+            mask_conserves = df_arb_out["Décision"].isin(
+                ["A maintenir", "A élaguer"]
+            )
+            arbres_conserves = int(nb_arb_series[mask_conserves].sum())
 
         arbres_par_ha = (
             (total_arbres / superficie_totale_cacao)
@@ -1434,28 +1484,27 @@ def afficher():
 
         # Évaluation visuelle de conformité agroforestière / RDUE
         if 18 <= densite_conservee_ha <= 40:
-            st.success(
-                f"✅ **Densité agroforestière conforme (RDUE/CCC)** :"
-                f" {densite_conservee_ha:.1f} arbres/ha conservés (Cible :"
-                " 18-40 arbres/ha)."
-            )
+          st.success(
+              f"✅ **Densité agroforestière conforme (RDUE/CCC)** :"
+              f" {densite_conservee_ha:.1f} arbres/ha conservés (Cible :"
+              " 18-40 arbres/ha)."
+          )
         elif densite_conservee_ha < 18:
-            st.warning(
-                f"⚠️ **Ombrage déficitaire pour la norme RDUE** :"
-                f" {densite_conservee_ha:.1f} arbres/ha conservés. Un"
-                " reboisement complémentaire est requis."
-            )
+          st.warning(
+              f"⚠️ **Ombrage déficitaire pour la norme RDUE** :"
+              f" {densite_conservee_ha:.1f} arbres/ha conservés. Un"
+              " reboisement complémentaire est requis."
+          )
         else:
-            st.error(
-                f"⚠️ **Ombrage excessif** : {densite_conservee_ha:.1f}"
-                " arbres/ha conservés. Risque d'humidité excessive et"
-                " de développement de la Pourriture brune. Élagage recommandé."
-            )
+          st.error(
+              f"⚠️ **Ombrage excessif** : {densite_conservee_ha:.1f}"
+              " arbres/ha conservés. Risque d'humidité excessive et"
+              " de développement de la Pourriture brune. Élagage recommandé."
+          )
 
         # =========================================================
         # SAUVEGARDE ET NAVIGATION SÉCURISÉE
         # =========================================================
-        # Mise à jour des dictionnaires temporaires
         st.session_state.temp_tableau_cultures = df_cult_out.to_dict("records")
         st.session_state.temp_tableau_equipements = df_eq_out.to_dict(
             "records"
@@ -1463,41 +1512,36 @@ def afficher():
         st.session_state.temp_tableau_arbres = df_arb_out.to_dict("records")
 
         def sauvegarder_etape_4():
-            st.session_state.reponses_pdc.update({
-                "tableau_cultures": st.session_state.temp_tableau_cultures,
-                "superficie_totale_cacao": superficie_totale_cacao,
-                "superficie_autres_cultures": superficie_autres,
-                "tableau_equipements": (
-                    st.session_state.temp_tableau_equipements
-                ),
-                "valeur_total_equipements": valeur_equipements,
-                "nb_pulverisateurs_operationnels": nb_pulverisateurs,
-                "tableau_arbres": st.session_state.temp_tableau_arbres,
-                "total_arbres_ombrage": total_arbres,
-                "arbres_conserves": arbres_conserves,
-                "densite_arbres_ha": arbres_par_ha,
-                "densite_conservee_ha": densite_conservee_ha,
-            })
+          st.session_state.reponses_pdc.update({
+              "tableau_cultures": st.session_state.temp_tableau_cultures,
+              "superficie_totale_cacao": superficie_totale_cacao,
+              "superficie_autres_cultures": superficie_autres,
+              "tableau_equipements": (
+                  st.session_state.temp_tableau_equipements
+              ),
+              "valeur_total_equipements": valeur_equipements,
+              "nb_pulverisateurs_operationnels": nb_pulverisateurs,
+              "tableau_arbres": st.session_state.temp_tableau_arbres,
+              "total_arbres_ombrage": total_arbres,
+              "arbres_conserves": arbres_conserves,
+              "densite_arbres_ha": arbres_par_ha,
+              "densite_conservee_ha": densite_conservee_ha,
+          })
 
         st.markdown("---")
         col_nav1, col_nav2 = st.columns([1, 1])
 
         with col_nav1:
-            if st.button("⬅️ Précédent", use_container_width=True):
-                sauvegarder_etape_4()
-                st.session_state.etape_pdc = 3
-                st.rerun()
+          if st.button("⬅️ Précédent", use_container_width=True):
+            sauvegarder_etape_4()
+            st.session_state.etape_pdc = 3
+            st.rerun()
 
         with col_nav2:
-            if st.button(
-                "Suivant ➡️", use_container_width=True, type="primary"
-            ):
-                sauvegarder_etape_4()
-                st.session_state.etape_pdc = 5
-                st.rerun()
-
-
-
+          if st.button("Suivant ➡️", use_container_width=True, type="primary"):
+            sauvegarder_etape_4()
+            st.session_state.etape_pdc = 5
+            st.rerun()
 
         # ---------------------------------------------------------
     # ÉTAPE 5 : DENSITÉ ET RENDEMENT (FICHE 3 - PARTIE 1)
