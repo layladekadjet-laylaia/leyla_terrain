@@ -576,48 +576,228 @@ def afficher():
     total_etapes = 15
     st.progress(st.session_state.etape_pdc / total_etapes)
 
-    # ---------------------------------------------------------
+        # ---------------------------------------------------------
     # ÉTAPE 1 : INFORMATIONS GÉNÉRALES
     # ---------------------------------------------------------
     if st.session_state.etape_pdc == 1:
-        st.subheader("Étape 1/15 : Localisation & Identification de la Section")
+        st.subheader(
+            "Étape 1/15 : Localisation & Identification de la Section"
+        )
 
+        # Base cartographique des 13 régions cacaoyères et leurs sous-préfectures / localités majeures
         REGIONS_CACAO = {
-            "Gôh (Gagnoa)": ["Gagnoa", "Oumé", "Diégonéfla"],
-            "Lôh-Djiboua (Divo)": ["Divo", "Lakota", "Guitry"],
-            "Nawa (Soubré)": ["Soubré", "Méagui", "Buyo", "Gueyo"],
-            "San-Pédro": ["San-Pédro", "Sassandra", "Fresco", "Gbagbam", "Grabo"],
-            "Indénié-Djuablin (Abengourou)": ["Abengourou", "Agnibilékrou", "Bettie"],
-            "Sud-Comoé (Aboisso)": ["Aboisso", "Adiaké", "Grand-Bassam"],
-            "Haut-Sassandra (Daloa)": ["Daloa", "Issia", "Vavoua", "Zoukougbeu"],
-            "Cavally (Guiglo)": ["Guiglo", "Blolequin", "Taï", "Toulepleu"],
-            "Guémon (Duékoué)": ["Duékoué", "Bangolo", "Kouibly"],
-            "Mé (Adzopé)": ["Adzopé", "Akoupé", "Yakassé-Attobrou"],
-            "Agnéby-Tiassa (Agboville)": ["Agboville", "Sikensi", "Tiassalé", "Taabo"],
-            "Iffou (Daoukro)": ["Daoukro", "M'Bahiakro", "Prikro"],
-            "N'Zi (Dimbokro)": ["Dimbokro", "Bocanda", "Kouassi-Kouassikro"]
+            "Nawa (Soubré)": [
+                "Soubré",
+                "Grand-Zattry",
+                "Méagui",
+                "Buyo",
+                "Gueyo",
+                "Okrouyo",
+                "Liliyo",
+                "Yabayo",
+                "Oupoyo",
+                "Autre (Saisir)",
+            ],
+            "Lôh-Djiboua (Divo)": [
+                "Divo",
+                "Lakota",
+                "Guitry",
+                "Hiré",
+                "Zikisso",
+                "Ogoudou",
+                "Gagny",
+                "Didoko",
+                "Nebo",
+                "Goudouko",
+                "Autre (Saisir)",
+            ],
+            "Haut-Sassandra (Daloa)": [
+                "Daloa",
+                "Issia",
+                "Vavoua",
+                "Zoukougbeu",
+                "Saioua",
+                "Bediala",
+                "Boguhé",
+                "Namanane",
+                "Iboguhé",
+                "Dania",
+                "Autre (Saisir)",
+            ],
+            "San-Pédro": [
+                "San-Pédro",
+                "Sassandra",
+                "Fresco",
+                "Gbagbam",
+                "Grabo",
+                "Grand-Béréby",
+                "Dakpadou",
+                "Sago",
+                "Dassioko",
+                "Autre (Saisir)",
+            ],
+            "Gôh (Gagnoa)": [
+                "Gagnoa",
+                "Oumé",
+                "Diégonéfla",
+                "Ouragahio",
+                "Bayota",
+                "Guibéroua",
+                "Sériho",
+                "Dignago",
+                "Gnagbodougnoa",
+                "Tonela",
+                "Autre (Saisir)",
+            ],
+            "Agnéby-Tiassa (Agboville)": [
+                "Agboville",
+                "Sikensi",
+                "Tiassalé",
+                "Taabo",
+                "Rubino",
+                "Azaguié",
+                "Grand-Morié",
+                "N'Douci",
+                "Gbolouville",
+                "Autre (Saisir)",
+            ],
+            "Indénié-Djuablin (Abengourou)": [
+                "Abengourou",
+                "Agnibilékrou",
+                "Bettie",
+                "Zaranou",
+                "Ebilassokro",
+                "Yakassé-Feyassé",
+                "Daffoukro",
+                "Autre (Saisir)",
+            ],
+            "Sud-Comoé (Aboisso)": [
+                "Aboisso",
+                "Adiaké",
+                "Grand-Bassam",
+                "Ayamé",
+                "Maféré",
+                "Aboisso-Comoé",
+                "Bianouan",
+                "Etuéboué",
+                "Autre (Saisir)",
+            ],
+            "Cavally (Guiglo)": [
+                "Guiglo",
+                "Blolequin",
+                "Taï",
+                "Toulepleu",
+                "Zagne",
+                "Nizahon",
+                "Doké",
+                "Zéo",
+                "Kaade",
+                "Autre (Saisir)",
+            ],
+            "Guémon (Duékoué)": [
+                "Duékoué",
+                "Bangolo",
+                "Kouibly",
+                "Fakobly",
+                "Bagohouo",
+                "Guezon",
+                "Tieny-Siably",
+                "Nidrou",
+                "Autre (Saisir)",
+            ],
+            "Mé (Adzopé)": [
+                "Adzopé",
+                "Akoupé",
+                "Yakassé-Attobrou",
+                "Afféry",
+                "Agou",
+                "Bécédi-Brignan",
+                "Assikoi",
+                "Autre (Saisir)",
+            ],
+            "Iffou (Daoukro)": [
+                "Daoukro",
+                "M'Bahiakro",
+                "Prikro",
+                "Ettrokro",
+                "Samanza",
+                "Ananda",
+                "Koffi-Amonkro",
+                "Autre (Saisir)",
+            ],
+            "N'Zi (Dimbokro)": [
+                "Dimbokro",
+                "Bocanda",
+                "Kouassi-Kouassikro",
+                "N'Douffoukro",
+                "Abigui",
+                "Bengassou",
+                "Autre (Saisir)",
+            ],
         }
 
+        # 1. Sélection de la Région
+        region = st.selectbox(
+            "Région cacaoyère *",
+            options=list(REGIONS_CACAO.keys()),
+            key="region_input",
+        )
 
-
-        region = st.selectbox("Région cacaoyère *", options=list(REGIONS_CACAO.keys()), key="region_input")
+        # 2. Choix de la localité
         villes_disponibles = REGIONS_CACAO.get(region, [])
-        ville = st.selectbox("Ville / Localité *", options=villes_disponibles, key="ville_input")
-        section = st.text_input("Section *", placeholder="Ex: Section Divo-Sud, Section Gbagbam 1...", key="section_input")
+        ville_choisie = st.selectbox(
+            "Sous-préfecture / Localité *",
+            options=villes_disponibles,
+            key="ville_input",
+        )
 
+        # 3. Saisie dynamique si 'Autre (Saisir)' est sélectionné
+        if ville_choisie == "Autre (Saisir)":
+            ville = st.text_input(
+                "Saisir la localité / Sous-préfecture *",
+                placeholder="Ex: Grand-Zattry, Okrouyo, Hiré...",
+                key="ville_custom_input",
+            )
+        else:
+            ville = ville_choisie
+
+        # 4. Saisie optionnelle du Village / Campement spécifique
+        village_campement = st.text_input(
+            "Village / Campement (Optionnel)",
+            placeholder="Ex: Kouamékro, Village Zattry 2...",
+            key="village_input",
+        )
+
+        # 5. Identification de la Section
+        section = st.text_input(
+            "Section *",
+            placeholder="Ex: Section Grand-Zattry 1, Section Divo-Sud...",
+            key="section_input",
+        )
+
+        # Boutons de navigation
         col1, col2 = st.columns([1, 1])
         with col2:
-            if st.button("Suivant ➡️", use_container_width=True, type="primary"):
-                if section.strip():
-                    st.session_state.reponses_pdc.update({
-                        "region": region,
-                        "ville": ville,
-                        "section": section.strip()
-                    })
+            if st.button(
+                "Suivant ➡️", use_container_width=True, type="primary"
+            ):
+                if section.strip() and ville.strip():
+                    st.session_state.reponses_pdc.update(
+                        {
+                            "region": region,
+                            "ville": ville.strip(),
+                            "village_campement": village_campement.strip(),
+                            "section": section.strip(),
+                        }
+                    )
                     st.session_state.etape_pdc = 2
                     st.rerun()
                 else:
-                    st.error("⚠️ Veuillez renseigner le nom de la Section avant de continuer.")
+                    st.error(
+                        "⚠️ Veuillez renseigner la Localité et la Section avant"
+                        " de continuer."
+                    )
+
 
     # ---------------------------------------------------------
     # ÉTAPE 2 : CARACTÉRISTIQUES DE LA PARCELLE
