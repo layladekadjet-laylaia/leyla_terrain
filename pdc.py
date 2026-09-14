@@ -551,6 +551,7 @@ def charger_donnees_par_module(nom_module):
 # 2. INTERFACE STREAMLIT
 # =========================================================================
 
+
 def afficher():
     # 1. Chargement des données
     df = charger_donnees_par_module("PDC")
@@ -558,7 +559,9 @@ def afficher():
     st.title("📋 PDC - Diagnostic & Plan de Développement")
 
     # 2. Section de consultation des PDC enregistrés
-    with st.expander(f"📁 Afficher / Masquer les données brutes ({len(df)} enregistrement(s))"):
+    with st.expander(
+        f"📁 Afficher / Masquer les données brutes ({len(df)} enregistrement(s))"
+    ):
         if not df.empty:
             st.dataframe(df, use_container_width=True)
         else:
@@ -566,25 +569,37 @@ def afficher():
 
     st.markdown("---")
 
-    # 3. Initialisation du questionnaire / workflow PDC
-    if 'etape_pdc' not in st.session_state:
+    # =========================================================
+    # INITIALISATION SÉCURISÉE DES ÉTATS DE SESSION (SESSION STATE)
+    # =========================================================
+    if "etape_pdc" not in st.session_state:
         st.session_state.etape_pdc = 1
 
-    if 'reponses_pdc' not in st.session_state:
+    if "reponses_pdc" not in st.session_state:
         st.session_state.reponses_pdc = {}
 
+    if "temp_tableau_arbres" not in st.session_state:
+        st.session_state.temp_tableau_arbres = []
+
+    if "temp_tableau_cultures" not in st.session_state:
+        st.session_state.temp_tableau_cultures = []
+
+    if "temp_tableau_equipements" not in st.session_state:
+        st.session_state.temp_tableau_equipements = []
+
+    # Barre de progression globale (15 étapes)
     total_etapes = 15
     st.progress(st.session_state.etape_pdc / total_etapes)
 
-        # ---------------------------------------------------------
-    # ÉTAPE 1 : INFORMATIONS GÉNÉRALES
+
+    # ---------------------------------------------------------
+    # ÉTAPE 1 : INFORMATIONS GÉNÉRALES & LOCALISATION
     # ---------------------------------------------------------
     if st.session_state.etape_pdc == 1:
         st.subheader(
             "Étape 1/15 : Localisation & Identification de la Section"
         )
 
-        # Base cartographique des 13 régions cacaoyères et leurs sous-préfectures / localités majeures
         REGIONS_CACAO = {
             "Nawa (Soubré)": [
                 "Soubré",
@@ -761,7 +776,7 @@ def afficher():
         else:
             ville = ville_choisie
 
-        # 4. Saisie optionnelle du Village / Campement spécifique
+        # 4. Saisie optionnelle du Village / Campement
         village_campement = st.text_input(
             "Village / Campement (Optionnel)",
             placeholder="Ex: Kouamékro, Village Zattry 2...",
@@ -782,14 +797,12 @@ def afficher():
                 "Suivant ➡️", use_container_width=True, type="primary"
             ):
                 if section.strip() and ville.strip():
-                    st.session_state.reponses_pdc.update(
-                        {
-                            "region": region,
-                            "ville": ville.strip(),
-                            "village_campement": village_campement.strip(),
-                            "section": section.strip(),
-                        }
-                    )
+                    st.session_state.reponses_pdc.update({
+                        "region": region,
+                        "ville": ville.strip(),
+                        "village_campement": village_campement.strip(),
+                        "section": section.strip(),
+                    })
                     st.session_state.etape_pdc = 2
                     st.rerun()
                 else:
@@ -797,6 +810,7 @@ def afficher():
                         "⚠️ Veuillez renseigner la Localité et la Section avant"
                         " de continuer."
                     )
+
 
 
     # ---------------------------------------------------------
