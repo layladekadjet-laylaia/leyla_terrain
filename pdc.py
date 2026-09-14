@@ -2832,182 +2832,203 @@ import pandas as pd
 import streamlit as st
 
 # =========================================================
+# INITIALISATION ET SÉCURISATION DU SESSION STATE
+# =========================================================
+if "etape_pdc" not in st.session_state:
+  st.session_state.etape_pdc = 1
+
+# =========================================================
 # ÉTAPE 12 : FIN DE L'ÉTAPE (SUITE ET NAVIGATION)
 # =========================================================
-if st.session_state.etape_pdc == 12:
-    # ---------------------------------------------------------
-    # CALCULS AUTOMATIQUES & LOGIQUE DE DIAGNOSTIC
-    # ---------------------------------------------------------
-    surf_autre = max(0.0, surf_totale - (surf_cacao_prod + surf_cacao_jeune))
-    pct_cacao = (
-        (surf_cacao_prod + surf_cacao_jeune) / surf_totale * 100
-        if surf_totale > 0
-        else 0
+if st.session_state.get("etape_pdc") == 12:
+
+  # ---------------------------------------------------------
+  # RÉCUPÉRATION SÉCURISÉE DES VARIABLES DE L'ÉTAPE
+  # ---------------------------------------------------------
+  surf_totale = float(st.session_state.get("surf_totale", 0.0))
+  surf_cacao_prod = float(st.session_state.get("surf_cacao_prod", 0.0))
+  surf_cacao_jeune = float(st.session_state.get("surf_cacao_jeune", 0.0))
+  statut_foncier = st.session_state.get("statut_foncier", "Non renseigné")
+  age_moyen_plan = st.session_state.get("age_moyen_plan", "Moyen")
+  relief_sol = st.session_state.get("relief_sol", [])
+  contraintes = st.session_state.get("contraintes", [])
+  waypoint_gps = st.session_state.get("waypoint_gps", "N/A")
+  voies_acces = st.session_state.get("voies_acces", [])
+  elements_parcelle = st.session_state.get("elements_parcelle", [])
+  nb_arbres_forestiers = int(st.session_state.get("nb_arbres_forestiers", 0))
+  essences_arbres = st.session_state.get("essences_arbres", [])
+  densite_ombrage = st.session_state.get("densite_ombrage", "Moyenne")
+
+  df_epargne_edite = st.session_state.get("df_epargne_edite", [])
+  df_mo_edite = st.session_state.get("df_mo_edite", [])
+
+  # ---------------------------------------------------------
+  # CALCULS AUTOMATIQUES & LOGIQUE DE DIAGNOSTIC
+  # ---------------------------------------------------------
+  surf_autre = max(0.0, surf_totale - (surf_cacao_prod + surf_cacao_jeune))
+  pct_cacao = (
+      ((surf_cacao_prod + surf_cacao_jeune) / surf_totale * 100)
+      if surf_totale > 0
+      else 0.0
+  )
+
+  # Formatage propre des listes
+  relief_str = ", ".join(relief_sol) if relief_sol else "Non précisé"
+  contraintes_str = (
+      ", ".join(contraintes) if contraintes else "Aucune contrainte majeure"
+  )
+  elements_str = (
+      ", ".join(elements_parcelle)
+      if elements_parcelle
+      else "Aucun élément spécifique"
+  )
+  voies_str = ", ".join(voies_acces) if voies_acces else "Non précisé"
+  essences_str = (
+      ", ".join(essences_arbres)
+      if essences_arbres
+      else "Aucune essence spécifiée"
+  )
+
+  if "Vétuste" in age_moyen_plan:
+    diagnostic_age = (
+        "🚨 **Régénération urgente requise** (Verger en fin de cycle"
+        " productif)."
+    )
+    niveau_alerte = "error"
+  elif "Vieillissant" in age_moyen_plan:
+    diagnostic_age = "⚠️ **Replantation progressive à prévoir**."
+    niveau_alerte = "warning"
+  else:
+    diagnostic_age = "✅ **Potentiel de production optimal**."
+    niveau_alerte = "success"
+
+  # ---------------------------------------------------------
+  # TAB-DE-BORD VISUEL
+  # ---------------------------------------------------------
+  st.markdown("#### 📊 Tableau de Bord Synthétique de l'Exploitation")
+
+  kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+  kpi1.metric("Superficie Totale", f"{surf_totale:.1f} ha")
+  kpi2.metric(
+      "Cacao Productif",
+      f"{surf_cacao_prod:.1f} ha",
+      f"{pct_cacao:.0f}% du total",
+  )
+  kpi3.metric(
+      "Arbres Forestiers", f"{nb_arbres_forestiers} pieds", f"{densite_ombrage}"
+  )
+  kpi4.metric("Autre / Jachère", f"{surf_autre:.1f} ha")
+
+  if niveau_alerte == "error":
+    st.error(diagnostic_age)
+  elif niveau_alerte == "warning":
+    st.warning(diagnostic_age)
+  else:
+    st.success(diagnostic_age)
+
+  col_c1, col_c2 = st.columns(2)
+  with col_c1:
+    st.markdown("##### 🏞️ Occupation du Sol, Foncier & GPS")
+    st.info(
+        f"• **Régime foncier :** {statut_foncier}\n\n"
+        f"• **Taux d'occupation cacaoyère :** {pct_cacao:.1f}%\n\n"
+        f"• **Relief/Sol :** {relief_str}\n\n"
+        f"• **Waypoint Central :** `{waypoint_gps}`"
     )
 
-    # Formattage propre des listes
-    relief_str = ", ".join(relief_sol) if relief_sol else "Non précisé"
-    contraintes_str = (
-        ", ".join(contraintes) if contraintes else "Aucune contrainte majeure"
-    )
-    elements_str = (
-        ", ".join(elements_parcelle)
-        if elements_parcelle
-        else "Aucun élément spécifique"
-    )
-    voies_str = ", ".join(voies_acces) if voies_acces else "Non précisé"
-    essences_str = (
-        ", ".join(essences_arbres)
-        if essences_arbres
-        else "Aucune essence spécifiée"
+  with col_c2:
+    st.markdown("##### 🛡️ Éléments du Croquis & Agroforesterie")
+    st.info(
+        f"• **Infrastructures/Repères :** {elements_str}\n\n"
+        f"• **Accès :** {voies_str}\n\n"
+        f"• **Arbres d'ombrage :** {nb_arbres_forestiers} pieds"
+        f" ({essences_str})\n\n"
+        f"• **Niveau d'ombrage :** {densite_ombrage}"
     )
 
-    if "Vétuste" in age_moyen_plan:
-        diagnostic_age = (
-            "🚨 **Régénération urgente requise** (Verger en fin de cycle"
-            " productif)."
-        )
-        niveau_alerte = "error"
-    elif "Vieillissant" in age_moyen_plan:
-        diagnostic_age = "⚠️ **Replantation progressive à prévoir**."
-        niveau_alerte = "warning"
-    else:
-        diagnostic_age = "✅ **Potentiel de production optimal**."
-        niveau_alerte = "success"
+  # ---------------------------------------------------------
+  # DYNAMIQUE DU RAPPORT SYNTHÉTIQUE (CONFORME CCC)
+  # ---------------------------------------------------------
+  st.markdown(
+      "#### 📝 Description Officielle (Générée automatiquement pour le Dossier"
+      " CCC)"
+  )
 
-    # ---------------------------------------------------------
-    # TAB-DE-BORD VISUEL
-    # ---------------------------------------------------------
-    st.markdown("#### 📊 Tableau de Bord Synthétique de l'Exploitation")
+  texte_description = (
+      f"L'exploitation sous le statut foncier **{statut_foncier}** couvre une"
+      f" superficie totale mesurée de **{surf_totale:.1f} hectares** (Waypoint"
+      f" GPS : {waypoint_gps}). La spéculation principale est la"
+      f" cacaoculture qui occupe **{surf_cacao_prod + surf_cacao_jeune:.1f}"
+      f" ha** (soit **{surf_cacao_prod:.1f} ha** en verger productif et"
+      f" **{surf_cacao_jeune:.1f} ha** en phase d'immaturité), représentant"
+      f" **{pct_cacao:.1f}%** de la surface globale. Le verger présente un"
+      f" profil d'âge **{age_moyen_plan}**, installé sur un relief de type"
+      f" **{relief_str}**. Le croquis cartographique identifie les voies"
+      f" d'accès (**{voies_str}**) ainsi que les infrastructures/repères"
+      f" physiques sur la parcelle (**{elements_str}**). Sur le plan"
+      f" agroforestier, l'exploitation compte **{nb_arbres_forestiers} arbres"
+      f" forestiers d'ombrage** (principalement : {essences_str}),"
+      f" garantissant un niveau d'ombrage évalué comme **{densite_ombrage}**. "
+  )
 
-    kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-    kpi1.metric("Superficie Totale", f"{surf_totale:.1f} ha")
-    kpi2.metric(
-        "Cacao Productif",
-        f"{surf_cacao_prod:.1f} ha",
-        f"{pct_cacao:.0f}% du total",
+  if contraintes:
+    texte_description += (
+        "Sur le plan phytosanitaire et pédo-climatique, la parcelle subit"
+        f" les contraintes suivantes : **{contraintes_str}**."
     )
-    kpi3.metric(
-        "Arbres Forestiers", f"{nb_arbres_forestiers} pieds", f"{densite_ombrage}"
-    )
-    kpi4.metric("Autre / Jachère", f"{surf_autre:.1f} ha")
-
-    if niveau_alerte == "error":
-        st.error(diagnostic_age)
-    elif niveau_alerte == "warning":
-        st.warning(diagnostic_age)
-    else:
-        st.success(diagnostic_age)
-
-    col_c1, col_c2 = st.columns(2)
-    with col_c1:
-        st.markdown("##### 🏞️ Occupation du Sol, Foncier & GPS")
-        st.info(
-            f"• **Régime foncier :** {statut_foncier}\n\n"
-            f"• **Taux d'occupation cacaoyère :** {pct_cacao:.1f}%\n\n"
-            f"• **Relief/Sol :** {relief_str}\n\n"
-            f"• **Waypoint Central :** `{waypoint_gps}`"
-        )
-
-    with col_c2:
-        st.markdown("##### 🛡️ Éléments du Croquis & Agroforesterie")
-        st.info(
-            f"• **Infrastructures/Repères :** {elements_str}\n\n"
-            f"• **Accès :** {voies_str}\n\n"
-            f"• **Arbres d'ombrage :** {nb_arbres_forestiers} pieds"
-            f" ({essences_str})\n\n"
-            f"• **Niveau d'ombrage :** {densite_ombrage}"
-        )
-
-    # ---------------------------------------------------------
-    # DYNAMIQUE DU RAPPORT SYNTHÉTIQUE (CONFORME CCC)
-    # ---------------------------------------------------------
-    st.markdown(
-        "#### 📝 Description Officielle (Générée automatiquement pour le Dossier"
-        " CCC)"
+  else:
+    texte_description += (
+        "Aucune contrainte phytosanitaire critique n'a été répertoriée"
+        " lors de la visite terrain."
     )
 
-    texte_description = (
-        f"L'exploitation sous le statut foncier **{statut_foncier}** couvre une"
-        f" superficie totale mesurée de **{surf_totale:.1f} hectares** (Waypoint"
-        f" GPS : {waypoint_gps}). La spéculation principale est la"
-        f" cacaoculture qui occupe **{surf_cacao_prod + surf_cacao_jeune:.1f}"
-        f" ha** (soit **{surf_cacao_prod:.1f} ha** en verger productif et"
-        f" **{surf_cacao_jeune:.1f} ha** en phase d'immaturité), représentant"
-        f" **{pct_cacao:.1f}%** de la surface globale. Le verger présente un"
-        f" profil d'âge **{age_moyen_plan}**, installé sur un relief de type"
-        f" **{relief_str}**. Le croquis cartographique identifie les voies"
-        f" d'accès (**{voies_str}**) ainsi que les infrastructures/repères"
-        f" physiques sur la parcelle (**{elements_str}**). Sur le plan"
-        f" agroforestier, l'exploitation compte **{nb_arbres_forestiers} arbres"
-        f" forestiers d'ombrage** (principalement : {essences_str}),"
-        f" garantissant un niveau d'ombrage évalué comme"
-        f" **{densite_ombrage}**. "
-    )
+  st.markdown(texte_description)
+  st.markdown("---")
 
-    if contraintes:
-        texte_description += (
-            "Sur le plan phytosanitaire et pédo-climatique, la parcelle subit"
-            f" les contraintes suivantes : **{contraintes_str}**."
-        )
-    else:
-        texte_description += (
-            "Aucune contrainte phytosanitaire critique n'a été répertoriée"
-            " lors de la visite terrain."
-        )
+  # =========================================================
+  # NAVIGATION DE L'ÉTAPE 12
+  # =========================================================
+  col_btn1, col_btn2 = st.columns([1, 1])
+  with col_btn1:
+    if st.button(
+        "⬅️ Retour (Étape 11 : Identification)",
+        key="btn_retour_etape12",
+        use_container_width=True,
+    ):
+      st.session_state.etape_pdc = 11
+      st.rerun()
 
-    st.markdown(texte_description)
-    st.markdown("---")
+  with col_btn2:
+    if st.button(
+        "Suivant (Vers Étape 13) ➡️",
+        key="btn_suivant_etape12",
+        type="primary",
+        use_container_width=True,
+    ):
+      if "reponses_pdc" not in st.session_state:
+        st.session_state.reponses_pdc = {}
 
-    # =========================================================
-    # NAVIGATION DE L'ÉTAPE 12
-    # =========================================================
-    col_btn1, col_btn2 = st.columns([1, 1])
-    with col_btn1:
-        if st.button(
-            "⬅️ Retour (Étape 11 : Identification)",
-            key="btn_retour_etape12",
-            use_container_width=True,
-        ):
-            st.session_state.etape_pdc = 11
-            st.rerun()
+      st.session_state.reponses_pdc["situation_epargne"] = df_epargne_edite
+      st.session_state.reponses_pdc["situation_main_oeuvre"] = df_mo_edite
+      st.session_state.reponses_pdc["description_exploitation"] = {
+          "statut_foncier": statut_foncier,
+          "superficie_totale": surf_totale,
+          "superficie_cacao_productif": surf_cacao_prod,
+          "superficie_cacao_immature": surf_cacao_jeune,
+          "age_moyen": age_moyen_plan,
+          "relief_sol": relief_sol,
+          "contraintes": contraintes,
+          "waypoint_gps": waypoint_gps,
+          "voies_acces": voies_acces,
+          "elements_parcelle": elements_parcelle,
+          "nb_arbres_forestiers": nb_arbres_forestiers,
+          "essences_arbres": essences_arbres,
+          "densite_ombrage": densite_ombrage,
+          "texte_synthese_auto": texte_description,
+      }
 
-    with col_btn2:
-        if st.button(
-            "Suivant (Vers Étape 13) ➡️",
-            key="btn_suivant_etape12",
-            type="primary",
-            use_container_width=True,
-        ):
-            if "reponses_pdc" not in st.session_state:
-                st.session_state.reponses_pdc = {}
-
-            st.session_state.reponses_pdc["situation_epargne"] = (
-                df_epargne_edite
-            )
-            st.session_state.reponses_pdc["situation_main_oeuvre"] = (
-                df_mo_edite
-            )
-            st.session_state.reponses_pdc["description_exploitation"] = {
-                "statut_foncier": statut_foncier,
-                "superficie_totale": surf_totale,
-                "superficie_cacao_productif": surf_cacao_prod,
-                "superficie_cacao_immature": surf_cacao_jeune,
-                "age_moyen": age_moyen_plan,
-                "relief_sol": relief_sol,
-                "contraintes": contraintes,
-                "waypoint_gps": waypoint_gps,
-                "voies_acces": voies_acces,
-                "elements_parcelle": elements_parcelle,
-                "nb_arbres_forestiers": nb_arbres_forestiers,
-                "essences_arbres": essences_arbres,
-                "densite_ombrage": densite_ombrage,
-                "texte_synthese_auto": texte_description,
-            }
-
-            st.session_state.etape_pdc = 13
-            st.rerun()
-
+      st.session_state.etape_pdc = 13
+      st.rerun()
 
 # =========================================================
 # ÉTAPE 13 : CULTURES, AGROFORESTERIE & MATÉRIEL AGRICOLE
