@@ -587,10 +587,132 @@ def afficher():
     if "temp_tableau_equipements" not in st.session_state:
         st.session_state.temp_tableau_equipements = []
 
+    # --- AJOUT DES INITIALISATIONS POUR L'ÉTAPE 13 ---
+    if "df_cultures_pdc" not in st.session_state:
+        st.session_state.df_cultures_pdc = [
+            {
+                "Culture": "Cacao - Parcelle 1",
+                "Superficie (ha)": 3.5,
+                "Année de création": 2012,
+                "Source matériel végétal": "SATMACI / ANADER / CNRA",
+                "Production campagne préc. (kg)": 2100,
+                "Revenu (FCFA)": 3150000,
+            },
+            {
+                "Culture": "Cacao - Parcelle 2",
+                "Superficie (ha)": 1.0,
+                "Année de création": 2023,
+                "Source matériel végétal": "Pépiniériste privé",
+                "Production campagne préc. (kg)": 0,
+                "Revenu (FCFA)": 0,
+            },
+            {
+                "Culture": "Hévéa",
+                "Superficie (ha)": 0.0,
+                "Année de création": 2020,
+                "Source matériel végétal": "Tout venant",
+                "Production campagne préc. (kg)": 0,
+                "Revenu (FCFA)": 0,
+            },
+            {
+                "Culture": "Palmier à huile",
+                "Superficie (ha)": 0.0,
+                "Année de création": 2020,
+                "Source matériel végétal": "SATMACI / ANADER / CNRA",
+                "Production campagne préc. (kg)": 0,
+                "Revenu (FCFA)": 0,
+            },
+            {
+                "Culture": "Vivriers (Banane/Maïs/Cassava)",
+                "Superficie (ha)": 0.5,
+                "Année de création": 2024,
+                "Source matériel végétal": "Tout venant",
+                "Production campagne préc. (kg)": 1200,
+                "Revenu (FCFA)": 450000,
+            },
+            {
+                "Culture": "Autres activités / Verger",
+                "Superficie (ha)": 0.0,
+                "Année de création": 2020,
+                "Source matériel végétal": "Tout venant",
+                "Production campagne préc. (kg)": 0,
+                "Revenu (FCFA)": 0,
+            },
+        ]
+
+    if "df_arbres_pdc" not in st.session_state:
+        st.session_state.df_arbres_pdc = [
+            {
+                "Nom de l'arbre": "Akpi",
+                "Nombre": 12,
+                "Latitude (N)": 6.020668,
+                "Longitude (W)": -4.3571323,
+                "Statut actuel": "Préservé",
+                "Rôle / Avantage": "Bois d'œuvre / Ombrage",
+                "Décision": "À maintenir",
+                "Remarque / Distance": "Bonne association",
+            },
+            {
+                "Nom de l'arbre": "Fraké",
+                "Nombre": 4,
+                "Latitude (N)": 6.020664,
+                "Longitude (W)": -4.3569498,
+                "Statut actuel": "Préservé",
+                "Rôle / Avantage": "Bois d'œuvre",
+                "Décision": "À éliminer",
+                "Remarque / Distance": "Situé à 1,5m d'un cacaoyer",
+            },
+            {
+                "Nom de l'arbre": "Fromager",
+                "Nombre": 2,
+                "Latitude (N)": 6.020614,
+                "Longitude (W)": -4.3561020,
+                "Statut actuel": "Préservé",
+                "Rôle / Avantage": "Ombrage haut",
+                "Décision": "À maintenir",
+                "Remarque / Distance": "En bordure de parcelle",
+            },
+        ]
+
+    if "df_materiel_pdc" not in st.session_state:
+        st.session_state.df_materiel_pdc = [
+            {
+                "Type": "Matériel de traitement",
+                "Désignation": "Pulvérisateur à dos",
+                "Quantité": 1,
+                "Année acquisition": 2022,
+                "Coût (FCFA)": 25000,
+                "État": "Bon",
+            },
+            {
+                "Type": "Matériel de traitement",
+                "Désignation": "Atomiseur à moteur",
+                "Quantité": 1,
+                "Année acquisition": 2021,
+                "Coût (FCFA)": 130000,
+                "État": "Acceptable",
+            },
+            {
+                "Type": "Matériel de transport",
+                "Désignation": "Brouette",
+                "Quantité": 2,
+                "Année acquisition": 2023,
+                "Coût (FCFA)": 30000,
+                "État": "Bon",
+            },
+            {
+                "Type": "Moyen de déplacement",
+                "Désignation": "MOTO Tricycle / Moto 2 roues",
+                "Quantité": 1,
+                "Année acquisition": 2020,
+                "Coût (FCFA)": 650000,
+                "État": "Mauvais",
+            },
+        ]
+
     # Barre de progression globale (15 étapes)
     total_etapes = 15
     st.progress(st.session_state.etape_pdc / total_etapes)
-
 
     # ---------------------------------------------------------
     # ÉTAPE 1 : INFORMATIONS GÉNÉRALES & LOCALISATION
@@ -797,12 +919,14 @@ def afficher():
                 "Suivant ➡️", use_container_width=True, type="primary"
             ):
                 if section.strip() and ville.strip():
-                    st.session_state.reponses_pdc.update({
-                        "region": region,
-                        "ville": ville.strip(),
-                        "village_campement": village_campement.strip(),
-                        "section": section.strip(),
-                    })
+                    st.session_state.reponses_pdc.update(
+                        {
+                            "region": region,
+                            "ville": ville.strip(),
+                            "village_campement": village_campement.strip(),
+                            "section": section.strip(),
+                        }
+                    )
                     st.session_state.etape_pdc = 2
                     st.rerun()
                 else:
