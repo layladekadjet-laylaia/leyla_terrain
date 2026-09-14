@@ -1150,7 +1150,32 @@ def afficher():
             " spéculations sur l'exploitation."
         )
 
+        # Structure de colonnes attendue par défaut
+        colonnes_attendues = [
+            "Culture",
+            "Superficie (ha)",
+            "Année création",
+            "Précédent cultural",
+            "Origine matériel",
+            "En production",
+        ]
+
+        # 1. Initialisation sécurisée du session state si inexistant ou vide
+        if (
+            "temp_tableau_cultures" not in st.session_state
+            or not st.session_state.temp_tableau_cultures
+        ):
+          st.session_state.temp_tableau_cultures = pd.DataFrame(
+              columns=colonnes_attendues
+          ).to_dict("records")
+
+        # 2. Construction du DataFrame et garantie d'existence des colonnes
         df_cult_in = pd.DataFrame(st.session_state.temp_tableau_cultures)
+        for col in colonnes_attendues:
+          if col not in df_cult_in.columns:
+            df_cult_in[col] = None
+
+        # 3. Éditeur de données
         df_cult_out = st.data_editor(
             df_cult_in,
             num_rows="dynamic",
@@ -1205,26 +1230,28 @@ def afficher():
             key="editor_cultures",
         )
 
-        # Calculs automatiques pour les cultures
-        superficie_totale_cacao = float(
-            df_cult_out[
-                df_cult_out["Culture"].str.contains(
-                    "Cacao", case=False, na=False
-                )
-            ]["Superficie (ha)"]
-            .fillna(0.0)
-            .sum()
-        )
+        # 4. Calculs automatiques sécurisés avec vérification et conversion
+        if not df_cult_out.empty and "Culture" in df_cult_out.columns:
+          # Nettoyage et conversion des surfaces en valeurs numériques
+          df_cult_out["Superficie (ha)"] = pd.to_numeric(
+              df_cult_out["Superficie (ha)"], errors="coerce"
+          ).fillna(0.0)
 
-        superficie_autres = float(
-            df_cult_out[
-                ~df_cult_out["Culture"].str.contains(
-                    "Cacao", case=False, na=False
-                )
-            ]["Superficie (ha)"]
-            .fillna(0.0)
-            .sum()
-        )
+          mask_cacao = (
+              df_cult_out["Culture"]
+              .astype(str)
+              .str.contains("Cacao", case=False, na=False)
+          )
+
+          superficie_totale_cacao = float(
+              df_cult_out[mask_cacao]["Superficie (ha)"].sum()
+          )
+          superficie_autres = float(
+              df_cult_out[~mask_cacao]["Superficie (ha)"].sum()
+          )
+        else:
+          superficie_totale_cacao = 0.0
+          superficie_autres = 0.0
 
         col_c1, col_c2, col_c3 = st.columns(3)
         col_c1.metric(
@@ -1237,6 +1264,7 @@ def afficher():
         )
 
         st.markdown("---")
+
 
         # =========================================================
         # 2. TABLEAU : MATÉRIEL AGRICOLE ET ÉQUIPEMENTS
