@@ -2551,8 +2551,7 @@ def afficher():
                 st.session_state.etape_pdc = 12
                 st.rerun()
 
-
-        # ---------------------------------------------------------
+    # ---------------------------------------------------------
     # ÉTAPE 12 : MÉNAGE & DESCRIPTION DE L'EXPLOITATION (NORMES CCC)
     # (PARTIE VI : STRUCTURATION DU PDC - 1.2 Ménage & 1.3 Exploitation)
     # ---------------------------------------------------------
@@ -2589,542 +2588,539 @@ def afficher():
 
         st.markdown("---")
 
-# =========================================================
-# 12.2 SITUATION DE LA MAIN-D'ŒUVRE
-# =========================================================
-st.markdown("### 👥 1.2.2 Situation de la main-d'œuvre")
+        # =========================================================
+        # 12.2 SITUATION DE LA MAIN-D'ŒUVRE
+        # =========================================================
+        st.markdown("### 👥 1.2.2 Situation de la main-d'œuvre")
 
-if "df_main_oeuvre_pdc" not in st.session_state:
-  st.session_state.df_main_oeuvre_pdc = [
-      {
-          "Membre du ménage": "Propriétaire de l'exploitation",
-          "Nb Femmes": 0,
-          "Nb Hommes": 0,
-          "Nb à l'école": 0,
-          "Instruction": "Aucun",
-          "Temps de travail": "Plein temps",
-      },
-      {
-          "Membre du ménage": "Gérant ou représentant",
-          "Nb Femmes": 0,
-          "Nb Hommes": 0,
-          "Nb à l'école": 0,
-          "Instruction": "Aucun",
-          "Temps de travail": "Plein temps",
-      },
-      {
-          "Membre du ménage": "Conjoints",
-          "Nb Femmes": 0,
-          "Nb Hommes": 0,
-          "Nb à l'école": 0,
-          "Instruction": "Aucun",
-          "Temps de travail": "Occasionnel",
-      },
-      {
-          "Membre du ménage": "Enfants 0 - 6 ans",
-          "Nb Femmes": 0,
-          "Nb Hommes": 0,
-          "Nb à l'école": 0,
-          "Instruction": "Aucun",
-          "Temps de travail": "Occasionnel",
-      },
-      {
-          "Membre du ménage": "Enfant 6 - 18 ans",
-          "Nb Femmes": 0,
-          "Nb Hommes": 0,
-          "Nb à l'école": 0,
-          "Instruction": "Primaire",
-          "Temps de travail": "Occasionnel",
-      },
-      {
-          "Membre du ménage": "Enfant + 18 ans",
-          "Nb Femmes": 0,
-          "Nb Hommes": 0,
-          "Nb à l'école": 0,
-          "Instruction": "Secondaire",
-          "Temps de travail": "Plein temps",
-      },
-  ]
+        if "df_main_oeuvre_pdc" not in st.session_state:
+            st.session_state.df_main_oeuvre_pdc = [
+                {
+                    "Membre du ménage": "Propriétaire de l'exploitation",
+                    "Nb Femmes": 0,
+                    "Nb Hommes": 0,
+                    "Nb à l'école": 0,
+                    "Instruction": "Aucun",
+                    "Temps de travail": "Plein temps",
+                },
+                {
+                    "Membre du ménage": "Gérant ou représentant",
+                    "Nb Femmes": 0,
+                    "Nb Hommes": 0,
+                    "Nb à l'école": 0,
+                    "Instruction": "Aucun",
+                    "Temps de travail": "Plein temps",
+                },
+                {
+                    "Membre du ménage": "Conjoints",
+                    "Nb Femmes": 0,
+                    "Nb Hommes": 0,
+                    "Nb à l'école": 0,
+                    "Instruction": "Aucun",
+                    "Temps de travail": "Occasionnel",
+                },
+                {
+                    "Membre du ménage": "Enfants 0 - 6 ans",
+                    "Nb Femmes": 0,
+                    "Nb Hommes": 0,
+                    "Nb à l'école": 0,
+                    "Instruction": "Aucun",
+                    "Temps de travail": "Occasionnel",
+                },
+                {
+                    "Membre du ménage": "Enfant 6 - 18 ans",
+                    "Nb Femmes": 0,
+                    "Nb Hommes": 0,
+                    "Nb à l'école": 0,
+                    "Instruction": "Primaire",
+                    "Temps de travail": "Occasionnel",
+                },
+                {
+                    "Membre du ménage": "Enfant + 18 ans",
+                    "Nb Femmes": 0,
+                    "Nb Hommes": 0,
+                    "Nb à l'école": 0,
+                    "Instruction": "Secondaire",
+                    "Temps de travail": "Plein temps",
+                },
+            ]
 
-df_mo_edite = st.data_editor(
-    st.session_state.df_main_oeuvre_pdc,
-    key="editor_main_oeuvre_pdc",
-    column_config={
-        "Membre du ménage": st.column_config.TextColumn(
-            "Catégorie membre", disabled=True
-        ),
-        "Nb Femmes": st.column_config.NumberColumn(
-            "F", min_value=0, step=1, help="Nombre de femmes"
-        ),
-        "Nb Hommes": st.column_config.NumberColumn(
-            "M", min_value=0, step=1, help="Nombre d'hommes"
-        ),
-        "Nb à l'école": st.column_config.NumberColumn(
-            "Encore à l'école", min_value=0, step=1
-        ),
-        "Instruction": st.column_config.SelectboxColumn(
-            "Niveau d'instruction",
-            options=["Aucun", "Primaire", "Secondaire", "Universitaire"],
-            default="Aucun",
-        ),
-        "Temps de travail": st.column_config.SelectboxColumn(
-            "Temps de travail sur plantation",
-            options=["Plein temps", "Occasionnel", "Aucun"],
-            default="Occasionnel",
-        ),
-    },
-    use_container_width=True,
-    num_rows="dynamic",
-)
-
-st.markdown("---")
-
-# =========================================================
-# 12.3 DESCRIPTION & CARACTÉRISTIQUES DE L'EXPLOITATION
-# =========================================================
-st.markdown("### 🏡 1.3 Description & Caractéristiques de l'Exploitation")
-
-# --- RÉCUPÉRATION DES DONNÉES DE L'ÉTAPE 4 (SESSION_STATE) ---
-reponses = st.session_state.get("reponses_pdc", {})
-
-# 1. Extraction des superficies issues des cultures
-surf_cacao_defaut = float(reponses.get("superficie_totale_cacao", 3.5))
-surf_autres_defaut = float(reponses.get("superficie_autres_cultures", 0.5))
-surf_totale_defaut = surf_cacao_defaut + surf_autres_defaut
-
-# 2. Extraction du tableau complet des arbres avec coordonnées GPS
-tableau_arbres = reponses.get(
-    "tableau_arbres", st.session_state.get("temp_tableau_arbres", [])
-)
-
-# 3. Métriques d'arbres
-nb_arbres_defaut = int(reponses.get("arbres_conserves", len(tableau_arbres)))
-densite_ha_defaut = float(reponses.get("densite_conservee_ha", 0.0))
-
-# Extraction dynamique des essences renseignées dans l'Étape 4
-essences_extraites = list(
-    set(
-        str(row.get("Espèce", "")).strip()
-        for row in tableau_arbres
-        if isinstance(row, dict) and row.get("Espèce")
-    )
-)
-essences_base = [
-    "Akpi",
-    "Iroko",
-    "Kinkéliba / Fraké",
-    "Framiré",
-    "Avocatier",
-    "Citronnier / Agrumes",
-    "Petit Piment / Autres",
-    "Fraqué",
-    "Fromager",
-]
-essences_options = list(set(essences_base + essences_extraites))
-
-# Détermination automatique du niveau d'ombrage
-if densite_ha_defaut < 10:
-  ombrage_defaut = "Faible (< 10 arbres/ha)"
-elif 10 <= densite_ha_defaut <= 25:
-  ombrage_defaut = "Adéquat (10-25 arbres/ha)"
-else:
-  ombrage_defaut = "Excessif (> 25 arbres/ha)"
-
-
-# --- EXPANDER 1 : FORMULAIRE AGRONOMIQUE & FONCIER ---
-with st.expander("📋 **1. Formulaire Agronomique & Foncier**", expanded=True):
-  col1, col2 = st.columns(2)
-
-  with col1:
-    statut_foncier = st.selectbox(
-        "📜 Statut foncier de la parcelle",
-        [
-            "Propriétaire coutumier",
-            "Titre foncier / Certificat foncier",
-            "Métayage (Abougnon / Planteur-Partage)",
-            "Location / Fermage",
-        ],
-        key="statut_foncier",
-    )
-    surf_totale = st.number_input(
-        "📐 Superficie totale de l'exploitation (ha)",
-        min_value=0.1,
-        value=max(0.1, surf_totale_defaut),
-        step=0.5,
-        key="surf_totale",
-        help="Prend automatiquement la somme des superficies renseignées à l'Étape 4",
-    )
-    surf_cacao_prod = st.number_input(
-        "🍫 Superficie en cacao productif (ha)",
-        min_value=0.0,
-        value=surf_cacao_defaut,
-        step=0.5,
-        key="surf_cacao_prod",
-        help="Total du cacao productif calculé à l'Étape 4",
-    )
-    surf_cacao_jeune = st.number_input(
-        "🌱 Superficie cacao immature / immaturité (ha)",
-        min_value=0.0,
-        value=0.0,
-        step=0.5,
-        key="surf_cacao_jeune",
-    )
-
-  with col2:
-    age_moyen_plan = st.select_slider(
-        "🌳 Âge moyen du verger (années)",
-        options=[
-            "0-3 ans (Jeune)",
-            "4-15 ans (Plein rendement)",
-            "16-25 ans (Vieillissant)",
-            "+25 ans (Vétuste)",
-        ],
-        value="4-15 ans (Plein rendement)",
-        key="age_moyen",
-    )
-    relief_sol = st.multiselect(
-        "⛰️ Relief & Type de sol prédominant",
-        [
-            "Bas-fond / Hydromorphe",
-            "Plat / Sol Ferrallitique",
-            "Pente légère / Sol Gravillonnaire",
-            "Zone Rocheuse / Latéritique",
-        ],
-        default=["Plat / Sol Ferrallitique"],
-        key="relief_sol",
-    )
-    contraintes = st.multiselect(
-        "⚠️ Contraintes & Risques observés sur la parcelle",
-        [
-            "Attaque de Swollen Shoot",
-            "Pression Foreurs de tiges / Punaise",
-            "Pourriture brune des cabosses",
-            "Ombrage excessif",
-            "Manque d'eau / Sécheresse",
-            "Inaccessibilité en saison de pluies",
-        ],
-        default=["Pression Foreurs de tiges / Punaise"],
-        key="contraintes_parcelle",
-    )
-
-
-# --- EXPANDER 2 : CARTOGRAPHIE & AGROFORESTERIE ---
-with st.expander(
-    "🗺️ **2. Cartographie, Arbres Forestiers & Infrastructures (Exigences CCC)**",
-    expanded=True,
-):
-  st.caption(
-      "Données relatives au croquis/polygone, aux arbres d'ombrage géolocalisés"
-      " et aux repères géographiques."
-  )
-
-  col_geo1, col_geo2 = st.columns(2)
-
-  with col_geo1:
-    st.markdown("**📍 Repères & Voies d'accès**")
-    voies_acces = st.multiselect(
-        "Pistes & Voies d'accès",
-        [
-            "Piste cyclable / Piétonne",
-            "Piste camionnière / Sommier",
-            "Route bitumée à proximité",
-            "Traversée par voie d'eau",
-        ],
-        default=["Piste camionnière / Sommier"],
-        key="voies_acces",
-    )
-    elements_parcelle = st.multiselect(
-        "Éléments remarquables de la parcelle",
-        [
-            "Campement / Habitation",
-            "Cours d'eau / Bas-fond",
-            "Puits / Source d'eau",
-            "Zone rocheuse non cultivable",
-        ],
-        default=["Campement / Habitation"],
-        key="elements_parcelle",
-    )
-
-    lat_ref = (
-        tableau_arbres[0].get("Latitude")
-        if (
-            tableau_arbres
-            and isinstance(tableau_arbres[0], dict)
-            and "Latitude" in tableau_arbres[0]
+        df_mo_edite = st.data_editor(
+            st.session_state.df_main_oeuvre_pdc,
+            key="editor_main_oeuvre_pdc",
+            column_config={
+                "Membre du ménage": st.column_config.TextColumn(
+                    "Catégorie membre", disabled=True
+                ),
+                "Nb Femmes": st.column_config.NumberColumn(
+                    "F", min_value=0, step=1, help="Nombre de femmes"
+                ),
+                "Nb Hommes": st.column_config.NumberColumn(
+                    "M", min_value=0, step=1, help="Nombre d'hommes"
+                ),
+                "Nb à l'école": st.column_config.NumberColumn(
+                    "Encore à l'école", min_value=0, step=1
+                ),
+                "Instruction": st.column_config.SelectboxColumn(
+                    "Niveau d'instruction",
+                    options=["Aucun", "Primaire", "Secondaire", "Universitaire"],
+                    default="Aucun",
+                ),
+                "Temps de travail": st.column_config.SelectboxColumn(
+                    "Temps de travail sur plantation",
+                    options=["Plein temps", "Occasionnel", "Aucun"],
+                    default="Occasionnel",
+                ),
+            },
+            use_container_width=True,
+            num_rows="dynamic",
         )
-        else 6.67262
-    )
-    lon_ref = (
-        tableau_arbres[0].get("Longitude")
-        if (
-            tableau_arbres
-            and isinstance(tableau_arbres[0], dict)
-            and "Longitude" in tableau_arbres[0]
+
+        st.markdown("---")
+
+        # =========================================================
+        # 12.3 DESCRIPTION & CARACTÉRISTIQUES DE L'EXPLOITATION
+        # =========================================================
+        st.markdown("### 🏡 1.3 Description & Caractéristiques de l'Exploitation")
+
+        # --- RÉCUPÉRATION DES DONNÉES DE L'ÉTAPE 4 (SESSION_STATE) ---
+        reponses = st.session_state.get("reponses_pdc", {})
+
+        # 1. Extraction des superficies issues des cultures
+        surf_cacao_defaut = float(reponses.get("superficie_totale_cacao", 3.5))
+        surf_autres_defaut = float(reponses.get("superficie_autres_cultures", 0.5))
+        surf_totale_defaut = surf_cacao_defaut + surf_autres_defaut
+
+        # 2. Extraction du tableau complet des arbres avec coordonnées GPS
+        tableau_arbres = reponses.get(
+            "tableau_arbres", st.session_state.get("temp_tableau_arbres", [])
         )
-        else -5.28095
-    )
-    gps_defaut_str = f"{lat_ref:.6f} N, {lon_ref:.6f} W"
 
-    waypoint_gps = st.text_input(
-        "Coordonnées GPS centrales / Waypoint (Ex: 6.67262 N, -5.28095 W)",
-        value=gps_defaut_str,
-        key="waypoint_gps",
-    )
+        # 3. Métriques d'arbres
+        nb_arbres_defaut = int(reponses.get("arbres_conserves", len(tableau_arbres)))
+        densite_ha_defaut = float(reponses.get("densite_conservee_ha", 0.0))
 
-  with col_geo2:
-    st.markdown("**🌳 Inventaire Agroforestier (Synchronisé avec l'Étape 4)**")
-    nb_arbres_forestiers = st.number_input(
-        "Nombre d'arbres d'ombrage conservés",
-        min_value=0,
-        value=nb_arbres_defaut,
-        step=1,
-        key="nb_arbres_forestiers",
-        help="Total des arbres à maintenir ou élaguer identifiés à l'Étape 4",
-    )
-    essences_arbres = st.multiselect(
-        "Essences d'arbres prédominantes",
-        options=essences_options,
-        default=(
-            essences_extraites
-            if essences_extraites
-            else ["Akpi", "Iroko", "Framiré"]
-        ),
-        key="essences_arbres",
-        help="Essences récupérées automatiquement depuis votre tableau d'arbres",
-    )
-    densite_ombrage = st.select_slider(
-        "Niveau d'ombrage estimé",
-        options=[
-            "Faible (< 10 arbres/ha)",
-            "Adéquat (10-25 arbres/ha)",
-            "Excessif (> 25 arbres/ha)",
-        ],
-        value=ombrage_defaut,
-        key="densite_ombrage",
-        help=f"Calculé automatiquement : {densite_ha_defaut:.1f} arb/ha conservés",
-    )
+        # Extraction dynamique des essences renseignées dans l'Étape 4
+        essences_extraites = list(
+            set(
+                str(row.get("Espèce", "")).strip()
+                for row in tableau_arbres
+                if isinstance(row, dict) and row.get("Espèce")
+            )
+        )
+        essences_base = [
+            "Akpi",
+            "Iroko",
+            "Kinkéliba / Fraké",
+            "Framiré",
+            "Avocatier",
+            "Citronnier / Agrumes",
+            "Petit Piment / Autres",
+            "Fraqué",
+            "Fromager",
+        ]
+        essences_options = list(set(essences_base + essences_extraites))
 
-  st.markdown("---")
-  st.markdown(
-      "**🎨 Rendu du Croquis de la Parcelle (avec Géolocalisation des"
-      " Arbres)**"
-  )
+        # Détermination automatique du niveau d'ombrage
+        if densite_ha_defaut < 10:
+            ombrage_defaut = "Faible (< 10 arbres/ha)"
+        elif 10 <= densite_ha_defaut <= 25:
+            ombrage_defaut = "Adéquat (10-25 arbres/ha)"
+        else:
+            ombrage_defaut = "Excessif (> 25 arbres/ha)"
 
-  col_gen1, col_gen2 = st.columns([1, 1])
-  with col_gen1:
-    btn_generer_croquis = st.button(
-        "🖌️ Générer le croquis automatique (CCC)",
-        use_container_width=True,
-    )
+        # --- EXPANDER 1 : FORMULAIRE AGRONOMIQUE & FONCIER ---
+        with st.expander("📋 **1. Formulaire Agronomique & Foncier**", expanded=True):
+            col1, col2 = st.columns(2)
 
-  with col_gen2:
-    fichier_croquis = st.file_uploader(
-        "Ou importer un croquis manuel (PNG/JPG)",
-        type=["png", "jpg", "jpeg"],
-        key="fichier_croquis_parcelle",
-    )
+            with col1:
+                statut_foncier = st.selectbox(
+                    "📜 Statut foncier de la parcelle",
+                    [
+                        "Propriétaire coutumier",
+                        "Titre foncier / Certificat foncier",
+                        "Métayage (Abougnon / Planteur-Partage)",
+                        "Location / Fermage",
+                    ],
+                    key="statut_foncier",
+                )
+                surf_totale = st.number_input(
+                    "📐 Superficie totale de l'exploitation (ha)",
+                    min_value=0.1,
+                    value=max(0.1, surf_totale_defaut),
+                    step=0.5,
+                    key="surf_totale",
+                    help="Prend automatiquement la somme des superficies renseignées à l'Étape 4",
+                )
+                surf_cacao_prod = st.number_input(
+                    "🍫 Superficie en cacao productif (ha)",
+                    min_value=0.0,
+                    value=surf_cacao_defaut,
+                    step=0.5,
+                    key="surf_cacao_prod",
+                    help="Total du cacao productif calculé à l'Étape 4",
+                )
+                surf_cacao_jeune = st.number_input(
+                    "🌱 Superficie cacao immature / immaturité (ha)",
+                    min_value=0.0,
+                    value=0.0,
+                    step=0.5,
+                    key="surf_cacao_jeune",
+                )
 
-  if btn_generer_croquis:
-    if "generer_croquis_parcelle" in globals():
-      img_buf = generer_croquis_parcelle(
-          nom_producteur=st.session_state.get("nom_producteur", "Inconnu"),
-          code_ccc=st.session_state.get("code_producteur", "CCC-001"),
-          surf_totale=surf_totale,
-          surf_prod=surf_cacao_prod,
-          surf_jeune=surf_cacao_jeune,
-          waypoint_gps=waypoint_gps,
-          nb_arbres=nb_arbres_forestiers,
-          essences=essences_arbres,
-          elements=elements_parcelle,
-          acces=voies_acces,
-          liste_arbres=tableau_arbres,
-      )
-      st.session_state["croquis_genere"] = img_buf.getvalue()
-    else:
-      st.warning(
-          "La fonction `generer_croquis_parcelle` n'est pas définie dans le"
-          " script."
-      )
+            with col2:
+                age_moyen_plan = st.select_slider(
+                    "🌳 Âge moyen du verger (années)",
+                    options=[
+                        "0-3 ans (Jeune)",
+                        "4-15 ans (Plein rendement)",
+                        "16-25 ans (Vieillissant)",
+                        "+25 ans (Vétuste)",
+                    ],
+                    value="4-15 ans (Plein rendement)",
+                    key="age_moyen",
+                )
+                relief_sol = st.multiselect(
+                    "⛰️ Relief & Type de sol prédominant",
+                    [
+                        "Bas-fond / Hydromorphe",
+                        "Plat / Sol Ferrallitique",
+                        "Pente légère / Sol Gravillonnaire",
+                        "Zone Rocheuse / Latéritique",
+                    ],
+                    default=["Plat / Sol Ferrallitique"],
+                    key="relief_sol",
+                )
+                contraintes = st.multiselect(
+                    "⚠️ Contraintes & Risques observés sur la parcelle",
+                    [
+                        "Attaque de Swollen Shoot",
+                        "Pression Foreurs de tiges / Punaise",
+                        "Pourriture brune des cabosses",
+                        "Ombrage excessif",
+                        "Manque d'eau / Sécheresse",
+                        "Inaccessibilité en saison de pluies",
+                    ],
+                    default=["Pression Foreurs de tiges / Punaise"],
+                    key="contraintes_parcelle",
+                )
 
-  if fichier_croquis is not None:
-    st.image(
-        fichier_croquis,
-        caption="Croquis manuel importé pour le dossier CCC",
-        use_container_width=True,
-    )
-  elif "croquis_genere" in st.session_state:
-    st.image(
-        st.session_state["croquis_genere"],
-        caption=(
-            "Croquis automatique géolocalisé généré par Leyla (Normes CCC &"
-            " RDUE)"
-        ),
-        use_container_width=True,
-    )
+        # --- EXPANDER 2 : CARTOGRAPHIE & AGROFORESTERIE ---
+        with st.expander(
+            "🗺️ **2. Cartographie, Arbres Forestiers & Infrastructures (Exigences CCC)**",
+            expanded=True,
+        ):
+            st.caption(
+                "Données relatives au croquis/polygone, aux arbres d'ombrage géolocalisés"
+                " et aux repères géographiques."
+            )
 
-# --- CALCULS & TABLEAU DE BORD VISUEL ---
-surf_autre = max(0.0, surf_totale - (surf_cacao_prod + surf_cacao_jeune))
-pct_cacao = (
-    ((surf_cacao_prod + surf_cacao_jeune) / surf_totale * 100)
-    if surf_totale > 0
-    else 0.0
-)
+            col_geo1, col_geo2 = st.columns(2)
 
-relief_str = ", ".join(relief_sol) if relief_sol else "Non précisé"
-contraintes_str = (
-    ", ".join(contraintes) if contraintes else "Aucune contrainte majeure"
-)
-elements_str = (
-    ", ".join(elements_parcelle)
-    if elements_parcelle
-    else "Aucun élément spécifique"
-)
-voies_str = ", ".join(voies_acces) if voies_acces else "Non précisé"
-essences_str = (
-    ", ".join(essences_arbres) if essences_arbres else "Aucune essence spécifiée"
-)
+            with col_geo1:
+                st.markdown("**📍 Repères & Voies d'accès**")
+                voies_acces = st.multiselect(
+                    "Pistes & Voies d'accès",
+                    [
+                        "Piste cyclable / Piétonne",
+                        "Piste camionnière / Sommier",
+                        "Route bitumée à proximité",
+                        "Traversée par voie d'eau",
+                    ],
+                    default=["Piste camionnière / Sommier"],
+                    key="voies_acces",
+                )
+                elements_parcelle = st.multiselect(
+                    "Éléments remarquables de la parcelle",
+                    [
+                        "Campement / Habitation",
+                        "Cours d'eau / Bas-fond",
+                        "Puits / Source d'eau",
+                        "Zone rocheuse non cultivable",
+                    ],
+                    default=["Campement / Habitation"],
+                    key="elements_parcelle",
+                )
 
-if "Vétuste" in age_moyen_plan:
-  diagnostic_age = (
-      "🚨 **Régénération urgente requise** (Verger en fin de cycle productif)."
-  )
-  niveau_alerte = "error"
-elif "Vieillissant" in age_moyen_plan:
-  diagnostic_age = "⚠️ **Replantation progressive à prévoir**."
-  niveau_alerte = "warning"
-else:
-  diagnostic_age = "✅ **Potentiel de production optimal**."
-  niveau_alerte = "success"
+                lat_ref = (
+                    tableau_arbres[0].get("Latitude")
+                    if (
+                        tableau_arbres
+                        and isinstance(tableau_arbres[0], dict)
+                        and "Latitude" in tableau_arbres[0]
+                    )
+                    else 6.67262
+                )
+                lon_ref = (
+                    tableau_arbres[0].get("Longitude")
+                    if (
+                        tableau_arbres
+                        and isinstance(tableau_arbres[0], dict)
+                        and "Longitude" in tableau_arbres[0]
+                    )
+                    else -5.28095
+                )
+                gps_defaut_str = f"{lat_ref:.6f} N, {lon_ref:.6f} W"
 
-st.markdown("---")
-st.markdown("#### 📊 Tableau de Bord Synthétique de l'Exploitation")
+                waypoint_gps = st.text_input(
+                    "Coordonnées GPS centrales / Waypoint (Ex: 6.67262 N, -5.28095 W)",
+                    value=gps_defaut_str,
+                    key="waypoint_gps",
+                )
 
-kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-kpi1.metric("Superficie Totale", f"{surf_totale:.1f} ha")
-kpi2.metric(
-    "Cacao Productif", f"{surf_cacao_prod:.1f} ha", f"{pct_cacao:.0f}% du total"
-)
-kpi3.metric(
-    "Arbres Forestiers", f"{nb_arbres_forestiers} pieds", f"{densite_ombrage}"
-)
-kpi4.metric("Autre / Jachère", f"{surf_autre:.1f} ha")
+            with col_geo2:
+                st.markdown("**🌳 Inventaire Agroforestier (Synchronisé avec l'Étape 4)**")
+                nb_arbres_forestiers = st.number_input(
+                    "Nombre d'arbres d'ombrage conservés",
+                    min_value=0,
+                    value=nb_arbres_defaut,
+                    step=1,
+                    key="nb_arbres_forestiers",
+                    help="Total des arbres à maintenir ou élaguer identifiés à l'Étape 4",
+                )
+                essences_arbres = st.multiselect(
+                    "Essences d'arbres prédominantes",
+                    options=essences_options,
+                    default=(
+                        essences_extraites
+                        if essences_extraites
+                        else ["Akpi", "Iroko", "Framiré"]
+                    ),
+                    key="essences_arbres",
+                    help="Essences récupérées automatiquement depuis votre tableau d'arbres",
+                )
+                densite_ombrage = st.select_slider(
+                    "Niveau d'ombrage estimé",
+                    options=[
+                        "Faible (< 10 arbres/ha)",
+                        "Adéquat (10-25 arbres/ha)",
+                        "Excessif (> 25 arbres/ha)",
+                    ],
+                    value=ombrage_defaut,
+                    key="densite_ombrage",
+                    help=f"Calculé automatiquement : {densite_ha_defaut:.1f} arb/ha conservés",
+                )
 
-if niveau_alerte == "error":
-  st.error(diagnostic_age)
-elif niveau_alerte == "warning":
-  st.warning(diagnostic_age)
-else:
-  st.success(diagnostic_age)
+            st.markdown("---")
+            st.markdown(
+                "**🎨 Rendu du Croquis de la Parcelle (avec Géolocalisation des"
+                " Arbres)**"
+            )
 
-col_c1, col_c2 = st.columns(2)
-with col_c1:
-  st.markdown("##### 🏞️ Occupation du Sol, Foncier & GPS")
-  st.info(
-      f"• **Régime foncier :** {statut_foncier}\n\n"
-      f"• **Taux d'occupation cacaoyère :** {pct_cacao:.1f}%\n\n"
-      f"• **Relief/Sol :** {relief_str}\n\n"
-      f"• **Waypoint Central :** `{waypoint_gps}`"
-  )
+            col_gen1, col_gen2 = st.columns([1, 1])
+            with col_gen1:
+                btn_generer_croquis = st.button(
+                    "🖌️ Générer le croquis automatique (CCC)",
+                    use_container_width=True,
+                )
 
-with col_c2:
-  st.markdown("##### 🛡️ Éléments du Croquis & Agroforesterie")
-  st.info(
-      f"• **Infrastructures/Repères :** {elements_str}\n\n"
-      f"• **Accès :** {voies_str}\n\n"
-      f"• **Arbres d'ombrage :** {nb_arbres_forestiers} pieds"
-      f" ({essences_str})\n\n"
-      f"• **Niveau d'ombrage :** {densite_ombrage}"
-  )
+            with col_gen2:
+                fichier_croquis = st.file_uploader(
+                    "Ou importer un croquis manuel (PNG/JPG)",
+                    type=["png", "jpg", "jpeg"],
+                    key="fichier_croquis_parcelle",
+                )
 
-# --- RAPPORT SYNTHÉTIQUE ---
-st.markdown(
-    "#### 📝 Description Officielle (Générée automatiquement pour le Dossier"
-    " CCC)"
-)
+            if btn_generer_croquis:
+                if "generer_croquis_parcelle" in globals():
+                    img_buf = generer_croquis_parcelle(
+                        nom_producteur=st.session_state.get("nom_producteur", "Inconnu"),
+                        code_ccc=st.session_state.get("code_producteur", "CCC-001"),
+                        surf_totale=surf_totale,
+                        surf_prod=surf_cacao_prod,
+                        surf_jeune=surf_cacao_jeune,
+                        waypoint_gps=waypoint_gps,
+                        nb_arbres=nb_arbres_forestiers,
+                        essences=essences_arbres,
+                        elements=elements_parcelle,
+                        acces=voies_acces,
+                        liste_arbres=tableau_arbres,
+                    )
+                    st.session_state["croquis_genere"] = img_buf.getvalue()
+                else:
+                    st.warning(
+                        "La fonction `generer_croquis_parcelle` n'est pas définie dans le"
+                        " script."
+                    )
 
-texte_description = (
-    f"L'exploitation sous le statut foncier **{statut_foncier}** couvre une"
-    f" superficie totale mesurée de **{surf_totale:.1f} hectares** (Waypoint"
-    f" GPS : {waypoint_gps}). La spéculation principale est la cacaoculture"
-    f" qui occupe **{surf_cacao_prod + surf_cacao_jeune:.1f} ha** (soit"
-    f" **{surf_cacao_prod:.1f} ha** en verger productif et"
-    f" **{surf_cacao_jeune:.1f} ha** en phase d'immaturité), représentant"
-    f" **{pct_cacao:.1f}%** de la surface globale. Le verger présente un profil"
-    f" d'âge **{age_moyen_plan}**, installé sur un relief de type"
-    f" **{relief_str}**. Le croquis cartographique identifie les voies d'accès"
-    f" (**{voies_str}**) ainsi que les infrastructures/repères physiques sur"
-    f" la parcelle (**{elements_str}**). Sur le plan agroforestier,"
-    f" l'exploitation compte **{nb_arbres_forestiers} arbres forestiers"
-    f" d'ombrage** (principalement : {essences_str}), garantissant un niveau"
-    f" d'ombrage évalué comme **{densite_ombrage}**. "
-)
+            if fichier_croquis is not None:
+                st.image(
+                    fichier_croquis,
+                    caption="Croquis manuel importé pour le dossier CCC",
+                    use_container_width=True,
+                )
+            elif "croquis_genere" in st.session_state:
+                st.image(
+                    st.session_state["croquis_genere"],
+                    caption=(
+                        "Croquis automatique géolocalisé généré par Leyla (Normes CCC &"
+                        " RDUE)"
+                    ),
+                    use_container_width=True,
+                )
 
-if contraintes:
-  texte_description += (
-      "Sur le plan phytosanitaire et pédo-climatique, la parcelle subit les"
-      f" contraintes suivantes : **{contraintes_str}**."
-  )
-else:
-  texte_description += (
-      "Aucune contrainte phytosanitaire critique n'a été répertoriée lors de"
-      " la visite terrain."
-  )
+        # --- CALCULS & TABLEAU DE BORD VISUEL ---
+        surf_autre = max(0.0, surf_totale - (surf_cacao_prod + surf_cacao_jeune))
+        pct_cacao = (
+            ((surf_cacao_prod + surf_cacao_jeune) / surf_totale * 100)
+            if surf_totale > 0
+            else 0.0
+        )
 
-st.markdown(texte_description)
-st.markdown("---")
+        relief_str = ", ".join(relief_sol) if relief_sol else "Non précisé"
+        contraintes_str = (
+            ", ".join(contraintes) if contraintes else "Aucune contrainte majeure"
+        )
+        elements_str = (
+            ", ".join(elements_parcelle)
+            if elements_parcelle
+            else "Aucun élément spécifique"
+        )
+        voies_str = ", ".join(voies_acces) if voies_acces else "Non précisé"
+        essences_str = (
+            ", ".join(essences_arbres) if essences_arbres else "Aucune essence spécifiée"
+        )
 
-# =========================================================
-# NAVIGATION DE L'ÉTAPE
-# =========================================================
-col_btn1, col_btn2 = st.columns([1, 1])
-with col_btn1:
-  if st.button(
-      "⬅️ Retour",
-      key="btn_retour_etape12",
-      use_container_width=True,
-  ):
-    st.session_state.etape_pdc = 11
-    st.rerun()
+        if "Vétuste" in age_moyen_plan:
+            diagnostic_age = (
+                "🚨 **Régénération urgente requise** (Verger en fin de cycle productif)."
+            )
+            niveau_alerte = "error"
+        elif "Vieillissant" in age_moyen_plan:
+            diagnostic_age = "⚠️ **Replantation progressive à prévoir**."
+            niveau_alerte = "warning"
+        else:
+            diagnostic_age = "✅ **Potentiel de production optimal**."
+            niveau_alerte = "success"
 
-with col_btn2:
-  if st.button(
-      "Suivant ➡️",
-      key="btn_suivant_etape12",
-      type="primary",
-      use_container_width=True,
-  ):
-    if "reponses_pdc" not in st.session_state:
-      st.session_state.reponses_pdc = {}
+        st.markdown("---")
+        st.markdown("#### 📊 Tableau de Bord Synthétique de l'Exploitation")
 
-    st.session_state.reponses_pdc["situation_main_oeuvre"] = df_mo_edite
-    st.session_state.reponses_pdc["description_exploitation"] = {
-        "statut_foncier": statut_foncier,
-        "superficie_totale": surf_totale,
-        "superficie_cacao_productif": surf_cacao_prod,
-        "superficie_cacao_immature": surf_cacao_jeune,
-        "age_moyen": age_moyen_plan,
-        "relief_sol": relief_sol,
-        "contraintes": contraintes,
-        "waypoint_gps": waypoint_gps,
-        "voies_acces": voies_acces,
-        "elements_parcelle": elements_parcelle,
-        "nb_arbres_forestiers": nb_arbres_forestiers,
-        "essences_arbres": essences_arbres,
-        "densite_ombrage": densite_ombrage,
-        "texte_synthese_auto": texte_description,
-    }
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        kpi1.metric("Superficie Totale", f"{surf_totale:.1f} ha")
+        kpi2.metric(
+            "Cacao Productif", f"{surf_cacao_prod:.1f} ha", f"{pct_cacao:.0f}% du total"
+        )
+        kpi3.metric(
+            "Arbres Forestiers", f"{nb_arbres_forestiers} pieds", f"{densite_ombrage}"
+        )
+        kpi4.metric("Autre / Jachère", f"{surf_autre:.1f} ha")
 
-    st.session_state.etape_pdc = 13
-    st.rerun()
+        if niveau_alerte == "error":
+            st.error(diagnostic_age)
+        elif niveau_alerte == "warning":
+            st.warning(diagnostic_age)
+        else:
+            st.success(diagnostic_age)
 
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            st.markdown("##### 🏞️ Occupation du Sol, Foncier & GPS")
+            st.info(
+                f"• **Régime foncier :** {statut_foncier}\n\n"
+                f"• **Taux d'occupation cacaoyère :** {pct_cacao:.1f}%\n\n"
+                f"• **Relief/Sol :** {relief_str}\n\n"
+                f"• **Waypoint Central :** `{waypoint_gps}`"
+            )
 
-# =========================================================
-# ÉTAPE 13 : CULTURES, AGROFORESTERIE & MATÉRIEL AGRICOLE
-# =========================================================
-elif st.session_state.etape_pdc == 13:
-    st.subheader(
-        "Étape 13/15 : Cultures, Agroforesterie & Matériel Agricole"
-    )
+        with col_c2:
+            st.markdown("##### 🛡️ Éléments du Croquis & Agroforesterie")
+            st.info(
+                f"• **Infrastructures/Repères :** {elements_str}\n\n"
+                f"• **Accès :** {voies_str}\n\n"
+                f"• **Arbres d'ombrage :** {nb_arbres_forestiers} pieds"
+                f" ({essences_str})\n\n"
+                f"• **Niveau d'ombrage :** {densite_ombrage}"
+            )
+
+        # --- RAPPORT SYNTHÉTIQUE ---
+        st.markdown(
+            "#### 📝 Description Officielle (Générée automatiquement pour le Dossier"
+            " CCC)"
+        )
+
+        texte_description = (
+            f"L'exploitation sous le statut foncier **{statut_foncier}** couvre une"
+            f" superficie totale mesurée de **{surf_totale:.1f} hectares** (Waypoint"
+            f" GPS : {waypoint_gps}). La spéculation principale est la cacaoculture"
+            f" qui occupe **{surf_cacao_prod + surf_cacao_jeune:.1f} ha** (soit"
+            f" **{surf_cacao_prod:.1f} ha** en verger productif et"
+            f" **{surf_cacao_jeune:.1f} ha** en phase d'immaturité), représentant"
+            f" **{pct_cacao:.1f}%** de la surface globale. Le verger présente un profil"
+            f" d'âge **{age_moyen_plan}**, installé sur un relief de type"
+            f" **{relief_str}**. Le croquis cartographique identifie les voies d'accès"
+            f" (**{voies_str}**) ainsi que les infrastructures/repères physiques sur"
+            f" la parcelle (**{elements_str}**). Sur le plan agroforestier,"
+            f" l'exploitation compte **{nb_arbres_forestiers} arbres forestiers"
+            f" d'ombrage** (principalement : {essences_str}), garantissant un niveau"
+            f" d'ombrage évalué comme **{densite_ombrage}**. "
+        )
+
+        if contraintes:
+            texte_description += (
+                "Sur le plan phytosanitaire et pédo-climatique, la parcelle subit les"
+                f" contraintes suivantes : **{contraintes_str}**."
+            )
+        else:
+            texte_description += (
+                "Aucune contrainte phytosanitaire critique n'a été répertoriée lors de"
+                " la visite terrain."
+            )
+
+        st.markdown(texte_description)
+        st.markdown("---")
+
+        # =========================================================
+        # NAVIGATION DE L'ÉTAPE
+        # =========================================================
+        col_btn1, col_btn2 = st.columns([1, 1])
+        with col_btn1:
+            if st.button(
+                "⬅️ Retour",
+                key="btn_retour_etape12",
+                use_container_width=True,
+            ):
+                st.session_state.etape_pdc = 11
+                st.rerun()
+
+        with col_btn2:
+            if st.button(
+                "Suivant ➡️",
+                key="btn_suivant_etape12",
+                type="primary",
+                use_container_width=True,
+            ):
+                if "reponses_pdc" not in st.session_state:
+                    st.session_state.reponses_pdc = {}
+
+                st.session_state.reponses_pdc["situation_epargne"] = df_epargne_edite
+                st.session_state.reponses_pdc["situation_main_oeuvre"] = df_mo_edite
+                st.session_state.reponses_pdc["description_exploitation"] = {
+                    "statut_foncier": statut_foncier,
+                    "superficie_totale": surf_totale,
+                    "superficie_cacao_productif": surf_cacao_prod,
+                    "superficie_cacao_immature": surf_cacao_jeune,
+                    "age_moyen": age_moyen_plan,
+                    "relief_sol": relief_sol,
+                    "contraintes": contraintes,
+                    "waypoint_gps": waypoint_gps,
+                    "voies_acces": voies_acces,
+                    "elements_parcelle": elements_parcelle,
+                    "nb_arbres_forestiers": nb_arbres_forestiers,
+                    "essences_arbres": essences_arbres,
+                    "densite_ombrage": densite_ombrage,
+                    "texte_synthese_auto": texte_description,
+                }
+
+                st.session_state.etape_pdc = 13
+                st.rerun()
+
+    # =========================================================
+    # ÉTAPE 13 : CULTURES, AGROFORESTERIE & MATÉRIEL AGRICOLE
+    # =========================================================
+    elif st.session_state.etape_pdc == 13:
+        st.subheader("Étape 13/15 : Cultures, Agroforesterie & Matériel Agricole")
+
     st.caption(
         "Caractérisation des spéculations, inventaire des arbres d'ombrage et"
         " bilan des équipements de l'exploitation."
