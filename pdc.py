@@ -3404,491 +3404,490 @@ def afficher():
             st.rerun()
 
 
-# =========================================================
-# ÉTAPE 14 : PLANIFICATION STRATÉGIQUE & PROGRAMME ANNUEL
-# =========================================================
-elif st.session_state.etape_pdc == 14:
-    st.subheader(
-        "Étape 14/15 : Planification Stratégique (5 Ans) & Programme Annuel"
-        " d'Action"
-    )
-    st.caption(
-        "Définition du plan quinquennal, du chronogramme opérationnel"
-        " trimestriel et des facteurs clés de succès du PDC."
-    )
-
     # ---------------------------------------------------------
-    # 14.1 PLANIFICATION STRATÉGIQUE SUR 5 ANS
+    # ÉTAPE 14 : PLANIFICATION STRATÉGIQUE & PROGRAMME ANNUEL
     # ---------------------------------------------------------
-    st.markdown(
-        "### 📈 II - Planification Stratégique sur les Cinq (5) Prochaines"
-        " Années"
-    )
-    st.caption(
-        "Précisez les axes, objectifs, activités, budgets et responsables sur"
-        " l'horizon 5 ans (A1 à A5)."
-    )
-
-    if "df_plan_quinquennal" not in st.session_state:
-        st.session_state.df_plan_quinquennal = [
-            {
-                "Stratégie / Axe": "Axe 1 : Réhabilitation du verger",
-                "Objectifs": (
-                    "Restaurer la productivité des parcelles anciennes"
-                ),
-                "Activités": "Régler la densité (égourmandage, égrapillage)",
-                "Coût (FCFA)": 150000,
-                "A1": True,
-                "A2": True,
-                "A3": False,
-                "A4": False,
-                "A5": False,
-                "Exécutant": "Producteur + M.O.",
-                "Partenaires": "Coopérative / ANADER",
-            },
-            {
-                "Stratégie / Axe": "Axe 1 : Réhabilitation du verger",
-                "Objectifs": "Réduire la pression parasitaire et parasitaire",
-                "Activités": "Taille des loranthacées (guis) et sanitation",
-                "Coût (FCFA)": 100000,
-                "A1": True,
-                "A2": True,
-                "A3": True,
-                "A4": False,
-                "A5": False,
-                "Exécutant": "Producteur",
-                "Partenaires": "ANADER",
-            },
-            {
-                "Stratégie / Axe": "Axe 2 : Plantation / Replantation",
-                "Objectifs": "Renouveler 2 ha en agroforesterie",
-                "Activités": (
-                    "Replanter 2 ha avec espèces d'ombrage (Akpi/Iroko)"
-                ),
-                "Coût (FCFA)": 600000,
-                "A1": False,
-                "A2": True,
-                "A3": True,
-                "A4": False,
-                "A5": False,
-                "Exécutant": "Producteur",
-                "Partenaires": "Conseil Café-Cacao",
-            },
-            {
-                "Stratégie / Axe": "Axe 3 : Diversification",
-                "Objectifs": "Sécuriser les revenus hors saison cacao",
-                "Activités": (
-                    "Mise en place d'une parcelle vivrière (Banane/Piment)"
-                ),
-                "Coût (FCFA)": 200000,
-                "A1": True,
-                "A2": False,
-                "A3": False,
-                "A4": False,
-                "A5": False,
-                "Exécutant": "Famille / Ménage",
-                "Partenaires": "Coopérative",
-            },
-        ]
-
-    df_quinquennal_edite = st.data_editor(
-        st.session_state.df_plan_quinquennal,
-        key="editor_plan_quinquennal",
-        column_config={
-            "Stratégie / Axe": st.column_config.SelectboxColumn(
-                "Axe Stratégique",
-                options=[
-                    "Axe 1 : Réhabilitation du verger",
-                    "Axe 2 : Plantation / Replantation",
-                    "Axe 3 : Diversification",
-                ],
-                required=True,
-            ),
-            "Objectifs": st.column_config.TextColumn("Objectifs visés"),
-            "Activités": st.column_config.TextColumn(
-                "Activités à mener", required=True
-            ),
-            "Coût (FCFA)": st.column_config.NumberColumn(
-                "Coût estimé (FCFA)",
-                min_value=0,
-                step=25000,
-                format="%d FCFA",
-            ),
-            "A1": st.column_config.CheckboxColumn("Année 1"),
-            "A2": st.column_config.CheckboxColumn("Année 2"),
-            "A3": st.column_config.CheckboxColumn("Année 3"),
-            "A4": st.column_config.CheckboxColumn("Année 4"),
-            "A5": st.column_config.CheckboxColumn("Année 5"),
-            "Exécutant": st.column_config.TextColumn("Exécutant principal"),
-            "Partenaires": st.column_config.TextColumn("Partenaires appui"),
-        },
-        use_container_width=True,
-        num_rows="dynamic",
-    )
-
-    st.markdown("---")
-
-
-            # =========================================================
-    # 14.2 PROGRAMME ANNUEL D'ACTION (CHRONOGRAMME A1)
-    # =========================================================
-    st.markdown("### 🗓️ III - Programme Annuel d'Action (Détail Année 1)")
-    st.caption(
-        "Planification opérationnelle par trimestre (T1 à T4) pour la première"
-        " année de mise en œuvre."
-    )
-
-    if "df_programme_annuel" not in st.session_state:
-        st.session_state.df_programme_annuel = [
-            {
-                "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
-                "Activités / Sous-activités": (
-                    "Régler la densité (égourmandage, échenillonnage)"
-                ),
-                "Indicateur": "Nombre d'hectares traités (ex: 3.5 ha)",
-                "T1": True,
-                "T2": True,
-                "T3": False,
-                "T4": False,
-                "Coût (FCFA)": 75000,
-            },
-            {
-                "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
-                "Activités / Sous-activités": (
-                    "Réaliser la taille des loranthacées"
-                ),
-                "Indicateur": "Taux d'arbres nettoyés (%)",
-                "T1": False,
-                "T2": True,
-                "T3": True,
-                "T4": False,
-                "Coût (FCFA)": 50000,
-            },
-            {
-                "Axes stratégiques": "Axe 3 : Diversification",
-                "Activités / Sous-activités": (
-                    "Préparation terrain & planting banane/piment"
-                ),
-                "Indicateur": "Superficie installée (ha)",
-                "T1": True,
-                "T2": False,
-                "T3": False,
-                "T4": False,
-                "Coût (FCFA)": 150000,
-            },
-        ]
-
-    df_annuel_edite = st.data_editor(
-        st.session_state.df_programme_annuel,
-        key="editor_programme_annuel",
-        column_config={
-            "Axes stratégiques": st.column_config.TextColumn(
-                "Axe Stratégique", required=True
-            ),
-            "Activités / Sous-activités": st.column_config.TextColumn(
-                "Activités / Sous-activités", required=True
-            ),
-            "Indicateur": st.column_config.TextColumn("Indicateur de suivi"),
-            "T1": st.column_config.CheckboxColumn("T1 (Jan-Mar)"),
-            "T2": st.column_config.CheckboxColumn("T2 (Avr-Juin)"),
-            "T3": st.column_config.CheckboxColumn("T3 (Juil-Sept)"),
-            "T4": st.column_config.CheckboxColumn("T4 (Oct-Déc)"),
-            "Coût (FCFA)": st.column_config.NumberColumn(
-                "Coût Trimestriel (FCFA)",
-                min_value=0,
-                step=10000,
-                format="%d FCFA",
-            ),
-        },
-        use_container_width=True,
-        num_rows="dynamic",
-    )
-
-    st.markdown("---")
-
-    # =========================================================
-    # 14.3 FACTEURS DE SUCCÈS ET D'ÉCHEC
-    # =========================================================
-    st.markdown("### ⚠️ IV - Facteurs de Succès et d'Échec")
-    st.caption(
-        "Décrivez les conditions indispensables pour une mise en œuvre efficace"
-        " du plan de développement."
-    )
-
-    def_facteurs = (
-        "1. Accès à temps aux intrants homologués (engrais/fongicides) et plants"
-        " d'arbres d'ombrage.\n2. Disponibilité de la main-d'œuvre familiale et"
-        " occasionnelle qualifiée pour la taille.\n3. Accompagnement technique"
-        " régulier par le conseiller agricole de la coopérative / ANADER.\n4."
-        " Maîtrise de la trésorerie et accès au crédit / préfinancement des"
-        " activités de réhabilitation.\n5. Conditions climatiques favorables"
-        " (pluviométrie régulière et absence de sécheresse sévère)."
-    )
-
-    facteurs_succes = st.text_area(
-        "Conditions indispensables & risques identifiés",
-        value=st.session_state.get("facteurs_succes_pdc", def_facteurs),
-        height=150,
-        key="input_facteurs_succes",
-    )
-
-    # ---------------------------------------------------------
-    # SYNTHÈSE FINANCIÈRE DE LA PLANIFICATION (SÉCURISÉE)
-    # ---------------------------------------------------------
-    df_quinq_calc = pd.DataFrame(df_quinquennal_edite)
-    df_ann_calc = pd.DataFrame(df_annuel_edite)
-
-    cout_total_5ans = (
-        int(
-            pd.to_numeric(
-                df_quinq_calc["Coût (FCFA)"], errors="coerce"
-            ).sum()
+    elif st.session_state.etape_pdc == 14:
+        st.subheader(
+            "Étape 14/15 : Planification Stratégique (5 Ans) & Programme Annuel"
+            " d'Action"
         )
-        if not df_quinq_calc.empty and "Coût (FCFA)" in df_quinq_calc.columns
-        else 0
-    )
-    cout_total_a1 = (
-        int(
-            pd.to_numeric(
-                df_ann_calc["Coût (FCFA)"], errors="coerce"
-            ).sum()
+        st.caption(
+            "Définition du plan quinquennal, du chronogramme opérationnel"
+            " trimestriel et des facteurs clés de succès du PDC."
         )
-        if not df_ann_calc.empty and "Coût (FCFA)" in df_ann_calc.columns
-        else 0
-    )
 
-    st.markdown("#### 📊 Synthèse Budgétaire de la Planification")
-    kpi_p1, kpi_p2 = st.columns(2)
-    kpi_p1.metric(
-        "Budget Plan Quinquennal (5 Ans)", f"{cout_total_5ans:,} FCFA"
-    )
-    kpi_p2.metric(
-        "Budget Année 1 (Programme d'Action)", f"{cout_total_a1:,} FCFA"
-    )
+        # ---------------------------------------------------------
+        # 14.1 PLANIFICATION STRATÉGIQUE SUR 5 ANS
+        # ---------------------------------------------------------
+        st.markdown(
+            "### 📈 II - Planification Stratégique sur les Cinq (5) Prochaines"
+            " Années"
+        )
+        st.caption(
+            "Précisez les axes, objectifs, activités, budgets et responsables sur"
+            " l'horizon 5 ans (A1 à A5)."
+        )
 
-    st.markdown("---")
+        if "df_plan_quinquennal" not in st.session_state:
+            st.session_state.df_plan_quinquennal = [
+                {
+                    "Stratégie / Axe": "Axe 1 : Réhabilitation du verger",
+                    "Objectifs": (
+                        "Restaurer la productivité des parcelles anciennes"
+                    ),
+                    "Activités": "Régler la densité (égourmandage, égrapillage)",
+                    "Coût (FCFA)": 150000,
+                    "A1": True,
+                    "A2": True,
+                    "A3": False,
+                    "A4": False,
+                    "A5": False,
+                    "Exécutant": "Producteur + M.O.",
+                    "Partenaires": "Coopérative / ANADER",
+                },
+                {
+                    "Stratégie / Axe": "Axe 1 : Réhabilitation du verger",
+                    "Objectifs": "Réduire la pression parasitaire et parasitaire",
+                    "Activités": "Taille des loranthacées (guis) et sanitation",
+                    "Coût (FCFA)": 100000,
+                    "A1": True,
+                    "A2": True,
+                    "A3": True,
+                    "A4": False,
+                    "A5": False,
+                    "Exécutant": "Producteur",
+                    "Partenaires": "ANADER",
+                },
+                {
+                    "Stratégie / Axe": "Axe 2 : Plantation / Replantation",
+                    "Objectifs": "Renouveler 2 ha en agroforesterie",
+                    "Activités": (
+                        "Replanter 2 ha avec espèces d'ombrage (Akpi/Iroko)"
+                    ),
+                    "Coût (FCFA)": 600000,
+                    "A1": False,
+                    "A2": True,
+                    "A3": True,
+                    "A4": False,
+                    "A5": False,
+                    "Exécutant": "Producteur",
+                    "Partenaires": "Conseil Café-Cacao",
+                },
+                {
+                    "Stratégie / Axe": "Axe 3 : Diversification",
+                    "Objectifs": "Sécuriser les revenus hors saison cacao",
+                    "Activités": (
+                        "Mise en place d'une parcelle vivrière (Banane/Piment)"
+                    ),
+                    "Coût (FCFA)": 200000,
+                    "A1": True,
+                    "A2": False,
+                    "A3": False,
+                    "A4": False,
+                    "A5": False,
+                    "Exécutant": "Famille / Ménage",
+                    "Partenaires": "Coopérative",
+                },
+            ]
 
-    # =========================================================
-    # NAVIGATION DE L'ÉTAPE 14
-    # =========================================================
-    col_btn1, col_btn2 = st.columns([1, 1])
-    with col_btn1:
-        if st.button(
-            "⬅️ Retour (Étape 13 : Cultures & Matériel)",
-            key="btn_retour_etape14",
+        df_quinquennal_edite = st.data_editor(
+            st.session_state.df_plan_quinquennal,
+            key="editor_plan_quinquennal",
+            column_config={
+                "Stratégie / Axe": st.column_config.SelectboxColumn(
+                    "Axe Stratégique",
+                    options=[
+                        "Axe 1 : Réhabilitation du verger",
+                        "Axe 2 : Plantation / Replantation",
+                        "Axe 3 : Diversification",
+                    ],
+                    required=True,
+                ),
+                "Objectifs": st.column_config.TextColumn("Objectifs visés"),
+                "Activités": st.column_config.TextColumn(
+                    "Activités à mener", required=True
+                ),
+                "Coût (FCFA)": st.column_config.NumberColumn(
+                    "Coût estimé (FCFA)",
+                    min_value=0,
+                    step=25000,
+                    format="%d FCFA",
+                ),
+                "A1": st.column_config.CheckboxColumn("Année 1"),
+                "A2": st.column_config.CheckboxColumn("Année 2"),
+                "A3": st.column_config.CheckboxColumn("Année 3"),
+                "A4": st.column_config.CheckboxColumn("Année 4"),
+                "A5": st.column_config.CheckboxColumn("Année 5"),
+                "Exécutant": st.column_config.TextColumn("Exécutant principal"),
+                "Partenaires": st.column_config.TextColumn("Partenaires appui"),
+            },
             use_container_width=True,
-        ):
-            st.session_state.etape_pdc = 13
-            st.rerun()
+            num_rows="dynamic",
+        )
 
-    with col_btn2:
-        if st.button(
-            "Suivant (Vers Étape 15 : Bilan & PDF) ➡️",
-            key="btn_suivant_etape14",
-            type="primary",
+        st.markdown("---")
+
+        # =========================================================
+        # 14.2 PROGRAMME ANNUEL D'ACTION (CHRONOGRAMME A1)
+        # =========================================================
+        st.markdown("### 🗓️ III - Programme Annuel d'Action (Détail Année 1)")
+        st.caption(
+            "Planification opérationnelle par trimestre (T1 à T4) pour la première"
+            " année de mise en œuvre."
+        )
+
+        if "df_programme_annuel" not in st.session_state:
+            st.session_state.df_programme_annuel = [
+                {
+                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
+                    "Activités / Sous-activités": (
+                        "Régler la densité (égourmandage, échenillonnage)"
+                    ),
+                    "Indicateur": "Nombre d'hectares traités (ex: 3.5 ha)",
+                    "T1": True,
+                    "T2": True,
+                    "T3": False,
+                    "T4": False,
+                    "Coût (FCFA)": 75000,
+                },
+                {
+                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
+                    "Activités / Sous-activités": (
+                        "Réaliser la taille des loranthacées"
+                    ),
+                    "Indicateur": "Taux d'arbres nettoyés (%)",
+                    "T1": False,
+                    "T2": True,
+                    "T3": True,
+                    "T4": False,
+                    "Coût (FCFA)": 50000,
+                },
+                {
+                    "Axes stratégiques": "Axe 3 : Diversification",
+                    "Activités / Sous-activités": (
+                        "Préparation terrain & planting banane/piment"
+                    ),
+                    "Indicateur": "Superficie installée (ha)",
+                    "T1": True,
+                    "T2": False,
+                    "T3": False,
+                    "T4": False,
+                    "Coût (FCFA)": 150000,
+                },
+            ]
+
+        df_annuel_edite = st.data_editor(
+            st.session_state.df_programme_annuel,
+            key="editor_programme_annuel",
+            column_config={
+                "Axes stratégiques": st.column_config.TextColumn(
+                    "Axe Stratégique", required=True
+                ),
+                "Activités / Sous-activités": st.column_config.TextColumn(
+                    "Activités / Sous-activités", required=True
+                ),
+                "Indicateur": st.column_config.TextColumn("Indicateur de suivi"),
+                "T1": st.column_config.CheckboxColumn("T1 (Jan-Mar)"),
+                "T2": st.column_config.CheckboxColumn("T2 (Avr-Juin)"),
+                "T3": st.column_config.CheckboxColumn("T3 (Juil-Sept)"),
+                "T4": st.column_config.CheckboxColumn("T4 (Oct-Déc)"),
+                "Coût (FCFA)": st.column_config.NumberColumn(
+                    "Coût Trimestriel (FCFA)",
+                    min_value=0,
+                    step=10000,
+                    format="%d FCFA",
+                ),
+            },
             use_container_width=True,
-        ):
-            if "reponses_pdc" not in st.session_state:
-                st.session_state.reponses_pdc = {}
+            num_rows="dynamic",
+        )
 
-            # Sauvegarde globale
-            st.session_state.reponses_pdc["plan_quinquennal"] = (
-                df_quinquennal_edite
+        st.markdown("---")
+
+        # =========================================================
+        # 14.3 FACTEURS DE SUCCÈS ET D'ÉCHEC
+        # =========================================================
+        st.markdown("### ⚠️ IV - Facteurs de Succès et d'Échec")
+        st.caption(
+            "Décrivez les conditions indispensables pour une mise en œuvre efficace"
+            " du plan de développement."
+        )
+
+        def_facteurs = (
+            "1. Accès à temps aux intrants homologués (engrais/fongicides) et plants"
+            " d'arbres d'ombrage.\n2. Disponibilité de la main-d'œuvre familiale et"
+            " occasionnelle qualifiée pour la taille.\n3. Accompagnement technique"
+            " régulier par le conseiller agricole de la coopérative / ANADER.\n4."
+            " Maîtrise de la trésorerie et accès au crédit / préfinancement des"
+            " activités de réhabilitation.\n5. Conditions climatiques favorables"
+            " (pluviométrie régulière et absence de sécheresse sévère)."
+        )
+
+        facteurs_succes = st.text_area(
+            "Conditions indispensables & risques identifiés",
+            value=st.session_state.get("facteurs_succes_pdc", def_facteurs),
+            height=150,
+            key="input_facteurs_succes",
+        )
+
+        # ---------------------------------------------------------
+        # SYNTHÈSE FINANCIÈRE DE LA PLANIFICATION (SÉCURISÉE)
+        # ---------------------------------------------------------
+        df_quinq_calc = pd.DataFrame(df_quinquennal_edite)
+        df_ann_calc = pd.DataFrame(df_annuel_edite)
+
+        cout_total_5ans = (
+            int(
+                pd.to_numeric(
+                    df_quinq_calc["Coût (FCFA)"], errors="coerce"
+                ).sum()
             )
-            st.session_state.reponses_pdc["programme_annuel"] = df_annuel_edite
-            st.session_state.reponses_pdc["facteurs_succes"] = facteurs_succes
-            st.session_state["facteurs_succes_pdc"] = facteurs_succes
-
-            st.session_state.etape_pdc = 15
-            st.rerun()
-
-
-# ---------------------------------------------------------
-# ÉTAPE 15 : RÉSUMÉ GLOBAL, ÉVALUATION DU SUCCÈS & GÉNÉRATION DU PDC FINAL
-# (SYNTHÈSE DU PLAN DE DÉVELOPPEMENT DE CONSEIL)
-# ---------------------------------------------------------
-elif st.session_state.etape_pdc == 15:
-    st.subheader(
-        "Étape 15/15 : Bilan Synthétique, Faisabilité & Validation du PDC"
-    )
-    st.caption(
-        "Évaluation de la viabilité du plan, score de réussite prévisionnel et"
-        " impression du document final."
-    )
-
-    # Récupération sécurisée des données
-    reponses = st.session_state.get("reponses_pdc", {})
-
-    # =========================================================
-    # 15.1 SYNTHÈSE & RÉSUMÉ DES MODULES
-    # =========================================================
-    st.markdown("### 📋 1. Synthèse Générale de l'Exploitation")
-
-    # Calculs de synthèse sécurisés
-    df_cult = pd.DataFrame(reponses.get("cultures_et_revenus", []))
-    df_quinq = pd.DataFrame(reponses.get("plan_quinquennal", []))
-    df_ann = pd.DataFrame(reponses.get("programme_annuel", []))
-    df_arb = pd.DataFrame(reponses.get("inventaire_arbres", []))
-
-    tot_revenu_actuel = (
-        int(
-            pd.to_numeric(df_cult["Revenu (FCFA)"], errors="coerce").sum()
+            if not df_quinq_calc.empty and "Coût (FCFA)" in df_quinq_calc.columns
+            else 0
         )
-        if not df_cult.empty and "Revenu (FCFA)" in df_cult.columns
-        else 0
-    )
-    tot_cout_quinq = (
-        int(
-            pd.to_numeric(df_quinq["Coût (FCFA)"], errors="coerce").sum()
+        cout_total_a1 = (
+            int(
+                pd.to_numeric(
+                    df_ann_calc["Coût (FCFA)"], errors="coerce"
+                ).sum()
+            )
+            if not df_ann_calc.empty and "Coût (FCFA)" in df_ann_calc.columns
+            else 0
         )
-        if not df_quinq.empty and "Coût (FCFA)" in df_quinq.columns
-        else 0
-    )
-    tot_cout_a1 = (
-        int(
-            pd.to_numeric(df_ann["Coût (FCFA)"], errors="coerce").sum()
-        )
-        if not df_ann.empty and "Coût (FCFA)" in df_ann.columns
-        else 0
-    )
 
-    nb_arbres_maintenus = 0
-    if not df_arb.empty and "Décision" in df_arb.columns:
-        if "Nombre" in df_arb.columns:
-            df_arb["Nombre_num"] = pd.to_numeric(
-                df_arb["Nombre"], errors="coerce"
-            ).fillna(1)
-            nb_arbres_maintenus = int(
-                df_arb[df_arb["Décision"] == "À maintenir"][
-                    "Nombre_num"
-                ].sum()
+        st.markdown("#### 📊 Synthèse Budgétaire de la Planification")
+        kpi_p1, kpi_p2 = st.columns(2)
+        kpi_p1.metric(
+            "Budget Plan Quinquennal (5 Ans)", f"{cout_total_5ans:,} FCFA"
+        )
+        kpi_p2.metric(
+            "Budget Année 1 (Programme d'Action)", f"{cout_total_a1:,} FCFA"
+        )
+
+        st.markdown("---")
+
+        # =========================================================
+        # NAVIGATION DE L'ÉTAPE 14
+        # =========================================================
+        col_btn1, col_btn2 = st.columns([1, 1])
+        with col_btn1:
+            if st.button(
+                "⬅️ Retour (Étape 13 : Cultures & Matériel)",
+                key="btn_retour_etape14",
+                use_container_width=True,
+            ):
+                st.session_state.etape_pdc = 13
+                st.rerun()
+
+        with col_btn2:
+            if st.button(
+                "Suivant (Vers Étape 15 : Bilan & PDF) ➡️",
+                key="btn_suivant_etape14",
+                type="primary",
+                use_container_width=True,
+            ):
+                if "reponses_pdc" not in st.session_state:
+                    st.session_state.reponses_pdc = {}
+
+                # Sauvegarde globale
+                st.session_state.reponses_pdc["plan_quinquennal"] = (
+                    df_quinquennal_edite
+                )
+                st.session_state.reponses_pdc["programme_annuel"] = df_annuel_edite
+                st.session_state.reponses_pdc["facteurs_succes"] = facteurs_succes
+                st.session_state["facteurs_succes_pdc"] = facteurs_succes
+
+                st.session_state.etape_pdc = 15
+                st.rerun()
+
+    # ---------------------------------------------------------
+    # ÉTAPE 15 : RÉSUMÉ GLOBAL, ÉVALUATION DU SUCCÈS & GÉNÉRATION DU PDC FINAL
+    # (SYNTHÈSE DU PLAN DE DÉVELOPPEMENT DE CONSEIL)
+    # ---------------------------------------------------------
+    elif st.session_state.etape_pdc == 15:
+        st.subheader(
+            "Étape 15/15 : Bilan Synthétique, Faisabilité & Validation du PDC"
+        )
+        st.caption(
+            "Évaluation de la viabilité du plan, score de réussite prévisionnel et"
+            " impression du document final."
+        )
+
+        # Récupération sécurisée des données
+        reponses = st.session_state.get("reponses_pdc", {})
+
+        # =========================================================
+        # 15.1 SYNTHÈSE & RÉSUMÉ DES MODULES
+        # =========================================================
+        st.markdown("### 📋 1. Synthèse Générale de l'Exploitation")
+
+        # Calculs de synthèse sécurisés
+        df_cult = pd.DataFrame(reponses.get("cultures_et_revenus", []))
+        df_quinq = pd.DataFrame(reponses.get("plan_quinquennal", []))
+        df_ann = pd.DataFrame(reponses.get("programme_annuel", []))
+        df_arb = pd.DataFrame(reponses.get("inventaire_arbres", []))
+
+        tot_revenu_actuel = (
+            int(
+                pd.to_numeric(df_cult["Revenu (FCFA)"], errors="coerce").sum()
+            )
+            if not df_cult.empty and "Revenu (FCFA)" in df_cult.columns
+            else 0
+        )
+        tot_cout_quinq = (
+            int(
+                pd.to_numeric(df_quinq["Coût (FCFA)"], errors="coerce").sum()
+            )
+            if not df_quinq.empty and "Coût (FCFA)" in df_quinq.columns
+            else 0
+        )
+        tot_cout_a1 = (
+            int(
+                pd.to_numeric(df_ann["Coût (FCFA)"], errors="coerce").sum()
+            )
+            if not df_ann.empty and "Coût (FCFA)" in df_ann.columns
+            else 0
+        )
+
+        nb_arbres_maintenus = 0
+        if not df_arb.empty and "Décision" in df_arb.columns:
+            if "Nombre" in df_arb.columns:
+                df_arb["Nombre_num"] = pd.to_numeric(
+                    df_arb["Nombre"], errors="coerce"
+                ).fillna(1)
+                nb_arbres_maintenus = int(
+                    df_arb[df_arb["Décision"] == "À maintenir"][
+                        "Nombre_num"
+                    ].sum()
+                )
+            else:
+                nb_arbres_maintenus = len(
+                    df_arb[df_arb["Décision"] == "À maintenir"]
+                )
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Revenu Actuel", f"{tot_revenu_actuel:,} FCFA")
+        c2.metric("Budget Quinquennal", f"{tot_cout_quinq:,} FCFA")
+        c3.metric("Investissement A1", f"{tot_cout_a1:,} FCFA")
+        c4.metric("Arbres Conservés", f"{nb_arbres_maintenus} pieds")
+
+        st.markdown("---")
+
+        # =========================================================
+        # 15.2 ÉVALUATION DE LA RÉUSSITE ET DE LA VIABILITÉ DU PDC
+        # =========================================================
+        st.markdown(
+            "### 📊 2. Évaluation de la Faisabilité & Diagnostic de Réussite"
+        )
+        st.caption(
+            "Analyse des critères de viabilité financière, technique et sociale du"
+            " producteur."
+        )
+
+        # Calcul automatique d'un score de faisabilité (Base 100)
+        score = 0
+        criteres = []
+
+        # Critère 1 : Capacité financière
+        ratio_invest = (
+            (tot_cout_a1 / tot_revenu_actuel) if tot_revenu_actuel > 0 else 1.0
+        )
+        if ratio_invest <= 0.4:
+            score += 35
+            criteres.append(
+                "✅ **Capacité financière solide** : Le coût de l'Année 1 représente"
+                " moins de 40% des revenus actuels."
+            )
+        elif ratio_invest <= 0.7:
+            score += 20
+            criteres.append(
+                "⚠️ **Capacité financière moyenne** : L'investissement A1 nécessite"
+                " un préfinancement ou un crédit léger."
             )
         else:
-            nb_arbres_maintenus = len(
-                df_arb[df_arb["Décision"] == "À maintenir"]
+            score += 10
+            criteres.append(
+                "❌ **Tension de trésorerie** : L'investissement A1 dépasse 70% du"
+                " revenu actuel (Besoin urgent d'appui/subvention)."
             )
 
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Revenu Actuel", f"{tot_revenu_actuel:,} FCFA")
-    c2.metric("Budget Quinquennal", f"{tot_cout_quinq:,} FCFA")
-    c3.metric("Investissement A1", f"{tot_cout_a1:,} FCFA")
-    c4.metric("Arbres Conservés", f"{nb_arbres_maintenus} pieds")
+        # Critère 2 : Agroforesterie & Normes Durables
+        if nb_arbres_maintenus >= 10:
+            score += 35
+            criteres.append(
+                "✅ **Norme Agroforesterie respectée** : Densité d'ombrage conforme"
+                " aux directives CCC (>10 pieds/ha)."
+            )
+        else:
+            score += 15
+            criteres.append(
+                "⚠️ **Agroforesterie à renforcer** : Prévoir l'introduction d'arbres"
+                " d'ombrage supplémentaires."
+            )
 
-    st.markdown("---")
+        # Critère 3 : Planification et Clarté des Objectifs
+        if len(df_quinq) >= 3 and len(df_ann) >= 2:
+            score += 30
+            criteres.append(
+                "✅ **Plan d'Action Complet** : Les axes de réhabilitation,"
+                " replantation et diversification sont structurés."
+            )
+        else:
+            score += 15
+            criteres.append(
+                "⚠️ **Plan d'Action partiel** : Compléter les activités"
+                " trimestrielles pour garantir le suivi."
+            )
 
-    # =========================================================
-    # 15.2 ÉVALUATION DE LA RÉUSSITE ET DE LA VIABILITÉ DU PDC
-    # =========================================================
-    st.markdown(
-        "### 📊 2. Évaluation de la Faisabilité & Diagnostic de Réussite"
-    )
-    st.caption(
-        "Analyse des critères de viabilité financière, technique et sociale du"
-        " producteur."
-    )
+        # Affichage du Score et du Statut de Réussite
+        st.markdown(f"#### Score de Faisabilité Global : **{score} / 100**")
+        st.progress(score / 100)
 
-    # Calcul automatique d'un score de faisabilité (Base 100)
-    score = 0
-    criteres = []
+        if score >= 85:
+            st.success(
+                "🎉 **PDC Très Viable (Très Forte Chance de Réussite)** : Le"
+                " producteur dispose de toutes les conditions pour exécuter son"
+                " plan avec succès et améliorer durablement ses conditions de vie."
+            )
+        elif score >= 60:
+            st.info(
+                "👍 **PDC Viable sous conditions** : Le plan est réalisable, mais"
+                " nécessite un accompagnement technique soutenu et un suivi de la"
+                " trésorerie."
+            )
+        else:
+            st.warning(
+                "⚠️ **Risque Élevé d'Échec** : Ajuster les ambitions financières ou"
+                " rechercher des partenaires/coopératives pour cofinancer l'Année"
+                " 1."
+            )
 
-    # Critère 1 : Capacité financière
-    ratio_invest = (
-        (tot_cout_a1 / tot_revenu_actuel) if tot_revenu_actuel > 0 else 1.0
-    )
-    if ratio_invest <= 0.4:
-        score += 35
-        criteres.append(
-            "✅ **Capacité financière solide** : Le coût de l'Année 1 représente"
-            " moins de 40% des revenus actuels."
-        )
-    elif ratio_invest <= 0.7:
-        score += 20
-        criteres.append(
-            "⚠️ **Capacité financière moyenne** : L'investissement A1 nécessite"
-            " un préfinancement ou un crédit léger."
-        )
-    else:
-        score += 10
-        criteres.append(
-            "❌ **Tension de trésorerie** : L'investissement A1 dépasse 70% du"
-            " revenu actuel (Besoin urgent d'appui/subvention)."
-        )
+        st.markdown("**Détails du Diagnostic :**")
+        for crit in criteres:
+            st.markdown(f"- {crit}")
 
-    # Critère 2 : Agroforesterie & Normes Durables
-    if nb_arbres_maintenus >= 10:
-        score += 35
-        criteres.append(
-            "✅ **Norme Agroforesterie respectée** : Densité d'ombrage conforme"
-            " aux directives CCC (>10 pieds/ha)."
-        )
-    else:
-        score += 15
-        criteres.append(
-            "⚠️ **Agroforesterie à renforcer** : Prévoir l'introduction d'arbres"
-            " d'ombrage supplémentaires."
-        )
+        st.markdown("---")
 
-    # Critère 3 : Planification et Clarté des Objectifs
-    if len(df_quinq) >= 3 and len(df_ann) >= 2:
-        score += 30
-        criteres.append(
-            "✅ **Plan d'Action Complet** : Les axes de réhabilitation,"
-            " replantation et diversification sont structurés."
+        # =========================================================
+        # 15.3 RECOMMANDATIONS ET CONCLUSION
+        # =========================================================
+        st.markdown("### 💡 3. Recommandations du Conseiller Agricole")
+        recom_def = (
+            "1. Prioriser les travaux d'assainissement sanitaire (taille des"
+            " loranthacées) dès le T1.\n2. Sécuriser les plants d'arbres d'ombrage"
+            " auprès des pépinières agréées par le Conseil Café-Cacao.\n3. Veiller à"
+            " la scolarisation effective des enfants du ménage conformément aux"
+            " engagements sociaux du PDC.\n4. Faire un point trimestriel avec le"
+            " conseiller de la coopérative pour valider le chronogramme T1 à T4."
         )
-    else:
-        score += 15
-        criteres.append(
-            "⚠️ **Plan d'Action partiel** : Compléter les activités"
-            " trimestrielles pour garantir le suivi."
-        )
-
-    # Affichage du Score et du Statut de Réussite
-    st.markdown(f"#### Score de Faisabilité Global : **{score} / 100**")
-    st.progress(score / 100)
-
-    if score >= 85:
-        st.success(
-            "🎉 **PDC Très Viable (Très Forte Chance de Réussite)** : Le"
-            " producteur dispose de toutes les conditions pour exécuter son"
-            " plan avec succès et améliorer durablement ses conditions de vie."
-        )
-    elif score >= 60:
-        st.info(
-            "👍 **PDC Viable sous conditions** : Le plan est réalisable, mais"
-            " nécessite un accompagnement technique soutenu et un suivi de la"
-            " trésorerie."
-        )
-    else:
-        st.warning(
-            "⚠️ **Risque Élevé d'Échec** : Ajuster les ambitions financières ou"
-            " rechercher des partenaires/coopératives pour cofinancer l'Année"
-            " 1."
+        st.text_area(
+            "Recommandations stratégiques à l'attention du producteur",
+            value=recom_def,
+            height=120,
+            key="txt_recom_finales",
         )
 
-    st.markdown("**Détails du Diagnostic :**")
-    for crit in criteres:
-        st.markdown(f"- {crit}")
+        st.markdown("---")
 
-    st.markdown("---")
-
-    # =========================================================
-    # 15.3 RECOMMANDATIONS ET CONCLUSION
-    # =========================================================
-    st.markdown("### 💡 3. Recommandations du Conseiller Agricole")
-    recom_def = (
-        "1. Prioriser les travaux d'assainissement sanitaire (taille des"
-        " loranthacées) dès le T1.\n2. Sécuriser les plants d'arbres d'ombrage"
-        " auprès des pépinières agréées par le Conseil Café-Cacao.\n3. Veiller à"
-        " la scolarisation effective des enfants du ménage conformément aux"
-        " engagements sociaux du PDC.\n4. Faire un point trimestriel avec le"
-        " conseiller de la coopérative pour valider le chronogramme T1 à T4."
-    )
-    st.text_area(
-        "Recommandations stratégiques à l'attention du producteur",
-        value=recom_def,
-        height=120,
-        key="txt_recom_finales",
-    )
-
-    st.markdown("---")
 
