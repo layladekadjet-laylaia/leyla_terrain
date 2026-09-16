@@ -2970,485 +2970,479 @@ def afficher():
 
         st.markdown("---")
 
-# =========================================================
-# 12.3 DESCRIPTION & CARACTÉRISTIQUES DE L'EXPLOITATION
-# =========================================================
-st.markdown("### 🏡 1.3 Description & Caractéristiques de l'Exploitation")
+        # =========================================================
+        # 12.3 DESCRIPTION & CARACTÉRISTIQUES DE L'EXPLOITATION
+        # =========================================================
+        st.markdown("### 🏡 1.3 Description & Caractéristiques de l'Exploitation")
 
-# --- RÉCUPÉRATION DES DONNÉES DE L'ÉTAPE 4 (SESSION_STATE) ---
-reponses = st.session_state.get("reponses_pdc", {})
+        # --- RÉCUPÉRATION DES DONNÉES DE L'ÉTAPE 4 (SESSION_STATE) ---
+        reponses = st.session_state.get("reponses_pdc", {})
 
-# 1. Extraction des superficies issues des cultures
-surf_cacao_defaut = float(reponses.get("superficie_totale_cacao", 3.5))
-surf_autres_defaut = float(reponses.get("superficie_autres_cultures", 0.5))
-surf_totale_defaut = surf_cacao_defaut + surf_autres_defaut
+        # 1. Extraction des superficies issues des cultures
+        surf_cacao_defaut = float(reponses.get("superficie_totale_cacao", 3.5))
+        surf_autres_defaut = float(reponses.get("superficie_autres_cultures", 0.5))
+        surf_totale_defaut = surf_cacao_defaut + surf_autres_defaut
 
-# 2. Extraction du tableau complet des arbres avec coordonnées GPS
-tableau_arbres = reponses.get(
-    "tableau_arbres", st.session_state.get("temp_tableau_arbres", [])
-)
-
-# 3. Métriques d'arbres
-nb_arbres_defaut = int(reponses.get("arbres_conserves", len(tableau_arbres)))
-densite_ha_defaut = float(reponses.get("densite_conservee_ha", 0.0))
-
-# Extraction dynamique des essences renseignées dans l'Étape 4
-essences_extraites = list(
-    set(
-        str(row.get("Espèce", "")).strip()
-        for row in tableau_arbres
-        if isinstance(row, dict) and row.get("Espèce")
-    )
-)
-
-# Détermination automatique du niveau d'ombrage
-if densite_ha_defaut < 10:
-  ombrage_defaut = "Faible (< 10 arbres/ha)"
-elif 10 <= densite_ha_defaut <= 25:
-  ombrage_defaut = "Adéquat (10-25 arbres/ha)"
-else:
-  ombrage_defaut = "Excessif (> 25 arbres/ha)"
-
-# --- EXPANDER 1 : FORMULAIRE AGRONOMIQUE & FONCIER ---
-with st.expander("📋 **1. Formulaire Agronomique & Foncier**", expanded=True):
-  col1, col2 = st.columns(2)
-
-  with col1:
-    statut_foncier = st.selectbox(
-        "📜 Statut foncier de la parcelle",
-        [
-            "Propriétaire coutumier",
-            "Titre foncier / Certificat foncier",
-            "Métayage (Abougnon / Planteur-Partage)",
-            "Location / Fermage",
-        ],
-        key="statut_foncier",
-    )
-    surf_totale = st.number_input(
-        "📐 Superficie totale de l'exploitation (ha)",
-        min_value=0.1,
-        value=max(0.1, surf_totale_defaut),
-        step=0.5,
-        key="surf_totale",
-        help=(
-            "Prend automatiquement la somme des superficies renseignées à"
-            " l'Étape 4"
-        ),
-    )
-    surf_cacao_prod = st.number_input(
-        "🍫 Superficie en cacao productif (ha)",
-        min_value=0.0,
-        value=surf_cacao_defaut,
-        step=0.5,
-        key="surf_cacao_prod",
-        help="Total du cacao productif calculé à l'Étape 4",
-    )
-    surf_cacao_jeune = st.number_input(
-        "🌱 Superficie cacao immature / immaturité (ha)",
-        min_value=0.0,
-        value=0.0,
-        step=0.5,
-        key="surf_cacao_jeune",
-    )
-
-  with col2:
-    age_moyen_plan = st.select_slider(
-        "🌳 Âge moyen du verger (années)",
-        options=[
-            "0-3 ans (Jeune)",
-            "4-15 ans (Plein rendement)",
-            "16-25 ans (Vieillissant)",
-            "+25 ans (Vétuste)",
-        ],
-        value="4-15 ans (Plein rendement)",
-        key="age_moyen",
-    )
-    relief_sol = st.multiselect(
-        "⛰️ Relief & Type de sol prédominant",
-        [
-            "Bas-fond / Hydromorphe",
-            "Plat / Sol Ferrallitique",
-            "Pente légère / Sol Gravillonnaire",
-            "Zone Rocheuse / Latéritique",
-        ],
-        default=["Plat / Sol Ferrallitique"],
-        key="relief_sol",
-    )
-    contraintes = st.multiselect(
-        "⚠️ Contraintes & Risques observés sur la parcelle",
-        [
-            "Attaque de Swollen Shoot",
-            "Pression Foreurs de tiges / Punaise",
-            "Pourriture brune des cabosses",
-            "Ombrage excessif",
-            "Manque d'eau / Sécheresse",
-            "Inaccessibilité en saison de pluies",
-        ],
-        default=["Pression Foreurs de tiges / Punaise"],
-        key="contraintes_parcelle",
-    )
-
-# --- EXPANDER 2 : CARTOGRAPHIE, ARBRES & INFRASTRUCTURES GÉOLOCALISÉES ---
-with st.expander(
-    "🗺️ **2. Cartographie, Infrastructures & Repères Géolocalisés (Normes CCC"
-    " & RDUE)**",
-    expanded=True,
-):
-  st.caption(
-      "Données relatives au croquis/polygone, aux waypoints du contour, aux"
-      " infrastructures et aux arbres d'ombrage géolocalisés."
-  )
-
-  # --- 2.1 COORDONNÉES RÉFÉRENCE & WAYPOINT CENTRAL ---
-  col_geo1, col_geo2 = st.columns(2)
-
-  with col_geo1:
-    voies_acces = st.multiselect(
-        "🛣️ Pistes & Voies d'accès",
-        [
-            "Piste cyclable / Piétonne",
-            "Piste camionnière / Sommier",
-            "Route bitumée à proximité",
-            "Traversée par voie d'eau",
-        ],
-        default=["Piste camionnière / Sommier"],
-        key="voies_acces",
-    )
-
-  with col_geo2:
-    lat_ref = (
-        tableau_arbres[0].get("Latitude")
-        if (
-            tableau_arbres
-            and isinstance(tableau_arbres[0], dict)
-            and "Latitude" in tableau_arbres[0]
+        # 2. Extraction du tableau complet des arbres avec coordonnées GPS
+        tableau_arbres = reponses.get(
+            "tableau_arbres", st.session_state.get("temp_tableau_arbres", [])
         )
-        else 6.67262
-    )
-    lon_ref = (
-        tableau_arbres[0].get("Longitude")
-        if (
-            tableau_arbres
-            and isinstance(tableau_arbres[0], dict)
-            and "Longitude" in tableau_arbres[0]
+
+        # 3. Métriques d'arbres
+        nb_arbres_defaut = int(reponses.get("arbres_conserves", len(tableau_arbres)))
+        densite_ha_defaut = float(reponses.get("densite_conservee_ha", 0.0))
+
+        # Extraction dynamique des essences renseignées dans l'Étape 4
+        essences_extraites = list(
+            set(
+                str(row.get("Espèce", "")).strip()
+                for row in tableau_arbres
+                if isinstance(row, dict) and row.get("Espèce")
+            )
         )
-        else -5.28095
-    )
-    gps_defaut_str = f"{lat_ref:.6f} N, {lon_ref:.6f} W"
 
-    waypoint_gps = st.text_input(
-        "📍 Coordonnées GPS centrales / Waypoint Central",
-        value=gps_defaut_str,
-        key="waypoint_gps",
-    )
+        # Détermination automatique du niveau d'ombrage
+        if densite_ha_defaut < 10:
+            ombrage_defaut = "Faible (< 10 arbres/ha)"
+        elif 10 <= densite_ha_defaut <= 25:
+            ombrage_defaut = "Adéquat (10-25 arbres/ha)"
+        else:
+            ombrage_defaut = "Excessif (> 25 arbres/ha)"
 
-  st.markdown("---")
+        # --- EXPANDER 1 : FORMULAIRE AGRONOMIQUE & FONCIER ---
+        with st.expander("📋 **1. Formulaire AgrONOMIQUE & FONCIER**", expanded=True):
+            col1, col2 = st.columns(2)
 
-  # --- 2.2 SAISIE DES SOMMETS / WAYPOINTS CONTOURNAUX (OPTION A & B) ---
-  st.markdown("##### 📐 Sommets / Coins de la Parcelle (Polygone GPS)")
-  st.caption(
-      "Renseignez les waypoints des coins de la parcelle. Si ce tableau est"
-      " vide, Leyla générera automatiquement un contour unique basé sur le code"
-      " du producteur."
-  )
+            with col1:
+                statut_foncier = st.selectbox(
+                    "📜 Statut foncier de la parcelle",
+                    [
+                        "Propriétaire coutumier",
+                        "Titre foncier / Certificat foncier",
+                        "Métayage (Abougnon / Planteur-Partage)",
+                        "Location / Fermage",
+                    ],
+                    key="statut_foncier",
+                )
+                surf_totale = st.number_input(
+                    "📐 Superficie totale de l'exploitation (ha)",
+                    min_value=0.1,
+                    value=max(0.1, surf_totale_defaut),
+                    step=0.5,
+                    key="surf_totale",
+                    help="Prend automatiquement la somme des superficies renseignées à l'Étape 4",
+                )
+                surf_cacao_prod = st.number_input(
+                    "🍫 Superficie en cacao productif (ha)",
+                    min_value=0.0,
+                    value=surf_cacao_defaut,
+                    step=0.5,
+                    key="surf_cacao_prod",
+                    help="Total du cacao productif calculé à l'Étape 4",
+                )
+                surf_cacao_jeune = st.number_input(
+                    "🌱 Superficie cacao immature / immaturité (ha)",
+                    min_value=0.0,
+                    value=0.0,
+                    step=0.5,
+                    key="surf_cacao_jeune",
+                )
 
-  if "temp_tableau_sommets" not in st.session_state:
-    st.session_state.temp_tableau_sommets = []
+            with col2:
+                age_moyen_plan = st.select_slider(
+                    "🌳 Âge moyen du verger (années)",
+                    options=[
+                        "0-3 ans (Jeune)",
+                        "4-15 ans (Plein rendement)",
+                        "16-25 ans (Vieillissant)",
+                        "+25 ans (Vétuste)",
+                    ],
+                    value="4-15 ans (Plein rendement)",
+                    key="age_moyen",
+                )
+                relief_sol = st.multiselect(
+                    "⛰️ Relief & Type de sol prédominant",
+                    [
+                        "Bas-fond / Hydromorphe",
+                        "Plat / Sol Ferrallitique",
+                        "Pente légère / Sol Gravillonnaire",
+                        "Zone Rocheuse / Latéritique",
+                    ],
+                    default=["Plat / Sol Ferrallitique"],
+                    key="relief_sol",
+                )
+                contraintes = st.multiselect(
+                    "⚠️ Contraintes & Risques observés sur la parcelle",
+                    [
+                        "Attaque de Swollen Shoot",
+                        "Pression Foreurs de tiges / Punaise",
+                        "Pourriture brune des cabosses",
+                        "Ombrage excessif",
+                        "Manque d'eau / Sécheresse",
+                        "Inaccessibilité en saison de pluies",
+                    ],
+                    default=["Pression Foreurs de tiges / Punaise"],
+                    key="contraintes_parcelle",
+                )
 
-  df_sommets_in = pd.DataFrame(st.session_state.temp_tableau_sommets)
-  for col in ["Sommet", "Latitude", "Longitude"]:
-    if col not in df_sommets_in.columns:
-      df_sommets_in[col] = None
+        # --- EXPANDER 2 : CARTOGRAPHIE, ARBRES & INFRASTRUCTURES GÉOLOCALISÉES ---
+        with st.expander(
+            "🗺️ **2. Cartographie, Infrastructures & Repères Géolocalisés (Normes CCC & RDUE)**",
+            expanded=True,
+        ):
+            st.caption(
+                "Données relatives au croquis/polygone, aux waypoints du contour, aux"
+                " infrastructures et aux arbres d'ombrage géolocalisés."
+            )
 
-  df_sommets_out = st.data_editor(
-      df_sommets_in,
-      num_rows="dynamic",
-      use_container_width=True,
-      column_config={
-          "Sommet": st.column_config.TextColumn(
-              "Nom du point / Sommet", required=True
-          ),
-          "Latitude": st.column_config.NumberColumn(
-              "Latitude (ex: 6.67262)", format="%.6f"
-          ),
-          "Longitude": st.column_config.NumberColumn(
-              "Longitude (ex: -5.28095)", format="%.6f"
-          ),
-      },
-      key="editor_sommets_pdc",
-  )
-  liste_sommets = df_sommets_out.to_dict("records")
-  st.session_state.temp_tableau_sommets = liste_sommets
+            # --- 2.1 COORDONNÉES RÉFÉRENCE & WAYPOINT CENTRAL ---
+            col_geo1, col_geo2 = st.columns(2)
 
-  st.markdown("---")
+            with col_geo1:
+                voies_acces = st.multiselect(
+                    "🛣️ Pistes & Voies d'accès",
+                    [
+                        "Piste cyclable / Piétonne",
+                        "Piste camionnière / Sommier",
+                        "Route bitumée à proximité",
+                        "Traversée par voie d'eau",
+                    ],
+                    default=["Piste camionnière / Sommier"],
+                    key="voies_acces",
+                )
 
-  # --- 2.3 SAISIE DES INFRASTRUCTURES & REPÈRES GÉOLOCALISÉS ---
-  st.markdown("##### 📍 Infrastructures & Éléments Remarquables Géolocalisés")
-  st.caption(
-      "Positionnez précisément chaque infrastructure (Habitation, Puits, Bas-fond..."
-      ") avec ses coordonnées GPS."
-  )
+            with col_geo2:
+                lat_ref = (
+                    tableau_arbres[0].get("Latitude")
+                    if (
+                        tableau_arbres
+                        and isinstance(tableau_arbres[0], dict)
+                        and "Latitude" in tableau_arbres[0]
+                    )
+                    else 6.67262
+                )
+                lon_ref = (
+                    tableau_arbres[0].get("Longitude")
+                    if (
+                        tableau_arbres
+                        and isinstance(tableau_arbres[0], dict)
+                        and "Longitude" in tableau_arbres[0]
+                    )
+                    else -5.28095
+                )
+                gps_defaut_str = f"{lat_ref:.6f} N, {lon_ref:.6f} W"
 
-  cols_reperes = ["Élément", "Latitude", "Longitude", "Remarque"]
-  if "temp_tableau_reperes" not in st.session_state:
-    st.session_state.temp_tableau_reperes = [
-        {
-            "Élément": "Campement / Habitation",
-            "Latitude": lat_ref + 0.0005,
-            "Longitude": lon_ref - 0.0005,
-            "Remarque": "Campement principal",
-        }
-    ]
+                waypoint_gps = st.text_input(
+                    "📍 Coordonnées GPS centrales / Waypoint Central",
+                    value=gps_defaut_str,
+                    key="waypoint_gps",
+                )
 
-  df_rep_in = pd.DataFrame(st.session_state.temp_tableau_reperes)
-  for col in cols_reperes:
-    if col not in df_rep_in.columns:
-      df_rep_in[col] = None
+            st.markdown("---")
 
-  df_reperes_out = st.data_editor(
-      df_rep_in,
-      num_rows="dynamic",
-      use_container_width=True,
-      column_config={
-          "Élément": st.column_config.SelectboxColumn(
-              "Type d'infrastructure / Repère",
-              options=[
-                  "Campement / Habitation",
-                  "Cours d'eau / Bas-fond",
-                  "Puits / Source d'eau",
-                  "Zone rocheuse non cultivable",
-                  "Magasin de stockage",
-              ],
-              required=True,
-          ),
-          "Latitude": st.column_config.NumberColumn(
-              "Latitude", format="%.6f"
-          ),
-          "Longitude": st.column_config.NumberColumn(
-              "Longitude", format="%.6f"
-          ),
-          "Remarque": st.column_config.TextColumn("Remarque / Description"),
-      },
-      key="editor_reperes_pdc",
-  )
-  liste_reperes = df_reperes_out.to_dict("records")
-  st.session_state.temp_tableau_reperes = liste_reperes
+            # --- 2.2 SAISIE DES SOMMETS / WAYPOINTS CONTOURNAUX (OPTION A & B) ---
+            st.markdown("##### 📐 Sommets / Coins de la Parcelle (Polygone GPS)")
+            st.caption(
+                "Renseignez les waypoints des coins de la parcelle. Si ce tableau est"
+                " vide, Leyla générera automatiquement un contour unique basé sur le code"
+                " du producteur."
+            )
 
-  st.markdown("---")
+            if "temp_tableau_sommets" not in st.session_state:
+                st.session_state.temp_tableau_sommets = []
 
-  # --- 2.4 SYNTHÈSE AGROFORESTIÈRE (SYNCHRONISÉE & VERROUILLÉE) ---
-  st.markdown("##### 🌳 Inventaire Agroforestier (🔒 Récupéré de l'Étape 4)")
-  essences_str_label = (
-      ", ".join(essences_extraites)
-      if essences_extraites
-      else "Aucune essence spécifiée"
-  )
+            df_sommets_in = pd.DataFrame(st.session_state.temp_tableau_sommets)
+            for col in ["Sommet", "Latitude", "Longitude"]:
+                if col not in df_sommets_in.columns:
+                    df_sommets_in[col] = None
 
-  col_syn1, col_syn2 = st.columns(2)
-  with col_syn1:
-    st.metric(
-        label="Nombre d'arbres conservés géolocalisés",
-        value=f"{nb_arbres_defaut} pieds",
-    )
-  with col_syn2:
-    st.info(
-        f"• **Essences recensées :** {essences_str_label}\n\n"
-        f"• **Densité / Ombrage :** {ombrage_defaut}"
-    )
+            df_sommets_out = st.data_editor(
+                df_sommets_in,
+                num_rows="dynamic",
+                use_container_width=True,
+                column_config={
+                    "Sommet": st.column_config.TextColumn(
+                        "Nom du point / Sommet", required=True
+                    ),
+                    "Latitude": st.column_config.NumberColumn(
+                        "Latitude (ex: 6.67262)", format="%.6f"
+                    ),
+                    "Longitude": st.column_config.NumberColumn(
+                        "Longitude (ex: -5.28095)", format="%.6f"
+                    ),
+                },
+                key="editor_sommets_pdc",
+            )
+            liste_sommets = df_sommets_out.to_dict("records")
+            st.session_state.temp_tableau_sommets = liste_sommets
 
-  nb_arbres_forestiers = nb_arbres_defaut
-  essences_arbres = (
-      essences_extraites
-      if essences_extraites
-      else ["Akpi", "Iroko", "Framiré"]
-  )
-  densite_ombrage = ombrage_defaut
+            st.markdown("---")
 
-  st.markdown("---")
+            # --- 2.3 SAISIE DES INFRASTRUCTURES & REPÈRES GÉOLOCALISÉS ---
+            st.markdown("##### 📍 Infrastructures & Éléments Remarquables Géolocalisés")
+            st.caption(
+                "Positionnez précisément chaque infrastructure (Habitation, Puits, Bas-fond...)"
+                " avec ses coordonnées GPS."
+            )
 
-  # --- 2.5 RENDU DU CROQUIS ---
-  st.markdown(
-      "##### 🎨 Rendu du Croquis de la Parcelle (Géolocalisation Automatique)"
-  )
+            cols_reperes = ["Élément", "Latitude", "Longitude", "Remarque"]
+            if "temp_tableau_reperes" not in st.session_state:
+                st.session_state.temp_tableau_reperes = [
+                    {
+                        "Élément": "Campement / Habitation",
+                        "Latitude": lat_ref + 0.0005,
+                        "Longitude": lon_ref - 0.0005,
+                        "Remarque": "Campement principal",
+                    }
+                ]
 
-  col_gen1, col_gen2 = st.columns([1, 1])
-  with col_gen1:
-    btn_generer_croquis = st.button(
-        "🖌️ Générer le croquis automatique (CCC)",
-        use_container_width=True,
-    )
+            df_rep_in = pd.DataFrame(st.session_state.temp_tableau_reperes)
+            for col in cols_reperes:
+                if col not in df_rep_in.columns:
+                    df_rep_in[col] = None
 
-  with col_gen2:
-    fichier_croquis = st.file_uploader(
-        "Ou importer un croquis manuel (PNG/JPG)",
-        type=["png", "jpg", "jpeg"],
-        key="fichier_croquis_parcelle",
-    )
+            df_reperes_out = st.data_editor(
+                df_rep_in,
+                num_rows="dynamic",
+                use_container_width=True,
+                column_config={
+                    "Élément": st.column_config.SelectboxColumn(
+                        "Type d'infrastructure / Repère",
+                        options=[
+                            "Campement / Habitation",
+                            "Cours d'eau / Bas-fond",
+                            "Puits / Source d'eau",
+                            "Zone rocheuse non cultivable",
+                            "Magasin de stockage",
+                        ],
+                        required=True,
+                    ),
+                    "Latitude": st.column_config.NumberColumn(
+                        "Latitude", format="%.6f"
+                    ),
+                    "Longitude": st.column_config.NumberColumn(
+                        "Longitude", format="%.6f"
+                    ),
+                    "Remarque": st.column_config.TextColumn("Remarque / Description"),
+                },
+                key="editor_reperes_pdc",
+            )
+            liste_reperes = df_reperes_out.to_dict("records")
+            st.session_state.temp_tableau_reperes = liste_reperes
 
-  if btn_generer_croquis:
-    if "generer_croquis_parcelle" in globals():
-      img_buf = generer_croquis_parcelle(
-          nom_producteur=st.session_state.get("nom_producteur", "Inconnu"),
-          code_ccc=st.session_state.get("code_producteur", "CCC-001"),
-          surf_totale=surf_totale,
-          surf_prod=surf_cacao_prod,
-          surf_jeune=surf_cacao_jeune,
-          waypoint_gps=waypoint_gps,
-          nb_arbres=nb_arbres_forestiers,
-          essences=essences_arbres,
-          acces=voies_acces,
-          liste_arbres=tableau_arbres,
-          liste_reperes=liste_reperes,
-          liste_sommets=liste_sommets,
-      )
-      st.session_state["croquis_genere"] = img_buf.getvalue()
-    else:
-      st.warning(
-          "La fonction `generer_croquis_parcelle` n'est pas encore définie dans"
-          " le script."
-      )
+            st.markdown("---")
 
-  if fichier_croquis is not None:
-    st.image(
-        fichier_croquis,
-        caption="Croquis manuel importé pour le dossier CCC",
-        use_container_width=True,
-    )
-  elif "croquis_genere" in st.session_state:
-    st.image(
-        st.session_state["croquis_genere"],
-        caption=(
-            "Croquis automatique géolocalisé généré par Leyla (Normes CCC &"
-            " RDUE)"
-        ),
-        use_container_width=True,
-    )
+            # --- 2.4 SYNTHÈSE AGROFORESTIÈRE (SYNCHRONISÉE & VERROUILLÉE) ---
+            st.markdown("##### 🌳 Inventaire Agroforestier (🔒 Récupéré de l'Étape 4)")
+            essences_str_label = (
+                ", ".join(essences_extraites)
+                if essences_extraites
+                else "Aucune essence spécifiée"
+            )
 
-# --- CALCULS & TABLEAU DE BORD VISUEL ---
-surf_autre = max(0.0, surf_totale - (surf_cacao_prod + surf_cacao_jeune))
-pct_cacao = (
-    ((surf_cacao_prod + surf_cacao_jeune) / surf_totale * 100)
-    if surf_totale > 0
-    else 0.0
-)
+            col_syn1, col_syn2 = st.columns(2)
+            with col_syn1:
+                st.metric(
+                    label="Nombre d'arbres conservés géolocalisés",
+                    value=f"{nb_arbres_defaut} pieds",
+                )
+            with col_syn2:
+                st.info(
+                    f"• **Essences recensées :** {essences_str_label}\n\n"
+                    f"• **Densité / Ombrage :** {ombrage_defaut}"
+                )
 
-relief_str = ", ".join(relief_sol) if relief_sol else "Non précisé"
-contraintes_str = (
-    ", ".join(contraintes) if contraintes else "Aucune contrainte majeure"
-)
+            nb_arbres_forestiers = nb_arbres_defaut
+            essences_arbres = (
+                essences_extraites
+                if essences_extraites
+                else ["Akpi", "Iroko", "Framiré"]
+            )
+            densite_ombrage = ombrage_defaut
 
-# Extraction des types d'infrastructures saisies pour le rapport textuel
-elements_reperes_liste = list(
-    set(
-        r.get("Élément", "")
-        for r in st.session_state.get("temp_tableau_reperes", [])
-        if isinstance(r, dict) and r.get("Élément")
-    )
-)
-elements_str = (
-    ", ".join(elements_reperes_liste)
-    if elements_reperes_liste
-    else "Aucun élément spécifique"
-)
-voies_str = ", ".join(voies_acces) if voies_acces else "Non précisé"
-essences_str = (
-    ", ".join(essences_arbres)
-    if essences_arbres
-    else "Aucune essence spécifiée"
-)
+            st.markdown("---")
 
-if "Vétuste" in age_moyen_plan:
-  diagnostic_age = (
-      "🚨 **Régénération urgente requise** (Verger en fin de cycle productif)."
-  )
-  niveau_alerte = "error"
-elif "Vieillissant" in age_moyen_plan:
-  diagnostic_age = "⚠️ **Replantation progressive à prévoir**."
-  niveau_alerte = "warning"
-else:
-  diagnostic_age = "✅ **Potentiel de production optimal**."
-  niveau_alerte = "success"
+            # --- 2.5 RENDU DU CROQUIS ---
+            st.markdown(
+                "##### 🎨 Rendu du Croquis de la Parcelle (Géolocalisation Automatique)"
+            )
 
-st.markdown("---")
-st.markdown("#### 📊 Tableau de Bord Synthétique de l'Exploitation")
+            col_gen1, col_gen2 = st.columns([1, 1])
+            with col_gen1:
+                btn_generer_croquis = st.button(
+                    "🖌️ Générer le croquis automatique (CCC)",
+                    use_container_width=True,
+                )
 
-kpi1, kpi2, kpi3, kpi4 = st.columns(4)
-kpi1.metric("Superficie Totale", f"{surf_totale:.1f} ha")
-kpi2.metric(
-    "Cacao Productif", f"{surf_cacao_prod:.1f} ha", f"{pct_cacao:.0f}% du total"
-)
-kpi3.metric(
-    "Arbres Forestiers", f"{nb_arbres_forestiers} pieds", f"{densite_ombrage}"
-)
-kpi4.metric("Autre / Jachère", f"{surf_autre:.1f} ha")
+            with col_gen2:
+                fichier_croquis = st.file_uploader(
+                    "Ou importer un croquis manuel (PNG/JPG)",
+                    type=["png", "jpg", "jpeg"],
+                    key="fichier_croquis_parcelle",
+                )
 
-if niveau_alerte == "error":
-  st.error(diagnostic_age)
-elif niveau_alerte == "warning":
-  st.warning(diagnostic_age)
-else:
-  st.success(diagnostic_age)
+            if btn_generer_croquis:
+                if "generer_croquis_parcelle" in globals():
+                    img_buf = generer_croquis_parcelle(
+                        nom_producteur=st.session_state.get("nom_producteur", "Inconnu"),
+                        code_ccc=st.session_state.get("code_producteur", "CCC-001"),
+                        surf_totale=surf_totale,
+                        surf_prod=surf_cacao_prod,
+                        surf_jeune=surf_cacao_jeune,
+                        waypoint_gps=waypoint_gps,
+                        nb_arbres=nb_arbres_forestiers,
+                        essences=essences_arbres,
+                        acces=voies_acces,
+                        liste_arbres=tableau_arbres,
+                        liste_reperes=liste_reperes,
+                        liste_sommets=liste_sommets,
+                    )
+                    st.session_state["croquis_genere"] = img_buf.getvalue()
+                else:
+                    st.warning(
+                        "La fonction `generer_croquis_parcelle` n'est pas encore définie dans"
+                        " le script."
+                    )
 
-col_c1, col_c2 = st.columns(2)
-with col_c1:
-  st.markdown("##### 🏞️ Occupation du Sol, Foncier & GPS")
-  st.info(
-      f"• **Régime foncier :** {statut_foncier}\n\n"
-      f"• **Taux d'occupation cacaoyère :** {pct_cacao:.1f}%\n\n"
-      f"• **Relief/Sol :** {relief_str}\n\n"
-      f"• **Waypoint Central :** `{waypoint_gps}`"
-  )
+            if fichier_croquis is not None:
+                st.image(
+                    fichier_croquis,
+                    caption="Croquis manuel importé pour le dossier CCC",
+                    use_container_width=True,
+                )
+            elif "croquis_genere" in st.session_state:
+                st.image(
+                    st.session_state["croquis_genere"],
+                    caption=(
+                        "Croquis automatique géolocalisé généré par Leyla (Normes CCC &"
+                        " RDUE)"
+                    ),
+                    use_container_width=True,
+                )
 
-with col_c2:
-  st.markdown("##### 🛡️ Éléments du Croquis & Agroforesterie")
-  st.info(
-      f"• **Infrastructures/Repères :** {elements_str}\n\n"
-      f"• **Accès :** {voies_str}\n\n"
-      f"• **Arbres d'ombrage :** {nb_arbres_forestiers} pieds"
-      f" ({essences_str})\n\n"
-      f"• **Niveau d'ombrage :** {densite_ombrage}"
-  )
+        # --- CALCULS & TABLEAU DE BORD VISUEL ---
+        surf_autre = max(0.0, surf_totale - (surf_cacao_prod + surf_cacao_jeune))
+        pct_cacao = (
+            ((surf_cacao_prod + surf_cacao_jeune) / surf_totale * 100)
+            if surf_totale > 0
+            else 0.0
+        )
 
-# --- RAPPORT SYNTHÉTIQUE ---
-st.markdown(
-    "#### 📝 Description Officielle (Générée automatiquement pour le Dossier"
-    " CCC)"
-)
+        relief_str = ", ".join(relief_sol) if relief_sol else "Non précisé"
+        contraintes_str = (
+            ", ".join(contraintes) if contraintes else "Aucune contrainte majeure"
+        )
 
-texte_description = (
-    f"L'exploitation sous le statut foncier **{statut_foncier}** couvre une"
-    f" superficie totale mesurée de **{surf_totale:.1f} hectares** (Waypoint"
-    f" GPS central : {waypoint_gps}). La spéculation principale est la"
-    f" cacaoculture qui occupe **{surf_cacao_prod + surf_cacao_jeune:.1f} ha**"
-    f" (soit **{surf_cacao_prod:.1f} ha** en verger productif et"
-    f" **{surf_cacao_jeune:.1f} ha** en phase d'immaturité), représentant"
-    f" **{pct_cacao:.1f}%** de la surface globale. Le verger présente un profil"
-    f" d'âge **{age_moyen_plan}**, installé sur un relief de type"
-    f" **{relief_str}**. Le croquis cartographique géolocalisé identifie les"
-    f" voies d'accès (**{voies_str}**) ainsi que les infrastructures/repères"
-    f" physiques sur la parcelle (**{elements_str}**). Sur le plan"
-    f" agroforestier, l'exploitation compte **{nb_arbres_forestiers} arbres"
-    f" forestiers d'ombrage** (principalement : {essences_str}), garantissant un"
-    f" niveau d'ombrage évalué comme **{densite_ombrage}**. "
-)
+        # Extraction des types d'infrastructures saisies pour le rapport textuel
+        elements_reperes_liste = list(
+            set(
+                r.get("Élément", "")
+                for r in st.session_state.get("temp_tableau_reperes", [])
+                if isinstance(r, dict) and r.get("Élément")
+            )
+        )
+        elements_str = (
+            ", ".join(elements_reperes_liste)
+            if elements_reperes_liste
+            else "Aucun élément spécifique"
+        )
+        voies_str = ", ".join(voies_acces) if voies_acces else "Non précisé"
+        essences_str = (
+            ", ".join(essences_arbres)
+            if essences_arbres
+            else "Aucune essence spécifiée"
+        )
 
-if contraintes:
-  texte_description += (
-      "Sur le plan phytosanitaire et pédo-climatique, la parcelle subit les"
-      f" contraintes suivantes : **{contraintes_str}**."
-  )
-else:
-  texte_description += (
-      "Aucune contrainte phytosanitaire critique n'a été répertoriée lors de la"
-      " visite terrain."
-  )
+        if "Vétuste" in age_moyen_plan:
+            diagnostic_age = (
+                "🚨 **Régénération urgente requise** (Verger en fin de cycle productif)."
+            )
+            niveau_alerte = "error"
+        elif "Vieillissant" in age_moyen_plan:
+            diagnostic_age = "⚠️ **Replantation progressive à prévoir**."
+            niveau_alerte = "warning"
+        else:
+            diagnostic_age = "✅ **Potentiel de production optimal**."
+            niveau_alerte = "success"
 
-st.markdown(texte_description)
-st.markdown("---")
+        st.markdown("---")
+        st.markdown("#### 📊 Tableau de Bord Synthétique de l'Exploitation")
 
+        kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+        kpi1.metric("Superficie Totale", f"{surf_totale:.1f} ha")
+        kpi2.metric(
+            "Cacao Productif", f"{surf_cacao_prod:.1f} ha", f"{pct_cacao:.0f}% du total"
+        )
+        kpi3.metric(
+            "Arbres Forestiers", f"{nb_arbres_forestiers} pieds", f"{densite_ombrage}"
+        )
+        kpi4.metric("Autre / Jachère", f"{surf_autre:.1f} ha")
+
+        if niveau_alerte == "error":
+            st.error(diagnostic_age)
+        elif niveau_alerte == "warning":
+            st.warning(diagnostic_age)
+        else:
+            st.success(diagnostic_age)
+
+        col_c1, col_c2 = st.columns(2)
+        with col_c1:
+            st.markdown("##### 🏞️ Occupation du Sol, Foncier & GPS")
+            st.info(
+                f"• **Régime foncier :** {statut_foncier}\n\n"
+                f"• **Taux d'occupation cacaoyère :** {pct_cacao:.1f}%\n\n"
+                f"• **Relief/Sol :** {relief_str}\n\n"
+                f"• **Waypoint Central :** `{waypoint_gps}`"
+            )
+
+        with col_c2:
+            st.markdown("##### 🛡️ Éléments du Croquis & Agroforesterie")
+            st.info(
+                f"• **Infrastructures/Repères :** {elements_str}\n\n"
+                f"• **Accès :** {voies_str}\n\n"
+                f"• **Arbres d'ombrage :** {nb_arbres_forestiers} pieds"
+                f" ({essences_str})\n\n"
+                f"• **Niveau d'ombrage :** {densite_ombrage}"
+            )
+
+        # --- RAPPORT SYNTHÉTIQUE ---
+        st.markdown(
+            "#### 📝 Description Officielle (Générée automatiquement pour le Dossier CCC)"
+        )
+
+        texte_description = (
+            f"L'exploitation sous le statut foncier **{statut_foncier}** couvre une"
+            f" superficie totale mesurée de **{surf_totale:.1f} hectares** (Waypoint"
+            f" GPS central : {waypoint_gps}). La spéculation principale est la"
+            f" cacaoculture qui occupe **{surf_cacao_prod + surf_cacao_jeune:.1f} ha**"
+            f" (soit **{surf_cacao_prod:.1f} ha** en verger productif et"
+            f" **{surf_cacao_jeune:.1f} ha** en phase d'immaturité), représentant"
+            f" **{pct_cacao:.1f}%** de la surface globale. Le verger présente un profil"
+            f" d'âge **{age_moyen_plan}**, installé sur un relief de type"
+            f" **{relief_str}**. Le croquis cartographique géolocalisé identifie les"
+            f" voies d'accès (**{voies_str}**) ainsi que les infrastructures/repères"
+            f" physiques sur la parcelle (**{elements_str}**). Sur le plan"
+            f" agroforestier, l'exploitation compte **{nb_arbres_forestiers} arbres"
+            f" forestiers d'ombrage** (principalement : {essences_str}), garantissant un"
+            f" niveau d'ombrage évalué comme **{densite_ombrage}**. "
+        )
+
+        if contraintes:
+            texte_description += (
+                "Sur le plan phytosanitaire et pédo-climatique, la parcelle subit les"
+                f" contraintes suivantes : **{contraintes_str}**."
+            )
+        else:
+            texte_description += (
+                "Aucune contrainte phytosanitaire critique n'a été répertoriée lors de la"
+                " visite terrain."
+            )
+
+        st.markdown(texte_description)
+        st.markdown("---")
 
         # =========================================================
-        # NAVIGATION DE L'ÉTAPE
+        # NAVIGATION DE L'ÉTAPE 12
         # =========================================================
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
@@ -3486,7 +3480,7 @@ st.markdown("---")
                     "contraintes": contraintes,
                     "waypoint_gps": waypoint_gps,
                     "voies_acces": voies_acces,
-                    "elements_parcelle": elements_parcelle,
+                    "elements_parcelle": elements_str,
                     "nb_arbres_forestiers": nb_arbres_forestiers,
                     "essences_arbres": essences_arbres,
                     "densite_ombrage": densite_ombrage,
@@ -3495,6 +3489,7 @@ st.markdown("---")
 
                 st.session_state.etape_pdc = 13
                 st.rerun()
+
 
 
     # =========================================================
@@ -3748,45 +3743,46 @@ st.markdown("---")
 
         st.markdown("---")
 
-                 # =========================================================
-                # NAVIGATION DE L'ÉTAPE 13
-                # =========================================================
-                col_btn1, col_btn2 = st.columns([1, 1])
-                with col_btn1:
-                    if st.button(
-                        "⬅️ Retour (Étape 12 : Exploitation)",
-                        key="btn_retour_etape13",
-                        use_container_width=True,
-                    ):
-                        st.session_state.etape_pdc = 12
-                        st.rerun()
+        # =========================================================
+        # NAVIGATION DE L'ÉTAPE 13
+        # =========================================================
+        col_btn1, col_btn2 = st.columns([1, 1])
+        with col_btn1:
+            if st.button(
+                "⬅️ Retour (Étape 12 : Exploitation)",
+                key="btn_retour_etape13",
+                use_container_width=True,
+            ):
+                st.session_state.etape_pdc = 12
+                st.rerun()
 
-                with col_btn2:
-                    if st.button(
-                        "Suivant (Vers Étape 14) ➡️",
-                        key="btn_suivant_etape13",
-                        type="primary",
-                        use_container_width=True,
-                    ):
-                        st.session_state.df_cultures_pdc = df_cultures_edite
-                        st.session_state.df_arbres_pdc = df_arbres_edite
-                        st.session_state.df_materiel_pdc = df_mat_edite
+        with col_btn2:
+            if st.button(
+                "Suivant (Vers Étape 14) ➡️",
+                key="btn_suivant_etape13",
+                type="primary",
+                use_container_width=True,
+            ):
+                st.session_state.df_cultures_pdc = df_cultures_edite
+                st.session_state.df_arbres_pdc = df_arbres_edite
+                st.session_state.df_materiel_pdc = df_mat_edite
 
-                        if "reponses_pdc" not in st.session_state:
-                            st.session_state.reponses_pdc = {}
+                if "reponses_pdc" not in st.session_state:
+                    st.session_state.reponses_pdc = {}
 
-                        st.session_state.reponses_pdc["cultures_et_revenus"] = (
-                            df_cultures_edite
-                        )
-                        st.session_state.reponses_pdc["inventaire_arbres"] = (
-                            df_arbres_edite
-                        )
-                        st.session_state.reponses_pdc["materiel_agricole"] = (
-                            df_mat_edite
-                        )
+                st.session_state.reponses_pdc["cultures_et_revenus"] = (
+                    df_cultures_edite
+                )
+                st.session_state.reponses_pdc["inventaire_arbres"] = (
+                    df_arbres_edite
+                )
+                st.session_state.reponses_pdc["materiel_agricole"] = (
+                    df_mat_edite
+                )
 
-                        st.session_state.etape_pdc = 14
-                        st.rerun()
+                st.session_state.etape_pdc = 14
+                st.rerun()
+
 
 
 
@@ -4051,45 +4047,48 @@ st.markdown("---")
             "Budget Année 1 (Programme d'Action)", f"{cout_total_a1:,} FCFA"
         )
 
-                 # =========================================================
-                # NAVIGATION DE L'ÉTAPE 14
-                # =========================================================
-                col_btn1, col_btn2 = st.columns([1, 1])
-                with col_btn1:
-                    if st.button(
-                        "⬅️ Retour (Étape 13 : Cultures & Matériel)",
-                        key="btn_retour_etape14",
-                        use_container_width=True,
-                    ):
-                        st.session_state.etape_pdc = 13
-                        st.rerun()
+        st.markdown("---")
 
-                with col_btn2:
-                    if st.button(
-                        "Suivant (Vers Étape 15 : Bilan & PDF) ➡️",
-                        key="btn_suivant_etape14",
-                        type="primary",
-                        use_container_width=True,
-                    ):
-                        if "reponses_pdc" not in st.session_state:
-                            st.session_state.reponses_pdc = {}
+        # =========================================================
+        # NAVIGATION DE L'ÉTAPE 14
+        # =========================================================
+        col_btn1, col_btn2 = st.columns([1, 1])
+        with col_btn1:
+            if st.button(
+                "⬅️ Retour (Étape 13 : Cultures & Matériel)",
+                key="btn_retour_etape14",
+                use_container_width=True,
+            ):
+                st.session_state.etape_pdc = 13
+                st.rerun()
 
-                        # Sauvegarde globale
-                        st.session_state.reponses_pdc["plan_quinquennal"] = (
-                            df_quinquennal_edite
-                        )
-                        st.session_state.reponses_pdc["programme_annuel"] = (
-                            df_annuel_edite
-                        )
-                        st.session_state.reponses_pdc["facteurs_succes"] = (
-                            facteurs_succes
-                        )
-                        st.session_state["facteurs_succes_pdc"] = (
-                            facteurs_succes
-                        )
+        with col_btn2:
+            if st.button(
+                "Suivant (Vers Étape 15 : Bilan & PDF) ➡️",
+                key="btn_suivant_etape14",
+                type="primary",
+                use_container_width=True,
+            ):
+                if "reponses_pdc" not in st.session_state:
+                    st.session_state.reponses_pdc = {}
 
-                        st.session_state.etape_pdc = 15
-                        st.rerun()
+                # Sauvegarde globale
+                st.session_state.reponses_pdc["plan_quinquennal"] = (
+                    df_quinquennal_edite
+                )
+                st.session_state.reponses_pdc["programme_annuel"] = (
+                    df_annuel_edite
+                )
+                st.session_state.reponses_pdc["facteurs_succes"] = (
+                    facteurs_succes
+                )
+                st.session_state["facteurs_succes_pdc"] = (
+                    facteurs_succes
+                )
+
+                st.session_state.etape_pdc = 15
+                st.rerun()
+
 
 
 
