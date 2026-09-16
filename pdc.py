@@ -3744,7 +3744,7 @@ with col_btn2:
         st.markdown("---")
 
         # =========================================================
-        # NAVIGATION DE L'ÉTAPE 13
+        # NAVIGATION DE L'ÉTAPE 13 (Alignée avec le bloc de l'étape 13)
         # =========================================================
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
