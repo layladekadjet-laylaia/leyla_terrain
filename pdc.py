@@ -3447,50 +3447,55 @@ st.markdown(texte_description)
 st.markdown("---")
 
 
-# =========================================================
-# NAVIGATION DE L'ÉTAPE
-# =========================================================
-col_btn1, col_btn2 = st.columns([1, 1])
-with col_btn1:
-    if st.button(
-        "⬅️ Retour",
-        key="btn_retour_etape12",
-        use_container_width=True,
-    ):
-        st.session_state.etape_pdc = 11
-        st.rerun()
+        # =========================================================
+        # NAVIGATION DE L'ÉTAPE
+        # =========================================================
+        col_btn1, col_btn2 = st.columns([1, 1])
+        with col_btn1:
+            if st.button(
+                "⬅️ Retour",
+                key="btn_retour_etape12",
+                use_container_width=True,
+            ):
+                st.session_state.etape_pdc = 11
+                st.rerun()
 
-with col_btn2:
-    if st.button(
-        "Suivant ➡️",
-        key="btn_suivant_etape12",
-        type="primary",
-        use_container_width=True,
-    ):
-        if "reponses_pdc" not in st.session_state:
-            st.session_state.reponses_pdc = {}
+        with col_btn2:
+            if st.button(
+                "Suivant ➡️",
+                key="btn_suivant_etape12",
+                type="primary",
+                use_container_width=True,
+            ):
+                if "reponses_pdc" not in st.session_state:
+                    st.session_state.reponses_pdc = {}
 
-        st.session_state.reponses_pdc["situation_epargne"] = df_epargne_edite
-        st.session_state.reponses_pdc["situation_main_oeuvre"] = df_mo_edite
-        st.session_state.reponses_pdc["description_exploitation"] = {
-            "statut_foncier": statut_foncier,
-            "superficie_totale": surf_totale,
-            "superficie_cacao_productif": surf_cacao_prod,
-            "superficie_cacao_immature": surf_cacao_jeune,
-            "age_moyen": age_moyen_plan,
-            "relief_sol": relief_sol,
-            "contraintes": contraintes,
-            "waypoint_gps": waypoint_gps,
-            "voies_acces": voies_acces,
-            "elements_parcelle": elements_parcelle,
-            "nb_arbres_forestiers": nb_arbres_forestiers,
-            "essences_arbres": essences_arbres,
-            "densite_ombrage": densite_ombrage,
-            "texte_synthese_auto": texte_description,
-        }
+                st.session_state.reponses_pdc["situation_epargne"] = (
+                    df_epargne_edite
+                )
+                st.session_state.reponses_pdc["situation_main_oeuvre"] = (
+                    df_mo_edite
+                )
+                st.session_state.reponses_pdc["description_exploitation"] = {
+                    "statut_foncier": statut_foncier,
+                    "superficie_totale": surf_totale,
+                    "superficie_cacao_productif": surf_cacao_prod,
+                    "superficie_cacao_immature": surf_cacao_jeune,
+                    "age_moyen": age_moyen_plan,
+                    "relief_sol": relief_sol,
+                    "contraintes": contraintes,
+                    "waypoint_gps": waypoint_gps,
+                    "voies_acces": voies_acces,
+                    "elements_parcelle": elements_parcelle,
+                    "nb_arbres_forestiers": nb_arbres_forestiers,
+                    "essences_arbres": essences_arbres,
+                    "densite_ombrage": densite_ombrage,
+                    "texte_synthese_auto": texte_description,
+                }
 
-        st.session_state.etape_pdc = 13
-        st.rerun()
+                st.session_state.etape_pdc = 13
+                st.rerun()
+
 
     # =========================================================
     # ÉTAPE 13 : CULTURES, AGROFORESTERIE & MATÉRIEL AGRICOLE
@@ -3743,45 +3748,46 @@ with col_btn2:
 
         st.markdown("---")
 
-        # =========================================================
-        # NAVIGATION DE L'ÉTAPE 13
-        # =========================================================
-        col_btn1, col_btn2 = st.columns([1, 1])
-        with col_btn1:
-            if st.button(
-                "⬅️ Retour (Étape 12 : Exploitation)",
-                key="btn_retour_etape13",
-                use_container_width=True,
-            ):
-                st.session_state.etape_pdc = 12
-                st.rerun()
+                 # =========================================================
+                # NAVIGATION DE L'ÉTAPE 13
+                # =========================================================
+                col_btn1, col_btn2 = st.columns([1, 1])
+                with col_btn1:
+                    if st.button(
+                        "⬅️ Retour (Étape 12 : Exploitation)",
+                        key="btn_retour_etape13",
+                        use_container_width=True,
+                    ):
+                        st.session_state.etape_pdc = 12
+                        st.rerun()
 
-        with col_btn2:
-            if st.button(
-                "Suivant (Vers Étape 14) ➡️",
-                key="btn_suivant_etape13",
-                type="primary",
-                use_container_width=True,
-            ):
-                st.session_state.df_cultures_pdc = df_cultures_edite
-                st.session_state.df_arbres_pdc = df_arbres_edite
-                st.session_state.df_materiel_pdc = df_mat_edite
+                with col_btn2:
+                    if st.button(
+                        "Suivant (Vers Étape 14) ➡️",
+                        key="btn_suivant_etape13",
+                        type="primary",
+                        use_container_width=True,
+                    ):
+                        st.session_state.df_cultures_pdc = df_cultures_edite
+                        st.session_state.df_arbres_pdc = df_arbres_edite
+                        st.session_state.df_materiel_pdc = df_mat_edite
 
-                if "reponses_pdc" not in st.session_state:
-                    st.session_state.reponses_pdc = {}
+                        if "reponses_pdc" not in st.session_state:
+                            st.session_state.reponses_pdc = {}
 
-                st.session_state.reponses_pdc["cultures_et_revenus"] = (
-                    df_cultures_edite
-                )
-                st.session_state.reponses_pdc["inventaire_arbres"] = (
-                    df_arbres_edite
-                )
-                st.session_state.reponses_pdc["materiel_agricole"] = (
-                    df_mat_edite
-                )
+                        st.session_state.reponses_pdc["cultures_et_revenus"] = (
+                            df_cultures_edite
+                        )
+                        st.session_state.reponses_pdc["inventaire_arbres"] = (
+                            df_arbres_edite
+                        )
+                        st.session_state.reponses_pdc["materiel_agricole"] = (
+                            df_mat_edite
+                        )
 
-                st.session_state.etape_pdc = 14
-                st.rerun()
+                        st.session_state.etape_pdc = 14
+                        st.rerun()
+
 
 
     # ---------------------------------------------------------
@@ -4045,39 +4051,46 @@ with col_btn2:
             "Budget Année 1 (Programme d'Action)", f"{cout_total_a1:,} FCFA"
         )
 
-    # =========================================================
-    # NAVIGATION DE L'ÉTAPE 14
-    # =========================================================
-    col_btn1, col_btn2 = st.columns([1, 1])
-    with col_btn1:
-        if st.button(
-            "⬅️ Retour (Étape 13 : Cultures & Matériel)",
-            key="btn_retour_etape14",
-            use_container_width=True,
-        ):
-            st.session_state.etape_pdc = 13
-            st.rerun()
+                 # =========================================================
+                # NAVIGATION DE L'ÉTAPE 14
+                # =========================================================
+                col_btn1, col_btn2 = st.columns([1, 1])
+                with col_btn1:
+                    if st.button(
+                        "⬅️ Retour (Étape 13 : Cultures & Matériel)",
+                        key="btn_retour_etape14",
+                        use_container_width=True,
+                    ):
+                        st.session_state.etape_pdc = 13
+                        st.rerun()
 
-    with col_btn2:
-        if st.button(
-            "Suivant (Vers Étape 15 : Bilan & PDF) ➡️",
-            key="btn_suivant_etape14",
-            type="primary",
-            use_container_width=True,
-        ):
-            if "reponses_pdc" not in st.session_state:
-                st.session_state.reponses_pdc = {}
+                with col_btn2:
+                    if st.button(
+                        "Suivant (Vers Étape 15 : Bilan & PDF) ➡️",
+                        key="btn_suivant_etape14",
+                        type="primary",
+                        use_container_width=True,
+                    ):
+                        if "reponses_pdc" not in st.session_state:
+                            st.session_state.reponses_pdc = {}
 
-            # Sauvegarde globale
-            st.session_state.reponses_pdc["plan_quinquennal"] = (
-                df_quinquennal_edite
-            )
-            st.session_state.reponses_pdc["programme_annuel"] = df_annuel_edite
-            st.session_state.reponses_pdc["facteurs_succes"] = facteurs_succes
-            st.session_state["facteurs_succes_pdc"] = facteurs_succes
+                        # Sauvegarde globale
+                        st.session_state.reponses_pdc["plan_quinquennal"] = (
+                            df_quinquennal_edite
+                        )
+                        st.session_state.reponses_pdc["programme_annuel"] = (
+                            df_annuel_edite
+                        )
+                        st.session_state.reponses_pdc["facteurs_succes"] = (
+                            facteurs_succes
+                        )
+                        st.session_state["facteurs_succes_pdc"] = (
+                            facteurs_succes
+                        )
 
-            st.session_state.etape_pdc = 15
-            st.rerun()
+                        st.session_state.etape_pdc = 15
+                        st.rerun()
+
 
 
 
