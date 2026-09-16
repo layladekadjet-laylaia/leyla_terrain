@@ -3744,7 +3744,7 @@ with col_btn2:
         st.markdown("---")
 
         # =========================================================
-        # NAVIGATION DE L'ÉTAPE 13 (Alignée avec le bloc de l'étape 13)
+        # NAVIGATION DE L'ÉTAPE 13
         # =========================================================
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
@@ -3773,11 +3773,16 @@ with col_btn2:
                 st.session_state.reponses_pdc["cultures_et_revenus"] = (
                     df_cultures_edite
                 )
-                st.session_state.reponses_pdc["inventaire_arbres"] = df_arbres_edite
-                st.session_state.reponses_pdc["materiel_agricole"] = df_mat_edite
+                st.session_state.reponses_pdc["inventaire_arbres"] = (
+                    df_arbres_edite
+                )
+                st.session_state.reponses_pdc["materiel_agricole"] = (
+                    df_mat_edite
+                )
 
                 st.session_state.etape_pdc = 14
                 st.rerun()
+
 
     # ---------------------------------------------------------
     # ÉTAPE 14 : PLANIFICATION STRATÉGIQUE & PROGRAMME ANNUEL
@@ -4040,41 +4045,40 @@ with col_btn2:
             "Budget Année 1 (Programme d'Action)", f"{cout_total_a1:,} FCFA"
         )
 
-        st.markdown("---")
+    # =========================================================
+    # NAVIGATION DE L'ÉTAPE 14
+    # =========================================================
+    col_btn1, col_btn2 = st.columns([1, 1])
+    with col_btn1:
+        if st.button(
+            "⬅️ Retour (Étape 13 : Cultures & Matériel)",
+            key="btn_retour_etape14",
+            use_container_width=True,
+        ):
+            st.session_state.etape_pdc = 13
+            st.rerun()
 
-        # =========================================================
-        # NAVIGATION DE L'ÉTAPE 14
-        # =========================================================
-        col_btn1, col_btn2 = st.columns([1, 1])
-        with col_btn1:
-            if st.button(
-                "⬅️ Retour (Étape 13 : Cultures & Matériel)",
-                key="btn_retour_etape14",
-                use_container_width=True,
-            ):
-                st.session_state.etape_pdc = 13
-                st.rerun()
+    with col_btn2:
+        if st.button(
+            "Suivant (Vers Étape 15 : Bilan & PDF) ➡️",
+            key="btn_suivant_etape14",
+            type="primary",
+            use_container_width=True,
+        ):
+            if "reponses_pdc" not in st.session_state:
+                st.session_state.reponses_pdc = {}
 
-        with col_btn2:
-            if st.button(
-                "Suivant (Vers Étape 15 : Bilan & PDF) ➡️",
-                key="btn_suivant_etape14",
-                type="primary",
-                use_container_width=True,
-            ):
-                if "reponses_pdc" not in st.session_state:
-                    st.session_state.reponses_pdc = {}
+            # Sauvegarde globale
+            st.session_state.reponses_pdc["plan_quinquennal"] = (
+                df_quinquennal_edite
+            )
+            st.session_state.reponses_pdc["programme_annuel"] = df_annuel_edite
+            st.session_state.reponses_pdc["facteurs_succes"] = facteurs_succes
+            st.session_state["facteurs_succes_pdc"] = facteurs_succes
 
-                # Sauvegarde globale
-                st.session_state.reponses_pdc["plan_quinquennal"] = (
-                    df_quinquennal_edite
-                )
-                st.session_state.reponses_pdc["programme_annuel"] = df_annuel_edite
-                st.session_state.reponses_pdc["facteurs_succes"] = facteurs_succes
-                st.session_state["facteurs_succes_pdc"] = facteurs_succes
+            st.session_state.etape_pdc = 15
+            st.rerun()
 
-                st.session_state.etape_pdc = 15
-                st.rerun()
 
 
     # ---------------------------------------------------------
