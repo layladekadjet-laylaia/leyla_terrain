@@ -3447,50 +3447,50 @@ st.markdown(texte_description)
 st.markdown("---")
 
 
-        # =========================================================
-        # NAVIGATION DE L'ÉTAPE
-        # =========================================================
-        col_btn1, col_btn2 = st.columns([1, 1])
-        with col_btn1:
-            if st.button(
-                "⬅️ Retour",
-                key="btn_retour_etape12",
-                use_container_width=True,
-            ):
-                st.session_state.etape_pdc = 11
-                st.rerun()
+# =========================================================
+# NAVIGATION DE L'ÉTAPE
+# =========================================================
+col_btn1, col_btn2 = st.columns([1, 1])
+with col_btn1:
+    if st.button(
+        "⬅️ Retour",
+        key="btn_retour_etape12",
+        use_container_width=True,
+    ):
+        st.session_state.etape_pdc = 11
+        st.rerun()
 
-        with col_btn2:
-            if st.button(
-                "Suivant ➡️",
-                key="btn_suivant_etape12",
-                type="primary",
-                use_container_width=True,
-            ):
-                if "reponses_pdc" not in st.session_state:
-                    st.session_state.reponses_pdc = {}
+with col_btn2:
+    if st.button(
+        "Suivant ➡️",
+        key="btn_suivant_etape12",
+        type="primary",
+        use_container_width=True,
+    ):
+        if "reponses_pdc" not in st.session_state:
+            st.session_state.reponses_pdc = {}
 
-                st.session_state.reponses_pdc["situation_epargne"] = df_epargne_edite
-                st.session_state.reponses_pdc["situation_main_oeuvre"] = df_mo_edite
-                st.session_state.reponses_pdc["description_exploitation"] = {
-                    "statut_foncier": statut_foncier,
-                    "superficie_totale": surf_totale,
-                    "superficie_cacao_productif": surf_cacao_prod,
-                    "superficie_cacao_immature": surf_cacao_jeune,
-                    "age_moyen": age_moyen_plan,
-                    "relief_sol": relief_sol,
-                    "contraintes": contraintes,
-                    "waypoint_gps": waypoint_gps,
-                    "voies_acces": voies_acces,
-                    "elements_parcelle": elements_parcelle,
-                    "nb_arbres_forestiers": nb_arbres_forestiers,
-                    "essences_arbres": essences_arbres,
-                    "densite_ombrage": densite_ombrage,
-                    "texte_synthese_auto": texte_description,
-                }
+        st.session_state.reponses_pdc["situation_epargne"] = df_epargne_edite
+        st.session_state.reponses_pdc["situation_main_oeuvre"] = df_mo_edite
+        st.session_state.reponses_pdc["description_exploitation"] = {
+            "statut_foncier": statut_foncier,
+            "superficie_totale": surf_totale,
+            "superficie_cacao_productif": surf_cacao_prod,
+            "superficie_cacao_immature": surf_cacao_jeune,
+            "age_moyen": age_moyen_plan,
+            "relief_sol": relief_sol,
+            "contraintes": contraintes,
+            "waypoint_gps": waypoint_gps,
+            "voies_acces": voies_acces,
+            "elements_parcelle": elements_parcelle,
+            "nb_arbres_forestiers": nb_arbres_forestiers,
+            "essences_arbres": essences_arbres,
+            "densite_ombrage": densite_ombrage,
+            "texte_synthese_auto": texte_description,
+        }
 
-                st.session_state.etape_pdc = 13
-                st.rerun()
+        st.session_state.etape_pdc = 13
+        st.rerun()
 
     # =========================================================
     # ÉTAPE 13 : CULTURES, AGROFORESTERIE & MATÉRIEL AGRICOLE
