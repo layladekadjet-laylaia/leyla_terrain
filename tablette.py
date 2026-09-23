@@ -125,6 +125,36 @@ def charger_donnees_par_module(nom_module):
         except Exception:
             return pd.DataFrame()
 
+# --- FONCTION D'UPLOAD DU PDF VERS SUPABASE STORAGE ---
+def uploader_pdf_supabase(pdf_bytes, nom_fichier):
+    """Téléverse le fichier PDF vers le bucket Supabase Storage et retourne son URL publique."""
+    try:
+        url_supabase = st.secrets["supabase"]["url"]
+        key_supabase = st.secrets["supabase"]["key"]
+        bucket_name = "pdc-rapports"
+        
+        storage_url = f"{url_supabase}/storage/v1/object/{bucket_name}/{nom_fichier}"
+        
+        headers = {
+            "apikey": key_supabase,
+            "Authorization": f"Bearer {key_supabase}",
+            "Content-Type": "application/pdf",
+            "x-upsert": "true"
+        }
+        
+        response = requests.post(storage_url, data=pdf_bytes, headers=headers, timeout=20)
+        
+        if response.status_code in [200, 201]:
+            pdf_public_url = f"{url_supabase}/storage/v1/object/public/{bucket_name}/{nom_fichier}"
+            return pdf_public_url
+        else:
+            st.sidebar.error(f"⚠️ Erreur Storage Supabase ({response.status_code}) : {response.text}")
+            return None
+            
+    except Exception as e:
+        st.sidebar.error(f"❌ Erreur lors de l'envoi du PDF vers Supabase : {e}")
+        return None
+
 # --- FONCTION D'AFFICHAGE POUR IMPRESSION (MODE GLOBAL) ---
 def afficher_vue_impression_dynamique():
     st.markdown("""
@@ -145,10 +175,8 @@ def afficher_vue_impression_dynamique():
     st.caption("Aperçu global récapitulatif pour impression PDF")
     st.divider()
 
-    # 1. Vérification si des réponses explicites du PDC existent
     reponses = st.session_state.get("reponses_pdc", {})
 
-    # 2. Si reponses_pdc est vide, on récupère directement dans session_state
     if not reponses:
         cles_a_ignorer = [
             "appareil_deverrouille", "identifie", "code_agent_connecte", 
@@ -160,26 +188,33 @@ def afficher_vue_impression_dynamique():
             and not str(k).startswith("FormSubmitter") and k not in cles_a_ignorer
         }
 
-    # 3. Affichage si des données sont trouvées
     if reponses:
         st.subheader("📌 Données collectées durant la session")
         for cle, valeur in reponses.items():
-            # Formatage propre du nom de la clé
             nom_champ = str(cle).replace("_", " ").capitalize()
             
             if isinstance(valeur, dict):
                 st.markdown(f"### {nom_champ}")
                 for sub_k, sub_v in valeur.items():
                     st.write(f"- **{sub_k} :** {sub_v}")
+            elif isinstance(valeur, pd.DataFrame):
+                if not valeur.empty:
+                    st.markdown(f"### {nom_champ}")
+                    st.dataframe(valeur, use_container_width=True)
             elif isinstance(valeur, list):
-                st.markdown(f"### {nom_champ}")
-                st.table(valeur)
+                if len(valeur) > 0:
+                    st.markdown(f"### {nom_champ}")
+                    if isinstance(valeur[0], dict):
+                        st.table(valeur)
+                    else:
+                        for item in valeur:
+                            st.write(f"- {item}")
             else:
-                st.write(f"**{nom_champ} :** {valeur}")
+                if valeur != "" and valeur is not None:
+                    st.write(f"**{nom_champ} :** {valeur}")
             st.divider()
     else:
         st.warning("⚠️ Aucune donnée n'a été détectée dans la session active. Assure-toi d'avoir validé les formulaires des étapes.")
-
 
 # --- INITIALISATION DE LA SESSION ET SÉCURITÉ ---
 if "appareil_deverrouille" not in st.session_state:
@@ -207,12 +242,17 @@ def init_local_db():
             age_parcelle TEXT,
             module_execute TEXT,
             donnees_module TEXT,
+            pdf_blob BLOB,
             date_saisie TEXT,
             statut TEXT DEFAULT 'En attente'
         )
     """)
     try:
         cursor.execute("ALTER TABLE rapports_locaux ADD COLUMN module_execute TEXT")
+    except sqlite3.OperationalError:
+        pass
+    try:
+        cursor.execute("ALTER TABLE rapports_locaux ADD COLUMN pdf_blob BLOB")
     except sqlite3.OperationalError:
         pass
         
@@ -403,6 +443,7 @@ with st.sidebar:
                     session_complete[k] = v
 
         donnees_json_str = json.dumps(nettoyer_pour_json(session_complete), cls=NpEncoder, ensure_ascii=False)
+        pdf_blob = st.session_state.get("pdf_bytes_pdc")
         date_saisie = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         try:
@@ -412,9 +453,9 @@ with st.sidebar:
             cursor.execute("""
                 INSERT INTO rapports_locaux (
                     cooperative, section, technicien, producteur, code_producteur, 
-                    superficie, age_parcelle, module_execute, donnees_module, date_saisie, statut
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'En attente')
-            """, (coop, sec, tech, nom_prod, code_prod, float(superficie), age_p, module_a_enregistrer, donnees_json_str, date_saisie))
+                    superficie, age_parcelle, module_execute, donnees_module, pdf_blob, date_saisie, statut
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'En attente')
+            """, (coop, sec, tech, nom_prod, code_prod, float(superficie), age_p, module_a_enregistrer, donnees_json_str, pdf_blob, date_saisie))
             
             conn.commit()
             conn.close()
@@ -460,7 +501,7 @@ with st.sidebar:
                 cursor = conn.cursor()
                 cursor.execute("""
                     SELECT id, cooperative, section, technicien, producteur, code_producteur, 
-                           superficie, age_parcelle, module_execute, donnees_module 
+                           superficie, age_parcelle, module_execute, donnees_module, pdf_blob 
                     FROM rapports_locaux 
                     WHERE statut='En attente'
                 """)
@@ -469,7 +510,7 @@ with st.sidebar:
                 nb_succes = 0
                 
                 for ligne in lignes:
-                    row_id, coop, sec, tech, prod, code_p, sup, age_p, mod_t, donnees_m = ligne
+                    row_id, coop, sec, tech, prod, code_p, sup, age_p, mod_t, donnees_m, pdf_b = ligne
                     
                     try:
                         age_int = int(''.join(filter(str.isdigit, str(age_p))))
@@ -481,6 +522,13 @@ with st.sidebar:
                     else:
                         donnees_str = str(donnees_m) if donnees_m else "{}"
 
+                    # Upload du PDF vers Supabase Storage si disponible
+                    url_pdf_public = None
+                    if pdf_b is not None:
+                        code_clean = str(code_p).replace(" ", "_").replace("/", "_")
+                        nom_f = f"PDC_{code_clean}_{row_id}.pdf"
+                        url_pdf_public = uploader_pdf_supabase(pdf_b, nom_f)
+
                     payload = {
                         "cooperative_id": str(coop) if coop else "",
                         "section_id": str(sec) if sec else "",
@@ -491,11 +539,12 @@ with st.sidebar:
                         "age_cacaoyere": age_int,
                         "module_execute": str(mod_t) if mod_t else "",
                         "observations_diagnostic": donnees_str,
+                        "url_pdf_pdc": url_pdf_public,
                         "rdue_conforme": True
                     }
                     
                     try:
-                        response = requests.post(endpoint, json=payload, headers=headers, timeout=10)
+                        response = requests.post(endpoint, json=payload, headers=headers, timeout=15)
                         
                         if response.status_code in [200, 201, 204]:
                             cursor.execute("UPDATE rapports_locaux SET statut='Envoyé' WHERE id=?", (row_id,))
@@ -549,10 +598,8 @@ if not st.session_state.appareil_deverrouille:
 
 # --- 3. ACCÈS AUX MODULES OU MODE IMPRESSION ---
 if mode_impression:
-    # Si la case est cochée, afficher l'aperçu global pour impression
     afficher_vue_impression_dynamique()
 else:
-    # Déroulement classique du menu de l'application
     st.header("🛠️ Modules de Saisie")
     st.caption(f"👤 Session Agent : **{st.session_state.get('code_agent_connecte', 'Inconnu')}**")
 
