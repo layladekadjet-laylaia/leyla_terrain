@@ -2581,12 +2581,12 @@ def afficher():
         # BOUTONS DE NAVIGATION ÉTAPE 8
         col_e8_1, col_e8_2 = st.columns([1, 1])
         with col_e8_1:
-            if st.button("⬅️ Retour (Étape 7)", key="btn_retour_etape8", use_container_width=True):
+            if st.button("⬅️ Retour", key="btn_retour_etape8", use_container_width=True):
                 st.session_state.etape_pdc = 7
                 st.rerun()
 
         with col_e8_2:
-            if st.button("Suivant ➡️ (Vers Moyens & Coûts - Fiche 8)", key="btn_suivant_etape8", type="primary", use_container_width=True):
+            if st.button("Suivant ➡️", key="btn_suivant_etape8", type="primary", use_container_width=True):
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
                 
@@ -2652,12 +2652,12 @@ def afficher():
         # BOUTONS DE NAVIGATION ÉTAPE 9
         col_e9_1, col_e9_2 = st.columns([1, 1])
         with col_e9_1:
-            if st.button("⬅️ Retour (Étape 8)", key="btn_retour_etape9", use_container_width=True):
+            if st.button("⬅️ Retour", key="btn_retour_etape9", use_container_width=True):
                 st.session_state.etape_pdc = 8
                 st.rerun()
 
         with col_e9_2:
-            if st.button("Suivant ➡️ (Vers Diagnostic & Audit)", key="btn_suivant_etape9", type="primary", use_container_width=True):
+            if st.button("Suivant", key="btn_suivant_etape9", type="primary", use_container_width=True):
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
                 
@@ -2709,12 +2709,12 @@ def afficher():
 
         col_e9_1, col_e9_2 = st.columns([1, 1])
         with col_e9_1:
-            if st.button("⬅️ Retour (Moyens Fiche 8)", key="btn_retour_etape9", use_container_width=True):
+            if st.button("⬅️ Retour", key="btn_retour_etape9", use_container_width=True):
                 st.session_state.etape_pdc = 8
                 st.rerun()
 
         with col_e9_2:
-            if st.button("Suivant ➡️ (Vers Clôture & Validation)", key="btn_suivant_etape9", type="primary", use_container_width=True):
+            if st.button("Suivant ➡️", key="btn_suivant_etape9", type="primary", use_container_width=True):
                 st.session_state.reponses_pdc["score_conformite_etape1_8"] = score_global
                 st.session_state.etape_pdc = 10
                 st.rerun()
@@ -2773,12 +2773,12 @@ def afficher():
         # --- 10.3 ACTIONS / NAVIGATION ---
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
-            if st.button("⬅️ Retour (Étape 9 : Moyens & Coûts)", key="btn_retour_etape10", use_container_width=True):
+            if st.button("⬅️ Retour", key="btn_retour_etape10", use_container_width=True):
                 st.session_state.etape_pdc = 9
                 st.rerun()
                 
         with col_btn2:
-            if st.button("Suivant (Vers Partie 2 : Identification) ➡️", key="btn_suivant_etape10", type="primary", use_container_width=True):
+            if st.button("Suivant  ➡️", key="btn_suivant_etape10", type="primary", use_container_width=True):
                 st.session_state.etape_pdc = 11
                 st.rerun()
 
@@ -2813,12 +2813,12 @@ def afficher():
         col1, col2 = st.columns([1, 1])
         
         with col1:
-            if st.button("⬅️ Retour (Étape 10 : Bilan & Diagnostic)", key="btn_retour_pdc_etape11", use_container_width=True):
+            if st.button("⬅️ Retour", key="btn_retour_pdc_etape11", use_container_width=True):
                 st.session_state.etape_pdc = 10
                 st.rerun()
 
         with col2:
-            if st.button("Suivant (Vers Étape 12 : Info Ménage) ➡️", key="btn_suivant_pdc_etape11", type="primary", use_container_width=True):
+            if st.button("Suivant ➡️", key="btn_suivant_pdc_etape11", type="primary", use_container_width=True):
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
                     
@@ -3749,7 +3749,7 @@ def afficher():
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
             if st.button(
-                "⬅️ Retour (Étape 12 : Exploitation)",
+                "⬅️ Retour",
                 key="btn_retour_etape13",
                 use_container_width=True,
             ):
@@ -3758,7 +3758,7 @@ def afficher():
 
         with col_btn2:
             if st.button(
-                "Suivant (Vers Étape 14) ➡️",
+                "Suivant ➡️",
                 key="btn_suivant_etape13",
                 type="primary",
                 use_container_width=True,
@@ -4055,7 +4055,7 @@ def afficher():
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
             if st.button(
-                "⬅️ Retour (Étape 13 : Cultures & Matériel)",
+                "⬅️ Retour",
                 key="btn_retour_etape14",
                 use_container_width=True,
             ):
@@ -4064,7 +4064,7 @@ def afficher():
 
         with col_btn2:
             if st.button(
-                "Suivant (Vers Étape 15 : Bilan & PDF) ➡️",
+                "Suivant ➡️",
                 key="btn_suivant_etape14",
                 type="primary",
                 use_container_width=True,
