@@ -1006,6 +1006,66 @@ def afficher():
     total_etapes = 15
     st.progress(st.session_state.etape_pdc / total_etapes)
 
+
+
+import streamlit as st
+
+# Initialisation du dictionnaire maître pour les 15 étapes
+if "pdc_data" not in st.session_state:
+    st.session_state.pdc_data = {
+        "Étape 1/15 : Localisation & Identification de la Section": {},
+        "Étape 2/15 : Données de la Parcelle": {},
+        "Étape 3/15 : Données Socio-démographiques (Fiche 1)": {},
+        "Étape 4/15 : Données sur les Cultures, Équipements & Agroforesterie": {
+            "🌾 Données sur les cultures et parcelles": {},
+            "🛠️ Matériel agricole et équipements": {},
+            "🌳 Diagnostic des arbres d'ombrage et associés": {}
+        },
+        "Étape 5/15 : Densité et Rendement (Fiche 3)": {},
+        "Étape 6/15 : État Sanitaire, Sol, Récolte & Engrais (Fiche 3)": {},
+        "Étape 7/15 : Données Socio-économiques (Fiche 4)": {
+            "🏦 Compte d'épargne et Financement": {},
+            "📦 Production de cacao des trois (3) dernières années": {},
+            "💰 Sources de revenus autres que le cacao": {},
+            "🛒 Dépenses courantes du foyer": {},
+            "👥 Coût et gestion de la main d'œuvre": {}
+        },
+        "Étape 8/15 : Plan d'Action & Programme Annuel (Fiche 7)": {
+            "📊 Grille de décision": {},
+            "⚠️ Tableau d'analyse des problèmes": {},
+            "📅 Plan d'Action Quinquennal (Sur 5 ans)": {},
+            "🗓️ Programme Annuel d'Activités (Fiche 7)": {}
+        },
+        "Étape 9/15 : Détermination des moyens et des coûts (Fiche 8)": {
+            "📄 Bilan global des données collectées": {}
+        },
+        "Étape 10/15 : Bilan & Diagnostic Qualité du PDC": {
+            "🔍 Diagnostic Qualité du PDC": {},
+            "📌 Récapitulatif Synthétique": {}
+        },
+        "Étape 11/15 : Identification du Producteur (Situation de Référence)": {},
+        "Étape 12/15 : Informations Ménage & Description de l'Exploitation": {
+            "💳 Situation de l'épargne": {},
+            "👥 Situation de la main-d'œuvre": {},
+            "🏡 Description & Caractéristiques de l'Exploitation": {}
+        },
+        "Étape 13/15 : Cultures, Agroforesterie & Matériel Agricole": {
+            "🌾 Diversification & Cultures de l'Exploitation": {},
+            "🌳 Inventaire des Arbres hors Cacaoyer (Normes CCC)": {},
+            "🚜 Matériel Agricole & Équipements": {}
+        },
+        "Étape 14/15 : Planification Stratégique (5 Ans) & Programme Annuel d'Action": {
+            "📈 Planification Stratégique sur les Cinq (5) Prochaines Années": {},
+            "🗓️ Programme Annuel d'Action (Détail Année 1)": {},
+            "⚠️ Facteurs de Succès et d'Échec": {}
+        },
+        "Étape 15/15 : Bilan Synthétique, Faisabilité & Validation du PDC": {
+            "📋 Synthèse Générale de l'Exploitation": {},
+            "📊 Évaluation de la Faisabilité & Diagnostic de Réussite": {},
+            "💡 Recommandations du Conseiller Agricole": {}
+        }
+    }
+
     # ---------------------------------------------------------
     # ÉTAPE 1 : INFORMATIONS GÉNÉRALES & LOCALISATION
     # ---------------------------------------------------------
