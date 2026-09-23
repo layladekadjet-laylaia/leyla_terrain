@@ -98,6 +98,8 @@ def nettoyer_pour_json(d):
         }
     elif isinstance(d, list):
         return [nettoyer_pour_json(v) for v in d]
+    elif isinstance(d, pd.DataFrame):
+        return d.to_dict(orient="records")
     elif isinstance(d, (np.integer, int)):
         return int(d)
     elif isinstance(d, (np.floating, float)):
@@ -518,7 +520,7 @@ with st.sidebar:
                         age_int = 0
 
                     if isinstance(donnees_m, (dict, list)):
-                        donnees_str = json.dumps(donnees_m)
+                        donnees_str = json.dumps(nettoyer_pour_json(donnees_m), cls=NpEncoder, ensure_ascii=False)
                     else:
                         donnees_str = str(donnees_m) if donnees_m else "{}"
 
