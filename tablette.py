@@ -18,6 +18,62 @@ from generate_croquis import generer_croquis_parcelle
 # --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(page_title="Leyla Agri - Tablette Terrain", page_icon="📱", layout="centered")
 
+# --- INITIALISATION DES DONNÉES DU PDC EN SESSION (15 ÉTAPES) ---
+if "pdc_data" not in st.session_state:
+    st.session_state.pdc_data = {
+        "Étape 1/15 : Localisation & Identification de la Section": {},
+        "Étape 2/15 : Données de la Parcelle": {},
+        "Étape 3/15 : Données Socio-démographiques (Fiche 1)": {},
+        "Étape 4/15 : Données sur les Cultures, Équipements & Agroforesterie": {
+            "🌾 Données sur les cultures et parcelles": {},
+            "🛠️ Matériel agricole et équipements": {},
+            "🌳 Diagnostic des arbres d'ombrage et associés": {}
+        },
+        "Étape 5/15 : Densité et Rendement (Fiche 3)": {},
+        "Étape 6/15 : État Sanitaire, Sol, Récolte & Engrais (Fiche 3)": {},
+        "Étape 7/15 : Données Socio-économiques (Fiche 4)": {
+            "🏦 Compte d'épargne et Financement": {},
+            "📦 Production de cacao des trois (3) dernières années": {},
+            "💰 Sources de revenus autres que le cacao": {},
+            "🛒 Dépenses courantes du foyer": {},
+            "👥 Coût et gestion de la main d'œuvre": {}
+        },
+        "Étape 8/15 : Plan d'Action & Programme Annuel (Fiche 7)": {
+            "📊 Grille de décision": {},
+            "⚠️ Tableau d'analyse des problèmes": {},
+            "📅 Plan d'Action Quinquennal (Sur 5 ans)": {},
+            "🗓️ Programme Annuel d'Activités (Fiche 7)": {}
+        },
+        "Étape 9/15 : Détermination des moyens et des coûts (Fiche 8)": {
+            "📄 Bilan global des données collectées": {}
+        },
+        "Étape 10/15 : Bilan & Diagnostic Qualité du PDC": {
+            "🔍 Diagnostic Qualité du PDC": {},
+            "📌 Récapitulatif Synthétique": {}
+        },
+        "Étape 11/15 : Identification du Producteur (Situation de Référence)": {},
+        "Étape 12/15 : Informations Ménage & Description de l'Exploitation": {
+            "💳 Situation de l'épargne": {},
+            "👥 Situation de la main-d'œuvre": {},
+            "🏡 Description & Caractéristiques de l'Exploitation": {}
+        },
+        "Étape 13/15 : Cultures, Agroforesterie & Matériel Agricole": {
+            "🌾 Diversification & Cultures de l'Exploitation": {},
+            "🌳 Inventaire des Arbres hors Cacaoyer (Normes CCC)": {},
+            "🚜 Matériel Agricole & Équipements": {}
+        },
+        "Étape 14/15 : Planification Stratégique (5 Ans) & Programme Annuel d'Action": {
+            "📈 Planification Stratégique sur les Cinq (5) Prochaines Années": {},
+            "🗓️ Programme Annuel d'Action (Détail Année 1)": {},
+            "⚠️ Facteurs de Succès et d'Échec": {}
+        },
+        "Étape 15/15 : Bilan Synthétique, Faisabilité & Validation du PDC": {
+            "📋 Synthèse Générale de l'Exploitation": {},
+            "📊 Évaluation de la Faisabilité & Diagnostic de Réussite": {},
+            "💡 Recommandations du Conseiller Agricole": {}
+        }
+    }
+
 # --- FONCTIONS UTILITAIRES POUR JSON ET SQLITE ---
 class NpEncoder(json.JSONEncoder):
     """Convertit les types NumPy / Pandas en types natifs Python."""
@@ -69,7 +125,55 @@ def charger_donnees_par_module(nom_module):
         except Exception:
             return pd.DataFrame()
 
-# --- INITIALISATION DE LA SESSION ---
+# --- FONCTION D'AFFICHAGE POUR IMPRESSION (MODE GLOBAL) ---
+def afficher_vue_impression_dynamique():
+    """Génère l'affichage récapitulatif optimisé pour la fonction Print du navigateur."""
+    st.markdown("""
+        <style>
+        @media print {
+            [data-testid="stSidebar"], .stButton, header, footer { 
+                display: none !important; 
+            }
+            .main .block-container { 
+                max-width: 100% !important; 
+                padding: 0 !important; 
+            }
+        }
+        </style>
+    """, unsafe_allow_html=True)
+
+    st.title("📋 Plan de Développement de Conseil (PDC) - Rapport Complet")
+    st.caption("Aperçu global récapitulatif pour impression PDF (Étapes 1 à 15)")
+    st.divider()
+
+    for etape_nom, etape_contenu in st.session_state.pdc_data.items():
+        st.header(etape_nom)
+        
+        if not etape_contenu:
+            st.info("Aucune donnée renseignée pour cette étape.")
+            st.divider()
+            continue
+
+        for sous_cle, valeur in etape_contenu.items():
+            if isinstance(valeur, dict):
+                st.subheader(f"  {sous_cle}")
+                if not valeur:
+                    st.write("  *Aucune donnée.*")
+                else:
+                    for sub_k, sub_v in valeur.items():
+                        st.write(f"- **{sub_k} :** {sub_v}")
+            elif isinstance(valeur, list):
+                st.subheader(f"  {sous_cle}")
+                if valeur:
+                    st.table(valeur)
+                else:
+                    st.write("  *Aucune donnée enregistrée.*")
+            else:
+                st.write(f"**{sous_cle} :** {valeur}")
+        
+        st.divider()
+
+# --- INITIALISATION DE LA SESSION ET SÉCURITÉ ---
 if "appareil_deverrouille" not in st.session_state:
     st.session_state.appareil_deverrouille = False
 
@@ -151,17 +255,19 @@ with st.sidebar:
             st.rerun()
 
     st.markdown("---")
+    st.markdown("## 🖨️ Mode Impression")
+    mode_impression = st.checkbox("🖨️ Activer le Mode Vue Impression", key="sb_mode_impression")
+
+    st.markdown("---")
     st.markdown("## 📄 Actions PDC")
     
-        # GÉNÉRATION DU PDF FINAL (ENRICHIE AVEC SQLITE & SESSION)
+    # GÉNÉRATION DU PDF FINAL
     if st.button("🎓 Générer le PDF Final", key="sb_btn_generer_pdf", type="primary", use_container_width=True):
         reponses_completes = {}
         
-        # 1. Récupération des réponses explicites du PDC
         if "reponses_pdc" in st.session_state and isinstance(st.session_state.reponses_pdc, dict):
             reponses_completes.update(st.session_state.reponses_pdc)
         
-        # 2. Parcours complet du session_state pour capturer les diagnostics et formulaires
         cles_a_ignorer = [
             "appareil_deverrouille", "identifie", "code_agent_connecte", 
             "pdf_bytes_pdc", "etape_pdc", "reponses_pdc"
@@ -177,7 +283,6 @@ with st.sidebar:
         section_zone = st.session_state.get("section") or st.session_state.get("zone", "Section Divo-Sud")
         score_final = st.session_state.get("score_pdc") or st.session_state.get("score_faisabilite") or st.session_state.get("score", 0)
 
-        # 3. Récupération de tous les rapports enregistrés en local SQLite pour ce producteur / cette session
         rapports_sqlite = []
         try:
             conn = sqlite3.connect("leyla_terrain.db")
@@ -203,7 +308,6 @@ with st.sidebar:
         except Exception as e:
             st.warning(f"Note SQLite : {e}")
 
-        # Assemblage de l'ensemble du contenu pour le moteur PDF
         payload_pdf = {
             "nom_producteur": nom_prod,
             "code_ccc": code_prod,
@@ -221,7 +325,6 @@ with st.sidebar:
             st.rerun()
         except Exception as e:
             st.error(f"❌ Erreur PDF : {e}")
-
 
     # TÉLÉCHARGER LE PDF
     if st.session_state.get("pdf_bytes_pdc") is not None:
@@ -436,33 +539,38 @@ if not st.session_state.appareil_deverrouille:
     st.warning("⚠️ L'application est verrouillée. Entrez le mot de passe pour continuer.")
     st.stop()
 
-# --- 3. ACCÈS AUX MODULES ---
-st.header("🛠️ Modules de Saisie")
-st.caption(f"👤 Session Agent : **{st.session_state.get('code_agent_connecte', 'Inconnu')}**")
+# --- 3. ACCÈS AUX MODULES OU MODE IMPRESSION ---
+if mode_impression:
+    # Si la case est cochée, afficher l'aperçu global pour impression
+    afficher_vue_impression_dynamique()
+else:
+    # Déroulement classique du menu de l'application
+    st.header("🛠️ Modules de Saisie")
+    st.caption(f"👤 Session Agent : **{st.session_state.get('code_agent_connecte', 'Inconnu')}**")
 
-choix_module = st.selectbox(
-    "Sélectionnez le module à exécuter :",
-    [
-        "-- Choisir un module --",
-        "1. Diagnostic Phytosanitaire",
-        "2. Géo-intelligence & RDUE",
-        "3. Estimation de Rendement",
-        "4. PDC",            
-    ],
-    key="sb_choix_module_principal"
-)
+    choix_module = st.selectbox(
+        "Sélectionnez le module à exécuter :",
+        [
+            "-- Choisir un module --",
+            "1. Diagnostic Phytosanitaire",
+            "2. Géo-intelligence & RDUE",
+            "3. Estimation de Rendement",
+            "4. PDC",            
+        ],
+        key="sb_choix_module_principal"
+    )
 
-st.markdown("---")
+    st.markdown("---")
 
-# --- APPEL DES MODULES ---
-if choix_module == "1. Diagnostic Phytosanitaire":
-    diagnostique.afficher()
+    # APPEL DES MODULES
+    if choix_module == "1. Diagnostic Phytosanitaire":
+        diagnostique.afficher()
 
-elif choix_module == "2. Géo-intelligence & RDUE":
-    geolocalisation.afficher()
+    elif choix_module == "2. Géo-intelligence & RDUE":
+        geolocalisation.afficher()
 
-elif choix_module == "3. Estimation de Rendement":
-    estimation_de_rendement.afficher()
+    elif choix_module == "3. Estimation de Rendement":
+        estimation_de_rendement.afficher()
 
-elif choix_module == "4. PDC":
-    pdc.afficher()
+    elif choix_module == "4. PDC":
+        pdc.afficher()
