@@ -127,7 +127,6 @@ def charger_donnees_par_module(nom_module):
 
 # --- FONCTION D'AFFICHAGE POUR IMPRESSION (MODE GLOBAL) ---
 def afficher_vue_impression_dynamique():
-    """Génère l'affichage récapitulatif optimisé pour la fonction Print du navigateur."""
     st.markdown("""
         <style>
         @media print {
@@ -143,35 +142,44 @@ def afficher_vue_impression_dynamique():
     """, unsafe_allow_html=True)
 
     st.title("📋 Plan de Développement de Conseil (PDC) - Rapport Complet")
-    st.caption("Aperçu global récapitulatif pour impression PDF (Étapes 1 à 15)")
+    st.caption("Aperçu global récapitulatif pour impression PDF")
     st.divider()
 
-    for etape_nom, etape_contenu in st.session_state.pdc_data.items():
-        st.header(etape_nom)
-        
-        if not etape_contenu:
-            st.info("Aucune donnée renseignée pour cette étape.")
-            st.divider()
-            continue
+    # 1. Vérification si des réponses explicites du PDC existent
+    reponses = st.session_state.get("reponses_pdc", {})
 
-        for sous_cle, valeur in etape_contenu.items():
+    # 2. Si reponses_pdc est vide, on récupère directement dans session_state
+    if not reponses:
+        cles_a_ignorer = [
+            "appareil_deverrouille", "identifie", "code_agent_connecte", 
+            "pdf_bytes_pdc", "etape_pdc", "pdc_data", "cooperative", "section", "technicien"
+        ]
+        reponses = {
+            k: v for k, v in st.session_state.items() 
+            if not str(k).startswith("btn_") and not str(k).startswith("sb_") 
+            and not str(k).startswith("FormSubmitter") and k not in cles_a_ignorer
+        }
+
+    # 3. Affichage si des données sont trouvées
+    if reponses:
+        st.subheader("📌 Données collectées durant la session")
+        for cle, valeur in reponses.items():
+            # Formatage propre du nom de la clé
+            nom_champ = str(cle).replace("_", " ").capitalize()
+            
             if isinstance(valeur, dict):
-                st.subheader(f"  {sous_cle}")
-                if not valeur:
-                    st.write("  *Aucune donnée.*")
-                else:
-                    for sub_k, sub_v in valeur.items():
-                        st.write(f"- **{sub_k} :** {sub_v}")
+                st.markdown(f"### {nom_champ}")
+                for sub_k, sub_v in valeur.items():
+                    st.write(f"- **{sub_k} :** {sub_v}")
             elif isinstance(valeur, list):
-                st.subheader(f"  {sous_cle}")
-                if valeur:
-                    st.table(valeur)
-                else:
-                    st.write("  *Aucune donnée enregistrée.*")
+                st.markdown(f"### {nom_champ}")
+                st.table(valeur)
             else:
-                st.write(f"**{sous_cle} :** {valeur}")
-        
-        st.divider()
+                st.write(f"**{nom_champ} :** {valeur}")
+            st.divider()
+    else:
+        st.warning("⚠️ Aucune donnée n'a été détectée dans la session active. Assure-toi d'avoir validé les formulaires des étapes.")
+
 
 # --- INITIALISATION DE LA SESSION ET SÉCURITÉ ---
 if "appareil_deverrouille" not in st.session_state:
