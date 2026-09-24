@@ -288,9 +288,21 @@ st.markdown("---")
 if not st.session_state.identifie:
     st.subheader("🔒 Profil d'identification du Technicien")
     with st.form("form_identification"):
-        cooperative = st.text_input("Identification de la Coopérative", value="SCACO")
-        section = st.text_input("Identification de la Section", value="Section Divo-Sud")
-        technicien = st.text_input("Nom, Prénom & Identifiant", value="Agent Kouamé Konan - ID 0001")
+        cooperative = st.text_input(
+            "Identification de la Coopérative", 
+            value="", 
+            placeholder="Ex: SCACO, SOCABA, COOP-CA..."
+        )
+        section = st.text_input(
+            "Identification de la Section", 
+            value="", 
+            placeholder="Ex: Section Divo-Sud, Lakota, Soubré..."
+        )
+        technicien = st.text_input(
+            "Nom, Prénom & Identifiant", 
+            value="", 
+            placeholder="Ex: Agent Kouamé Konan - ID 0001"
+        )
         
         btn_valider_profil = st.form_submit_button("Enregistrer et Verrouiller le Profil")
         if btn_valider_profil:
@@ -303,6 +315,7 @@ if not st.session_state.identifie:
             else:
                 st.error("Veuillez remplir tous les champs d'identification.")
     st.stop()
+
 
 # --- BARRE LATÉRALE ---
 with st.sidebar:
