@@ -282,11 +282,22 @@ init_local_db()
 
 
 
+import streamlit as st
+import sqlite3
+import os
+import json
+import time
+from datetime import datetime
+import requests
+import numpy as np
+import pandas as pd
+import urllib.parse
+
 # --- TITRE PRINCIPAL ---
 st.title("📱 Leyla Agri - Mode Terrain")
 st.markdown("---")
 
-# --- 1. PROFIL D'IDENTIFICATION (EXÉCUTÉ SEUL SI NON IDENTIFIÉ) ---
+# --- 1. PROFIL D'IDENTIFICATION ---
 if not st.session_state.get("identifie", False):
     st.subheader("🔒 Profil d'identification du Technicien")
     with st.form("form_identification"):
@@ -317,11 +328,11 @@ if not st.session_state.get("identifie", False):
             else:
                 st.error("Veuillez remplir tous les champs d'identification.")
     
-    # Interrompt immédiatement le script pour empêcher l'exécution de la sidebar
+    # Interrompt immédiatement l'exécution pour éviter le double rendu du sidebar
     st.stop()
 
 
-# --- BARRE LATÉRALE (S'AFFICHE UNIQUEMENT SI IDENTIFIÉ) ---
+# --- BARRE LATÉRALE (EXÉCUTÉE UNIQUEMENT SI IDENTIFIÉ) ---
 with st.sidebar:
     st.markdown("### 👤 Session Active")
     st.write(f"**Coop :** {st.session_state.get('cooperative', 'N/A')}")
