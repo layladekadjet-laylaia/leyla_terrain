@@ -1291,31 +1291,152 @@ def afficher():
                     )
 
 
-
     # ---------------------------------------------------------
-    # ÉTAPE 2 : CARACTÉRISTIQUES DE LA PARCELLE
+    # ÉTAPE 2 : IDENTIFICATION DU PRODUCTEUR & DONNÉES DE LA PARCELLE
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 2:
-        st.subheader("Étape 2/15 : Données de la Parcelle")
+        st.subheader("Étape 2/15 : Identification du Producteur & Données de la Parcelle")
+        st.info("Saisie des informations d'identification officielles selon le modèle Conseil Café-Cacao et caractéristiques de la parcelle.")
 
-        superficie = st.number_input("Superficie de la plantation (ha)", min_value=0.1, step=0.5)
-        annee_creation = st.number_input("Année de création", min_value=1950, max_value=2026, value=2010)
-        lat = st.number_input("Latitude GPS", format="%.6f", value=5.7881)
-        lon = st.number_input("Longitude GPS", format="%.6f", value=-6.5918)
+        # --- PARTIE 1 : IDENTIFICATION DU PRODUCTEUR ---
+        st.markdown("### 👤 Identification du Producteur (Situation de Référence)")
+        
+        col_id1, col_id2 = st.columns(2)
+        
+        with col_id1:
+            nom_prenoms = st.text_input(
+                "Nom et prénoms du producteur", 
+                placeholder="Ex: Kouamé Konan Jean", 
+                key="input_nom_prenoms_e2"
+            )
+            contact_tel = st.text_input(
+                "Contact (Tél)", 
+                placeholder="Ex: 0708091011", 
+                key="input_contact_tel_e2"
+            )
+            code_national = st.text_input(
+                "Code National du producteur (Le Conseil du Café-Cacao)", 
+                placeholder="Ex: CCC-12345678", 
+                key="input_code_national_e2"
+            )
+            code_groupe = st.text_input(
+                "Code groupe", 
+                placeholder="Ex: GRP-01", 
+                key="input_code_groupe_e2"
+            )
+            nom_entite = st.text_input(
+                "Nom Entité reconnue", 
+                placeholder="Ex: COOP-CA SCACO", 
+                key="input_nom_entite_e2"
+            )
+            code_entite = st.text_input(
+                "Code Entité reconnue", 
+                placeholder="Ex: COOP-001", 
+                key="input_code_entite_e2"
+            )
 
+        with col_id2:
+            delegation_regionale = st.text_input(
+                "Délégation Régionale du Conseil du Café-Cacao", 
+                placeholder="Ex: Divo", 
+                key="input_delegation_e2"
+            )
+            departement = st.text_input(
+                "Département", 
+                placeholder="Ex: Divo", 
+                key="input_departement_e2"
+            )
+            sous_prefecture = st.text_input(
+                "Sous-Préfecture", 
+                placeholder="Ex: Divo-Sud", 
+                key="input_sprefecture_e2"
+            )
+            village = st.text_input(
+                "Village", 
+                placeholder="Ex: Hermankono", 
+                key="input_village_e2"
+            )
+            campement = st.text_input(
+                "Campement", 
+                placeholder="Ex: Campement Kouamé", 
+                key="input_campement_e2"
+            )
+
+        st.markdown("---")
+
+        # --- PARTIE 2 : DONNÉES DE LA PARCELLE ---
+        st.markdown("### 📍 Données de la Parcelle")
+
+        superficie = st.number_input(
+            "Superficie de la plantation (ha)", 
+            min_value=0.1, 
+            step=0.5, 
+            key="input_superficie_e2"
+        )
+        annee_creation = st.number_input(
+            "Année de création", 
+            min_value=1950, 
+            max_value=2026, 
+            value=2010, 
+            key="input_annee_creation_e2"
+        )
+        lat = st.number_input(
+            "Latitude GPS", 
+            format="%.6f", 
+            value=5.7881, 
+            key="input_lat_e2"
+        )
+        lon = st.number_input(
+            "Longitude GPS", 
+            format="%.6f", 
+            value=-6.5918, 
+            key="input_lon_e2"
+        )
+
+        st.markdown("---")
+
+        # --- BOUTONS DE NAVIGATION ---
         col1, col2 = st.columns([1, 1])
+        
         with col1:
-            if st.button("⬅️ Retour", use_container_width=True):
+            if st.button("⬅️ Retour", key="btn_retour_pdc_etape2", use_container_width=True):
                 st.session_state.etape_pdc = 1
                 st.rerun()
+
         with col2:
-            if st.button("Suivant ➡️", use_container_width=True):
+            if st.button("Suivant ➡️", key="btn_suivant_pdc_etape2", type="primary", use_container_width=True):
+                if "reponses_pdc" not in st.session_state:
+                    st.session_state.reponses_pdc = {}
+
+                # Mise à jour globale des réponses (Identification + Parcelle)
                 st.session_state.reponses_pdc.update({
-                    "superficie": superficie, "annee_creation": annee_creation,
-                    "lat": lat, "lon": lon
+                    # Identification Producteur
+                    "nom_prenoms_producteur": nom_prenoms,
+                    "contact_tel": contact_tel,
+                    "code_national_producteur": code_national,
+                    "code_groupe": code_groupe,
+                    "nom_entite_reconnue": nom_entite,
+                    "code_entite_reconnue": code_entite,
+                    "delegation_regionale": delegation_regionale,
+                    "departement": departement,
+                    "sous_prefecture": sous_prefecture,
+                    "village": village,
+                    "campement": campement,
+                    # Caractéristiques Parcelle
+                    "superficie": superficie,
+                    "annee_creation": annee_creation,
+                    "lat": lat,
+                    "lon": lon
                 })
+                
+                # Inscription directe dans la session racine pour SQLite / Supabase
+                st.session_state["nom_producteur"] = nom_prenoms
+                st.session_state["code_producteur"] = code_national
+                st.session_state["superficie"] = superficie
+                
                 st.session_state.etape_pdc = 3
                 st.rerun()
+
 
     # ---------------------------------------------------------
     # ÉTAPE 3 : DONNÉES SOCIO-DÉMOGRAPHIQUES (FICHE 1)
