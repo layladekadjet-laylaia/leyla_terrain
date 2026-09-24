@@ -22,7 +22,7 @@ st.set_page_config(page_title="Leyla Agri - Tablette Terrain", page_icon="📱",
 # --- ANNUAIRE DES DESTINATAIRES (COOPÉRATIVES ET CABINETS) ---
 ANNUAIRE_DESTINATAIRES = {
     "Coopératives": {
-        "SOCABA (Lakota)": "directeur.lakota@socaba.ci",
+        "SOCOAMO": "directionsocoamo@gmail.com",
         "COOP-CA San-Pédro": "direction@coopcasp.ci",
         "CANV (Soubré)": "coordonateur@canv.ci",
         "SCACO (Divo)": "direction@scaco.ci"
