@@ -23,12 +23,13 @@ st.set_page_config(page_title="Leyla Agri - Tablette Terrain", page_icon="📱",
 ANNUAIRE_DESTINATAIRES = {
     "Coopératives": {
         "SOCOAMO": "directionsocoamo@gmail.com",
-        "COOP-CA San-Pédro": "direction@coopcasp.ci",
-        "CANV (Soubré)": "coordonateur@canv.ci",
-        "SCACO (Divo)": "direction@scaco.ci"
+        "COOP-CA menecentre": "directionmenecentre@gmail.com",
+        "SOCAGNIPI": "directionsocagnipi",
+        "ROBERTPORTE": "directionrobertporte",
+        "NECAB": "directionnecab@gmail.com" 
     },
     "Cabinets de Conseil": {
-        "Cabinet AgriExpert": "contact@agriexpert.ci",
+        "Cabinet AgriForce": "agriforce@gmail.com",
         "Cabinet Audit & Agro": "direction@audit-agro.ci",
         "Cabinet Conseils & Developpement": "contact@ccd.ci"
     }
