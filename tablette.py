@@ -281,11 +281,12 @@ def init_local_db():
 init_local_db()
 
 
+
 # --- TITRE PRINCIPAL ---
 st.title("📱 Leyla Agri - Mode Terrain")
 st.markdown("---")
 
-# --- 1. PROFIL D'IDENTIFICATION ---
+# --- 1. PROFIL D'IDENTIFICATION (EXÉCUTÉ SEUL SI NON IDENTIFIÉ) ---
 if not st.session_state.get("identifie", False):
     st.subheader("🔒 Profil d'identification du Technicien")
     with st.form("form_identification"):
@@ -315,351 +316,352 @@ if not st.session_state.get("identifie", False):
                 st.rerun()
             else:
                 st.error("Veuillez remplir tous les champs d'identification.")
+    
+    # Interrompt immédiatement le script pour empêcher l'exécution de la sidebar
     st.stop()
 
 
 # --- BARRE LATÉRALE (S'AFFICHE UNIQUEMENT SI IDENTIFIÉ) ---
-if st.session_state.get("identifie", False):
-    with st.sidebar:
-        st.markdown("### 👤 Session Active")
-        st.write(f"**Coop :** {st.session_state.get('cooperative', 'N/A')}")
-        st.write(f"**Section :** {st.session_state.get('section', 'N/A')}")
-        st.write(f"**Agent :** {st.session_state.get('technicien', 'N/A')}")
-        
-        if st.button("🔓 Modifier le profil", key="sb_btn_modifier_profil"):
-            st.session_state.identifie = False
+with st.sidebar:
+    st.markdown("### 👤 Session Active")
+    st.write(f"**Coop :** {st.session_state.get('cooperative', 'N/A')}")
+    st.write(f"**Section :** {st.session_state.get('section', 'N/A')}")
+    st.write(f"**Agent :** {st.session_state.get('technicien', 'N/A')}")
+    
+    if st.button("🔓 Modifier le profil", key="sb_btn_modifier_profil"):
+        st.session_state.identifie = False
+        st.rerun()
+
+    st.markdown("---")
+    if st.session_state.get("appareil_deverrouille", False):
+        if st.button("🔒 Verrouiller la tablette", use_container_width=True, key="sb_btn_verrouiller"):
+            st.session_state.appareil_deverrouille = False
             st.rerun()
 
-        st.markdown("---")
-        if st.session_state.get("appareil_deverrouille", False):
-            if st.button("🔒 Verrouiller la tablette", use_container_width=True, key="sb_btn_verrouiller"):
-                st.session_state.appareil_deverrouille = False
-                st.rerun()
+    st.markdown("---")
+    st.markdown("## 🖨️ Mode Impression")
+    mode_impression = st.checkbox("🖨️ Activer le Mode Vue Impression", key="sb_mode_impression")
 
-        st.markdown("---")
-        st.markdown("## 🖨️ Mode Impression")
-        mode_impression = st.checkbox("🖨️ Activer le Mode Vue Impression", key="sb_mode_impression")
-
-        st.markdown("---")
-        st.markdown("## 📄 Actions PDC")
+    st.markdown("---")
+    st.markdown("## 📄 Actions PDC")
+    
+    # GÉNÉRATION DU PDF FINAL
+    if st.button("🎓 Générer le PDF Final", key="sb_btn_generer_pdf", type="primary", use_container_width=True):
+        reponses_completes = {}
         
-        # GÉNÉRATION DU PDF FINAL
-        if st.button("🎓 Générer le PDF Final", key="sb_btn_generer_pdf", type="primary", use_container_width=True):
-            reponses_completes = {}
-            
-            if "reponses_pdc" in st.session_state and isinstance(st.session_state.reponses_pdc, dict):
-                reponses_completes.update(st.session_state.reponses_pdc)
-            
-            cles_a_ignorer = [
-                "appareil_deverrouille", "identifie", "code_agent_connecte", 
-                "pdf_bytes_pdc", "etape_pdc", "reponses_pdc"
-            ]
-            
-            for k, v in st.session_state.items():
-                if not str(k).startswith("btn_") and not str(k).startswith("sb_") and not str(k).startswith("FormSubmitter") and k not in cles_a_ignorer:
-                    if isinstance(v, (str, int, float, bool, list, dict)):
-                        reponses_completes[k] = v
-
-            nom_prod = st.session_state.get("nom_producteur") or st.session_state.get("producteur") or st.session_state.get("nom_prod", "Inconnu")
-            code_prod = st.session_state.get("code_producteur") or st.session_state.get("code_ccc", "CCC-001")
-            section_zone = st.session_state.get("section") or st.session_state.get("zone", "Section Divo-Sud")
-            score_final = st.session_state.get("score_pdc") or st.session_state.get("score_faisabilite") or st.session_state.get("score", 0)
-
-            rapports_sqlite = []
-            try:
-                conn = sqlite3.connect("leyla_terrain.db")
-                cursor = conn.cursor()
-                cursor.execute("""
-                    SELECT module_execute, donnees_module, date_saisie 
-                    FROM rapports_locaux 
-                    ORDER BY id DESC
-                """)
-                lignes = cursor.fetchall()
-                conn.close()
-                
-                for mod_exe, d_json, d_saisie in lignes:
-                    try:
-                        data_parsed = json.loads(d_json) if isinstance(d_json, str) else d_json
-                    except Exception:
-                        data_parsed = str(d_json)
-                    rapports_sqlite.append({
-                        "module": mod_exe,
-                        "date": d_saisie,
-                        "details": data_parsed
-                    })
-            except Exception as e:
-                st.warning(f"Note SQLite : {e}")
-
-            payload_pdf = {
-                "nom_producteur": nom_prod,
-                "code_ccc": code_prod,
-                "zone": section_zone,
-                "score_faisabilite": score_final,
-                "reponses": reponses_completes,
-                "historique_modules": rapports_sqlite
-            }
-            
-            try:
-                pdf_data = pdc.generer_pdf_pdc_fonction(payload_pdf)
-                st.session_state["pdf_bytes_pdc"] = pdf_data
-                st.success("✅ PDF complet généré !")
-                st.balloons()
-                st.rerun()
-            except Exception as e:
-                st.error(f"❌ Erreur PDF : {e}")
-
-        # TÉLÉCHARGER LE PDF
-        if st.session_state.get("pdf_bytes_pdc") is not None:
-            code_p = str(st.session_state.get("code_producteur", "CCC-001")).replace(" ", "_")
-            nom_p = str(st.session_state.get("nom_producteur", "Inconnu")).replace(" ", "_")
-            
-            st.download_button(
-                label="📥 Télécharger le PDF",
-                data=st.session_state["pdf_bytes_pdc"],
-                file_name=f"PDC_{code_p}_{nom_p}.pdf",
-                mime="application/pdf",
-                use_container_width=True,
-                key="sb_btn_download_pdf"
-            )
-
-            # --- MODULE INTEGRÉ : TRANSMISSION VIA GMAIL ---
-            st.markdown("---")
-            st.markdown("### ✉️ Partage par E-mail")
-            
-            type_dest = st.radio(
-                "Type de structure :", 
-                ["Coopératives", "Cabinets de Conseil"], 
-                key="sb_radio_type_dest"
-            )
-            
-            entreprises_dispos = list(ANNUAIRE_DESTINATAIRES[type_dest].keys())
-            entite_choisie = st.selectbox(
-                "Sélectionner la structure :", 
-                entreprises_dispos, 
-                key="sb_select_entite"
-            )
-            
-            email_cible = ANNUAIRE_DESTINATAIRES[type_dest][entite_choisie]
-            
-            nom_prod_mail = st.session_state.get("nom_producteur") or st.session_state.get("producteur") or "Inconnu"
-            code_prod_mail = st.session_state.get("code_producteur") or st.session_state.get("code_ccc") or "CCC-001"
-            
-            sujet_mail = urllib.parse.quote(f"Rapport PDC - {nom_prod_mail} ({code_prod_mail}) - {entite_choisie}")
-            corps_mail = urllib.parse.quote(
-                f"Bonjour,\n\n"
-                f"Veuillez trouver ci-joint le rapport Plan de Développement de Conseil (PDC) pour le producteur {nom_prod_mail} (Code: {code_prod_mail}).\n\n"
-                f"Ce document a été généré via l'application Leyla Agri (Mode Terrain).\n\n"
-                f"N'oubliez pas d'attacher le fichier PDF téléchargé (PDC_{code_p}_{nom_p}.pdf) avant de cliquer sur Envoyer.\n\n"
-                f"Cordialement,\n"
-                f"{st.session_state.get('technicien', 'L\'Agent de Terrain')}"
-            )
-            
-            lien_mailto = f"mailto:{email_cible}?subject={sujet_mail}&body={corps_mail}"
-            
-            st.caption(f"📩 Destinataire : `{email_cible}`")
-            st.link_button(
-                label=f"📧 Ouvrir Gmail pour {entite_choisie}",
-                url=lien_mailto,
-                use_container_width=True
-            )
-
-        # CENTRE D'ENREGISTREMENT MULTI-MODULES (SQLITE)
-        st.markdown("---")
-        st.markdown("## 💾 Sauvegarde Terrain")
+        if "reponses_pdc" in st.session_state and isinstance(st.session_state.reponses_pdc, dict):
+            reponses_completes.update(st.session_state.reponses_pdc)
         
-        module_a_enregistrer = st.selectbox(
-            "Module à enregistrer :",
-            [
-                "PDC",
-                "Diagnostic Phytosanitaire",
-                "Géo-intelligence & RDUE",
-                "Estimation de Rendement"
-            ],
-            key="sb_select_module_enregistrement"
+        cles_a_ignorer = [
+            "appareil_deverrouille", "identifie", "code_agent_connecte", 
+            "pdf_bytes_pdc", "etape_pdc", "reponses_pdc"
+        ]
+        
+        for k, v in st.session_state.items():
+            if not str(k).startswith("btn_") and not str(k).startswith("sb_") and not str(k).startswith("FormSubmitter") and k not in cles_a_ignorer:
+                if isinstance(v, (str, int, float, bool, list, dict)):
+                    reponses_completes[k] = v
+
+        nom_prod = st.session_state.get("nom_producteur") or st.session_state.get("producteur") or st.session_state.get("nom_prod", "Inconnu")
+        code_prod = st.session_state.get("code_producteur") or st.session_state.get("code_ccc", "CCC-001")
+        section_zone = st.session_state.get("section") or st.session_state.get("zone", "Section Divo-Sud")
+        score_final = st.session_state.get("score_pdc") or st.session_state.get("score_faisabilite") or st.session_state.get("score", 0)
+
+        rapports_sqlite = []
+        try:
+            conn = sqlite3.connect("leyla_terrain.db")
+            cursor = conn.cursor()
+            cursor.execute("""
+                SELECT module_execute, donnees_module, date_saisie 
+                FROM rapports_locaux 
+                ORDER BY id DESC
+            """)
+            lignes = cursor.fetchall()
+            conn.close()
+            
+            for mod_exe, d_json, d_saisie in lignes:
+                try:
+                    data_parsed = json.loads(d_json) if isinstance(d_json, str) else d_json
+                except Exception:
+                    data_parsed = str(d_json)
+                rapports_sqlite.append({
+                    "module": mod_exe,
+                    "date": d_saisie,
+                    "details": data_parsed
+                })
+        except Exception as e:
+            st.warning(f"Note SQLite : {e}")
+
+        payload_pdf = {
+            "nom_producteur": nom_prod,
+            "code_ccc": code_prod,
+            "zone": section_zone,
+            "score_faisabilite": score_final,
+            "reponses": reponses_completes,
+            "historique_modules": rapports_sqlite
+        }
+        
+        try:
+            pdf_data = pdc.generer_pdf_pdc_fonction(payload_pdf)
+            st.session_state["pdf_bytes_pdc"] = pdf_data
+            st.success("✅ PDF complet généré !")
+            st.balloons()
+            st.rerun()
+        except Exception as e:
+            st.error(f"❌ Erreur PDF : {e}")
+
+    # TÉLÉCHARGER LE PDF
+    if st.session_state.get("pdf_bytes_pdc") is not None:
+        code_p = str(st.session_state.get("code_producteur", "CCC-001")).replace(" ", "_")
+        nom_p = str(st.session_state.get("nom_producteur", "Inconnu")).replace(" ", "_")
+        
+        st.download_button(
+            label="📥 Télécharger le PDF",
+            data=st.session_state["pdf_bytes_pdc"],
+            file_name=f"PDC_{code_p}_{nom_p}.pdf",
+            mime="application/pdf",
+            use_container_width=True,
+            key="sb_btn_download_pdf"
         )
 
-        if st.button("💾 Enregistrer dans la tablette", type="secondary", key="sb_btn_sauvegarder_sqlite", use_container_width=True):
-            coop = st.session_state.get("cooperative", "SCACO")
-            sec = st.session_state.get("section", "Section Divo-Sud")
-            tech = st.session_state.get("technicien", "Agent Kouamé")
-            
-            reponses = st.session_state.get("reponses_pdc", {})
-            
-            nom_prod = (
-                reponses.get("nom_prenoms_producteur") 
-                or st.session_state.get("nom_prenoms_producteur")
-                or reponses.get("nom_membre")
-                or st.session_state.get("nom_producteur")
-                or "Producteur Inconnu"
-            )
-            
-            code_prod = (
-                reponses.get("code_national_producteur") 
-                or st.session_state.get("code_national_producteur")
-                or reponses.get("code_groupe")
-                or st.session_state.get("code_producteur")
-                or "CCC-000"
-            )
-            
-            superficie = st.session_state.get("superficie") or st.session_state.get("superficie_ha") or 0.0
-            age_p = str(st.session_state.get("age_parcelle") or st.session_state.get("age_cacaoyere") or "0")
-
-            st.session_state["nom_producteur"] = nom_prod
-            st.session_state["code_producteur"] = code_prod
-
-            session_complete = {}
-            if isinstance(reponses, dict):
-                session_complete.update(reponses)
-                
-            cles_a_ignorer = ["appareil_deverrouille", "identifie", "code_agent_connecte", "pdf_bytes_pdc"]
-            for k, v in st.session_state.items():
-                if not str(k).startswith("btn_") and not str(k).startswith("sb_") and not str(k).startswith("FormSubmitter") and k not in cles_a_ignorer:
-                    if isinstance(v, (str, int, float, bool, list, dict)):
-                        session_complete[k] = v
-
-            # Génération auto du PDF s'il manque
-            if st.session_state.get("pdf_bytes_pdc") is None:
-                try:
-                    payload_auto_pdf = {
-                        "nom_producteur": nom_prod,
-                        "code_ccc": code_prod,
-                        "zone": sec,
-                        "score_faisabilite": st.session_state.get("score_pdc", 0),
-                        "reponses": session_complete,
-                        "historique_modules": []
-                    }
-                    st.session_state["pdf_bytes_pdc"] = pdc.generer_pdf_pdc_fonction(payload_auto_pdf)
-                except Exception:
-                    pass
-
-            donnees_json_str = json.dumps(nettoyer_pour_json(session_complete), cls=NpEncoder, ensure_ascii=False)
-            pdf_blob = st.session_state.get("pdf_bytes_pdc")
-            date_saisie = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-
-            try:
-                conn = sqlite3.connect("leyla_terrain.db")
-                cursor = conn.cursor()
-                
-                cursor.execute("""
-                    INSERT INTO rapports_locaux (
-                        cooperative, section, technicien, producteur, code_producteur, 
-                        superficie, age_parcelle, module_execute, donnees_module, pdf_blob, date_saisie, statut
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'En attente')
-                """, (coop, sec, tech, nom_prod, code_prod, float(superficie), age_p, module_a_enregistrer, donnees_json_str, pdf_blob, date_saisie))
-                
-                conn.commit()
-                conn.close()
-
-                st.success(f"💾 Fiche enregistrée pour [{module_a_enregistrer}] : **{nom_prod}** ({code_prod})")
-                st.balloons()
-                time.sleep(1)
-                st.rerun()
-
-            except Exception as e:
-                st.error(f"❌ Erreur lors de la sauvegarde SQLite : {e}")
-
-        # SYNCHRONISATION SUPABASE
+        # --- MODULE INTEGRÉ : TRANSMISSION VIA GMAIL ---
         st.markdown("---")
-        st.subheader("🔄 Synchronisation Supabase")
+        st.markdown("### ✉️ Partage par E-mail")
+        
+        type_dest = st.radio(
+            "Type de structure :", 
+            ["Coopératives", "Cabinets de Conseil"], 
+            key="sb_radio_type_dest"
+        )
+        
+        entreprises_dispos = list(ANNUAIRE_DESTINATAIRES[type_dest].keys())
+        entite_choisie = st.selectbox(
+            "Sélectionner la structure :", 
+            entreprises_dispos, 
+            key="sb_select_entite"
+        )
+        
+        email_cible = ANNUAIRE_DESTINATAIRES[type_dest][entite_choisie]
+        
+        nom_prod_mail = st.session_state.get("nom_producteur") or st.session_state.get("producteur") or "Inconnu"
+        code_prod_mail = st.session_state.get("code_producteur") or st.session_state.get("code_ccc") or "CCC-001"
+        
+        sujet_mail = urllib.parse.quote(f"Rapport PDC - {nom_prod_mail} ({code_prod_mail}) - {entite_choisie}")
+        corps_mail = urllib.parse.quote(
+            f"Bonjour,\n\n"
+            f"Veuillez trouver ci-joint le rapport Plan de Développement de Conseil (PDC) pour le producteur {nom_prod_mail} (Code: {code_prod_mail}).\n\n"
+            f"Ce document a été généré via l'application Leyla Agri (Mode Terrain).\n\n"
+            f"N'oubliez pas d'attacher le fichier PDF téléchargé (PDC_{code_p}_{nom_p}.pdf) avant de cliquer sur Envoyer.\n\n"
+            f"Cordialement,\n"
+            f"{st.session_state.get('technicien', 'L\'Agent de Terrain')}"
+        )
+        
+        lien_mailto = f"mailto:{email_cible}?subject={sujet_mail}&body={corps_mail}"
+        
+        st.caption(f"📩 Destinataire : `{email_cible}`")
+        st.link_button(
+            label=f"📧 Ouvrir Gmail pour {entite_choisie}",
+            url=lien_mailto,
+            use_container_width=True
+        )
+
+    # CENTRE D'ENREGISTREMENT MULTI-MODULES (SQLITE)
+    st.markdown("---")
+    st.markdown("## 💾 Sauvegarde Terrain")
+    
+    module_a_enregistrer = st.selectbox(
+        "Module à enregistrer :",
+        [
+            "PDC",
+            "Diagnostic Phytosanitaire",
+            "Géo-intelligence & RDUE",
+            "Estimation de Rendement"
+        ],
+        key="sb_select_module_enregistrement"
+    )
+
+    if st.button("💾 Enregistrer dans la tablette", type="secondary", key="sb_btn_sauvegarder_sqlite", use_container_width=True):
+        coop = st.session_state.get("cooperative", "SCACO")
+        sec = st.session_state.get("section", "Section Divo-Sud")
+        tech = st.session_state.get("technicien", "Agent Kouamé")
+        
+        reponses = st.session_state.get("reponses_pdc", {})
+        
+        nom_prod = (
+            reponses.get("nom_prenoms_producteur") 
+            or st.session_state.get("nom_prenoms_producteur")
+            or reponses.get("nom_membre")
+            or st.session_state.get("nom_producteur")
+            or "Producteur Inconnu"
+        )
+        
+        code_prod = (
+            reponses.get("code_national_producteur") 
+            or st.session_state.get("code_national_producteur")
+            or reponses.get("code_groupe")
+            or st.session_state.get("code_producteur")
+            or "CCC-000"
+        )
+        
+        superficie = st.session_state.get("superficie") or st.session_state.get("superficie_ha") or 0.0
+        age_p = str(st.session_state.get("age_parcelle") or st.session_state.get("age_cacaoyere") or "0")
+
+        st.session_state["nom_producteur"] = nom_prod
+        st.session_state["code_producteur"] = code_prod
+
+        session_complete = {}
+        if isinstance(reponses, dict):
+            session_complete.update(reponses)
+            
+        cles_a_ignorer = ["appareil_deverrouille", "identifie", "code_agent_connecte", "pdf_bytes_pdc"]
+        for k, v in st.session_state.items():
+            if not str(k).startswith("btn_") and not str(k).startswith("sb_") and not str(k).startswith("FormSubmitter") and k not in cles_a_ignorer:
+                if isinstance(v, (str, int, float, bool, list, dict)):
+                    session_complete[k] = v
+
+        # Génération auto du PDF s'il manque
+        if st.session_state.get("pdf_bytes_pdc") is None:
+            try:
+                payload_auto_pdf = {
+                    "nom_producteur": nom_prod,
+                    "code_ccc": code_prod,
+                    "zone": sec,
+                    "score_faisabilite": st.session_state.get("score_pdc", 0),
+                    "reponses": session_complete,
+                    "historique_modules": []
+                }
+                st.session_state["pdf_bytes_pdc"] = pdc.generer_pdf_pdc_fonction(payload_auto_pdf)
+            except Exception:
+                pass
+
+        donnees_json_str = json.dumps(nettoyer_pour_json(session_complete), cls=NpEncoder, ensure_ascii=False)
+        pdf_blob = st.session_state.get("pdf_bytes_pdc")
+        date_saisie = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
         try:
             conn = sqlite3.connect("leyla_terrain.db")
             cursor = conn.cursor()
-            cursor.execute("SELECT COUNT(*) FROM rapports_locaux WHERE statut='En attente'")
-            nombre_attente = cursor.fetchone()[0]
+            
+            cursor.execute("""
+                INSERT INTO rapports_locaux (
+                    cooperative, section, technicien, producteur, code_producteur, 
+                    superficie, age_parcelle, module_execute, donnees_module, pdf_blob, date_saisie, statut
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'En attente')
+            """, (coop, sec, tech, nom_prod, code_prod, float(superficie), age_p, module_a_enregistrer, donnees_json_str, pdf_blob, date_saisie))
+            
+            conn.commit()
             conn.close()
-        except Exception:
-            nombre_attente = 0
 
-        st.write(f"📦 Rapports en attente : **{nombre_attente}**")
+            st.success(f"💾 Fiche enregistrée pour [{module_a_enregistrer}] : **{nom_prod}** ({code_prod})")
+            st.balloons()
+            time.sleep(1)
+            st.rerun()
 
-        if st.button("🚀 SYNCHRONISER MAINTENANT", use_container_width=True, key="sb_btn_synchro_supabase"):
-            if nombre_attente > 0:
-                try:
-                    url_supabase = st.secrets["supabase"]["url"]
-                    key_supabase = st.secrets["supabase"]["key"]
+        except Exception as e:
+            st.error(f"❌ Erreur lors de la sauvegarde SQLite : {e}")
+
+    # SYNCHRONISATION SUPABASE
+    st.markdown("---")
+    st.subheader("🔄 Synchronisation Supabase")
+
+    try:
+        conn = sqlite3.connect("leyla_terrain.db")
+        cursor = conn.cursor()
+        cursor.execute("SELECT COUNT(*) FROM rapports_locaux WHERE statut='En attente'")
+        nombre_attente = cursor.fetchone()[0]
+        conn.close()
+    except Exception:
+        nombre_attente = 0
+
+    st.write(f"📦 Rapports en attente : **{nombre_attente}**")
+
+    if st.button("🚀 SYNCHRONISER MAINTENANT", use_container_width=True, key="sb_btn_synchro_supabase"):
+        if nombre_attente > 0:
+            try:
+                url_supabase = st.secrets["supabase"]["url"]
+                key_supabase = st.secrets["supabase"]["key"]
+                
+                headers = {
+                    "apikey": key_supabase,
+                    "Authorization": f"Bearer {key_supabase}",
+                    "Content-Type": "application/json",
+                    "Prefer": "return=minimal"
+                }
+                endpoint = f"{url_supabase}/rest/v1/producteurs_parcelles"
+
+                conn = sqlite3.connect("leyla_terrain.db")
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT id, cooperative, section, technicien, producteur, code_producteur, 
+                           superficie, age_parcelle, module_execute, donnees_module, pdf_blob 
+                    FROM rapports_locaux 
+                    WHERE statut='En attente'
+                """)
+                lignes = cursor.fetchall()
+                
+                nb_succes = 0
+                
+                for ligne in lignes:
+                    row_id, coop, sec, tech, prod, code_p, sup, age_p, mod_t, donnees_m, pdf_b = ligne
                     
-                    headers = {
-                        "apikey": key_supabase,
-                        "Authorization": f"Bearer {key_supabase}",
-                        "Content-Type": "application/json",
-                        "Prefer": "return=minimal"
+                    try:
+                        age_int = int(''.join(filter(str.isdigit, str(age_p))))
+                    except ValueError:
+                        age_int = 0
+
+                    if isinstance(donnees_m, (dict, list)):
+                        donnees_str = json.dumps(nettoyer_pour_json(donnees_m), cls=NpEncoder, ensure_ascii=False)
+                    else:
+                        donnees_str = str(donnees_m) if donnees_m else "{}"
+
+                    url_pdf_public = None
+                    if pdf_b is not None:
+                        code_clean = str(code_p).replace(" ", "_").replace("/", "_")
+                        nom_f = f"PDC_{code_clean}_{row_id}.pdf"
+                        url_pdf_public = uploader_pdf_supabase(pdf_b, nom_f)
+
+                    payload = {
+                        "cooperative_id": str(coop) if coop else "",
+                        "section_id": str(sec) if sec else "",
+                        "agent_id": str(tech) if tech else "",
+                        "nom_producteur": str(prod) if prod else "",
+                        "code_producteur": str(code_p) if code_p else "",
+                        "superficie": float(sup) if sup else 0.0,
+                        "age_cacaoyere": age_int,
+                        "module_execute": str(mod_t) if mod_t else "",
+                        "observations_diagnostic": donnees_str,
+                        "url_pdf_pdc": url_pdf_public,
+                        "rdue_conforme": True
                     }
-                    endpoint = f"{url_supabase}/rest/v1/producteurs_parcelles"
-
-                    conn = sqlite3.connect("leyla_terrain.db")
-                    cursor = conn.cursor()
-                    cursor.execute("""
-                        SELECT id, cooperative, section, technicien, producteur, code_producteur, 
-                               superficie, age_parcelle, module_execute, donnees_module, pdf_blob 
-                        FROM rapports_locaux 
-                        WHERE statut='En attente'
-                    """)
-                    lignes = cursor.fetchall()
                     
-                    nb_succes = 0
-                    
-                    for ligne in lignes:
-                        row_id, coop, sec, tech, prod, code_p, sup, age_p, mod_t, donnees_m, pdf_b = ligne
+                    try:
+                        response = requests.post(endpoint, json=payload, headers=headers, timeout=15)
                         
-                        try:
-                            age_int = int(''.join(filter(str.isdigit, str(age_p))))
-                        except ValueError:
-                            age_int = 0
-
-                        if isinstance(donnees_m, (dict, list)):
-                            donnees_str = json.dumps(nettoyer_pour_json(donnees_m), cls=NpEncoder, ensure_ascii=False)
+                        if response.status_code in [200, 201, 204]:
+                            cursor.execute("UPDATE rapports_locaux SET statut='Envoyé' WHERE id=?", (row_id,))
+                            nb_succes += 1
                         else:
-                            donnees_str = str(donnees_m) if donnees_m else "{}"
-
-                        url_pdf_public = None
-                        if pdf_b is not None:
-                            code_clean = str(code_p).replace(" ", "_").replace("/", "_")
-                            nom_f = f"PDC_{code_clean}_{row_id}.pdf"
-                            url_pdf_public = uploader_pdf_supabase(pdf_b, nom_f)
-
-                        payload = {
-                            "cooperative_id": str(coop) if coop else "",
-                            "section_id": str(sec) if sec else "",
-                            "agent_id": str(tech) if tech else "",
-                            "nom_producteur": str(prod) if prod else "",
-                            "code_producteur": str(code_p) if code_p else "",
-                            "superficie": float(sup) if sup else 0.0,
-                            "age_cacaoyere": age_int,
-                            "module_execute": str(mod_t) if mod_t else "",
-                            "observations_diagnostic": donnees_str,
-                            "url_pdf_pdc": url_pdf_public,
-                            "rdue_conforme": True
-                        }
-                        
-                        try:
-                            response = requests.post(endpoint, json=payload, headers=headers, timeout=15)
+                            st.sidebar.error(f"⚠️ Erreur HTTP {response.status_code} : {response.text}")
+                            break
                             
-                            if response.status_code in [200, 201, 204]:
-                                cursor.execute("UPDATE rapports_locaux SET statut='Envoyé' WHERE id=?", (row_id,))
-                                nb_succes += 1
-                            else:
-                                st.sidebar.error(f"⚠️ Erreur HTTP {response.status_code} : {response.text}")
-                                break
-                                
-                        except requests.exceptions.ConnectionError:
-                            st.sidebar.warning("📡 Connexion réseau indisponible.")
-                            break
-                        except requests.exceptions.Timeout:
-                            st.sidebar.warning("⏱️ Délai d'attente dépassé.")
-                            break
-                    
-                    conn.commit()
-                    conn.close()
-                    
-                    if nb_succes > 0:
-                        st.sidebar.success(f"✅ {nb_succes} rapport(s) synchronisé(s) !")
-                        st.rerun()
-                    
-                except Exception as e:
-                    st.sidebar.error(f"❌ Erreur de transmission : {e}")
-            else:
-                st.sidebar.info("Aucun rapport en attente.")
+                    except requests.exceptions.ConnectionError:
+                        st.sidebar.warning("📡 Connexion réseau indisponible.")
+                        break
+                    except requests.exceptions.Timeout:
+                        st.sidebar.warning("⏱️ Délai d'attente dépassé.")
+                        break
+                
+                conn.commit()
+                conn.close()
+                
+                if nb_succes > 0:
+                    st.sidebar.success(f"✅ {nb_succes} rapport(s) synchronisé(s) !")
+                    st.rerun()
+                
+            except Exception as e:
+                st.sidebar.error(f"❌ Erreur de transmission : {e}")
+        else:
+            st.sidebar.info("Aucun rapport en attente.")
 
 # --- 2. ÉCRAN DE DÉVERROUILLAGE TECHNICIEN ---
 MOT_DE_PASSE_VALIDE = "leyla2.6" 
@@ -718,4 +720,3 @@ else:
 
     elif choix_module == "4. PDC":
         pdc.afficher()
-
