@@ -1798,7 +1798,7 @@ def afficher():
                 st.rerun()
 
 
-     # ---------------------------------------------------------
+    # ---------------------------------------------------------
     # ÉTAPE 6 : ÉTAT SANITAIRE, SOL, RÉCOLTE & ENGRAIS (FICHE 3)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 6:
@@ -1844,9 +1844,10 @@ def afficher():
             apply_editor_changes("editor_phyto", "df_phyto")
 
         # =========================================================
-        # 2. INITIALISATION DES DATAFRAMES DANS LE SESSION STATE
+        # 2. INITIALISATION ET GARANTIE DES DATAFRAMES DANS SESSION STATE
         # =========================================================
-        if "df_sante_cacao" not in st.session_state:
+        # S'assure que les variables de session sont TOUJOURS des DataFrames
+        if "df_sante_cacao" not in st.session_state or not isinstance(st.session_state.df_sante_cacao, pd.DataFrame):
             init_sante = st.session_state.reponses_pdc.get("sante_cacaoyere", [
                 {"Maladies / Ravageurs": "Attaques de mirides", "Sévérité": "1. Aucun", "Observations": "", "Paramètres": "Présence de gourmands", "Valeur": "1. Aucun", "Observations P.": ""},
                 {"Maladies / Ravageurs": "Attaques de Pourriture Brune", "Sévérité": "2. Faible", "Observations": "", "Paramètres": "Présence de cabosses momifiées", "Valeur": "2. Faible", "Observations P.": ""},
@@ -1856,7 +1857,7 @@ def afficher():
             ])
             st.session_state.df_sante_cacao = pd.DataFrame(init_sante)
 
-        if "df_sol_caract" not in st.session_state:
+        if "df_sol_caract" not in st.session_state or not isinstance(st.session_state.df_sol_caract, pd.DataFrame):
             init_sol = st.session_state.reponses_pdc.get("caracteristiques_sol", [
                 {"Éléments d'observation (A)": "Couvert végétal", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "Existence de zones érodées", "Valeur B": "2. Non", "Obs B": "Ravinements..."},
                 {"Éléments d'observation (A)": "Présence de Matière organique", "Valeur A": "1. beaucoup", "Obs A": "", "Éléments d'observation (B)": "Existence de zones à risque d'érosion", "Valeur B": "2. Non", "Obs B": "Pente..."},
@@ -1865,7 +1866,7 @@ def afficher():
             ])
             st.session_state.df_sol_caract = pd.DataFrame(init_sol)
 
-        if "df_engrais" not in st.session_state:
+        if "df_engrais" not in st.session_state or not isinstance(st.session_state.df_engrais, pd.DataFrame):
             init_engrais = st.session_state.reponses_pdc.get("utilisation_engrais", [
                 {
                     "Type d'engrais": "Minéraux",
@@ -1878,7 +1879,7 @@ def afficher():
             ])
             st.session_state.df_engrais = pd.DataFrame(init_engrais)
 
-        if "df_phyto" not in st.session_state:
+        if "df_phyto" not in st.session_state or not isinstance(st.session_state.df_phyto, pd.DataFrame):
             init_phyto = st.session_state.reponses_pdc.get("produits_phytosanitaires", [
                 {
                     "Type de produits": "Fongicide",
@@ -1911,9 +1912,13 @@ def afficher():
         # --- DIAGNOSTIC AUTOMATIQUE 6.1 (SANTE & VEGETATIF) ---
         df_sante = st.session_state.df_sante_cacao
         sev_map = {"1. Aucun": 0, "2. Faible": 1, "3. Moyen": 2, "3. moyen": 2, "4. Fort": 3}
-        
-        score_maladies = sum([sev_map.get(str(x), 0) for x in df_sante.get("Sévérité", []) if pd.notna(x)])
-        score_entretien = sum([sev_map.get(str(x), 0) for x in df_sante.get("Valeur", []) if pd.notna(x)])
+
+        # Extraction sécurisée des colonnes
+        severites = df_sante["Sévérité"] if "Sévérité" in df_sante.columns else []
+        valeurs = df_sante["Valeur"] if "Valeur" in df_sante.columns else []
+
+        score_maladies = sum([sev_map.get(str(x), 0) for x in severites if pd.notna(x)])
+        score_entretien = sum([sev_map.get(str(x), 0) for x in valeurs if pd.notna(x)])
         score_total_sante = score_maladies + score_entretien
 
         cssvd_detecte = any("CSSVD" in str(row.get("Maladies / Ravageurs", "")) and row.get("Sévérité") != "1. Aucun" for _, row in df_sante.iterrows())
@@ -2107,6 +2112,7 @@ def afficher():
                 sauvegarder_etape_6()
                 st.session_state.etape_pdc = 7
                 st.rerun()
+
 
 
                 # ---------------------------------------------------------
