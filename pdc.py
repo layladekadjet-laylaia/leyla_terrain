@@ -1798,24 +1798,105 @@ def afficher():
                 st.rerun()
 
 
-            # ---------------------------------------------------------
+     # ---------------------------------------------------------
     # ÉTAPE 6 : ÉTAT SANITAIRE, SOL, RÉCOLTE & ENGRAIS (FICHE 3)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 6:
         st.subheader("Étape 6/15 : État Sanitaire, Sol, Récolte & Engrais (Fiche 3)")
 
-        # 6.1 ÉTAT VÉGÉTATIF ET SANITAIRE DES CACAOYERS
-        st.markdown("### 🐛 1. État végétatif et sanitaire")
-        if 'df_sante_cacao' not in st.session_state:
-            st.session_state.df_sante_cacao = [
+        # =========================================================
+        # 1. FONCTION DE CALLBACK GÉNÉRIQUE POUR LES ÉDITEURS
+        # =========================================================
+        def apply_editor_changes(key_editor, key_state_df):
+            """Applique proprement les deltas de st.data_editor au DataFrame en session_state."""
+            changes = st.session_state.get(key_editor, {})
+            df = st.session_state[key_state_df].copy()
+
+            # 1. Modifications de cellules
+            for row_idx_str, row_changes in changes.get("edited_rows", {}).items():
+                row_idx = int(row_idx_str)
+                for col_name, new_val in row_changes.items():
+                    if col_name in df.columns:
+                        df.iat[row_idx, df.columns.get_loc(col_name)] = new_val
+
+            # 2. Ajouts de lignes
+            for new_row in changes.get("added_rows", {}):
+                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+
+            # 3. Suppressions de lignes
+            deleted_indices = changes.get("deleted_rows", [])
+            if deleted_indices:
+                df = df.drop(index=deleted_indices).reset_index(drop=True)
+
+            st.session_state[key_state_df] = df
+
+        # Callbacks dédiés
+        def update_sante():
+            apply_editor_changes("editor_sante", "df_sante_cacao")
+
+        def update_sol():
+            apply_editor_changes("editor_sol", "df_sol_caract")
+
+        def update_engrais():
+            apply_editor_changes("editor_engrais", "df_engrais")
+
+        def update_phyto():
+            apply_editor_changes("editor_phyto", "df_phyto")
+
+        # =========================================================
+        # 2. INITIALISATION DES DATAFRAMES DANS LE SESSION STATE
+        # =========================================================
+        if "df_sante_cacao" not in st.session_state:
+            init_sante = st.session_state.reponses_pdc.get("sante_cacaoyere", [
                 {"Maladies / Ravageurs": "Attaques de mirides", "Sévérité": "1. Aucun", "Observations": "", "Paramètres": "Présence de gourmands", "Valeur": "1. Aucun", "Observations P.": ""},
                 {"Maladies / Ravageurs": "Attaques de Pourriture Brune", "Sévérité": "2. Faible", "Observations": "", "Paramètres": "Présence de cabosses momifiées", "Valeur": "2. Faible", "Observations P.": ""},
                 {"Maladies / Ravageurs": "Présence de plantes épiphytes", "Sévérité": "1. Aucun", "Observations": "", "Paramètres": "Présence de loranthus", "Valeur": "1. Aucun", "Observations P.": ""},
                 {"Maladies / Ravageurs": "Attaque Foreurs", "Sévérité": "1. Aucun", "Observations": "", "Paramètres": "Enherbedement", "Valeur": "3. moyen", "Observations P.": ""},
                 {"Maladies / Ravageurs": "Attaque CSSVD", "Sévérité": "1. Aucun", "Observations": "", "Paramètres": "", "Valeur": "", "Observations P.": ""}
-            ]
+            ])
+            st.session_state.df_sante_cacao = pd.DataFrame(init_sante)
 
-        sante_df = st.data_editor(
+        if "df_sol_caract" not in st.session_state:
+            init_sol = st.session_state.reponses_pdc.get("caracteristiques_sol", [
+                {"Éléments d'observation (A)": "Couvert végétal", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "Existence de zones érodées", "Valeur B": "2. Non", "Obs B": "Ravinements..."},
+                {"Éléments d'observation (A)": "Présence de Matière organique", "Valeur A": "1. beaucoup", "Obs A": "", "Éléments d'observation (B)": "Existence de zones à risque d'érosion", "Valeur B": "2. Non", "Obs B": "Pente..."},
+                {"Éléments d'observation (A)": "Profondeur", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "", "Valeur B": "", "Obs B": ""},
+                {"Éléments d'observation (A)": "Texture", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "", "Valeur B": "", "Obs B": ""}
+            ])
+            st.session_state.df_sol_caract = pd.DataFrame(init_sol)
+
+        if "df_engrais" not in st.session_state:
+            init_engrais = st.session_state.reponses_pdc.get("utilisation_engrais", [
+                {
+                    "Type d'engrais": "Minéraux",
+                    "Nom commercial / Formule": "NPK 0-23-19",
+                    "Quantité/an": "200 kg",
+                    "Période d'apport": "Mai",
+                    "Mode d'apport": "Au sol",
+                    "Applicateur": "1. Producteur"
+                }
+            ])
+            st.session_state.df_engrais = pd.DataFrame(init_engrais)
+
+        if "df_phyto" not in st.session_state:
+            init_phyto = st.session_state.reponses_pdc.get("produits_phytosanitaires", [
+                {
+                    "Type de produits": "Fongicide",
+                    "Nom commercial / Formule": "Ridomil Gold",
+                    "Quantité / traitement": "50g/15L",
+                    "Période de traitement": "Juin-Juillet",
+                    "Mode d'apport": "Pulvérisateur",
+                    "Applicateur": "2. Applicateur"
+                }
+            ])
+            st.session_state.df_phyto = pd.DataFrame(init_phyto)
+
+        # =========================================================
+        # 6.1 ÉTAT VÉGÉTATIF ET SANITAIRE DES CACAOYERS
+        # =========================================================
+        st.markdown("### 🐛 1. État végétatif et sanitaire")
+
+        st.data_editor(
             st.session_state.df_sante_cacao,
             num_rows="dynamic",
             key="editor_sante",
@@ -1823,23 +1904,21 @@ def afficher():
                 "Sévérité": st.column_config.SelectboxColumn("Sévérité", options=["1. Aucun", "2. Faible", "3. Moyen", "4. Fort"]),
                 "Valeur": st.column_config.SelectboxColumn("Valeur", options=["1. Aucun", "2. Faible", "3. moyen", "4. Fort"])
             },
-            use_container_width=True
+            use_container_width=True,
+            on_change=update_sante
         )
 
         # --- DIAGNOSTIC AUTOMATIQUE 6.1 (SANTE & VEGETATIF) ---
-        df_sante = pd.DataFrame(sante_df)
-        
-        # Mappage des niveaux de sévérité pour calculs
+        df_sante = st.session_state.df_sante_cacao
         sev_map = {"1. Aucun": 0, "2. Faible": 1, "3. Moyen": 2, "3. moyen": 2, "4. Fort": 3}
         
-        score_maladies = sum([sev_map.get(str(x), 0) for x in df_sante["Sévérité"] if pd.notna(x)])
-        score_entretien = sum([sev_map.get(str(x), 0) for x in df_sante["Valeur"] if pd.notna(x)])
+        score_maladies = sum([sev_map.get(str(x), 0) for x in df_sante.get("Sévérité", []) if pd.notna(x)])
+        score_entretien = sum([sev_map.get(str(x), 0) for x in df_sante.get("Valeur", []) if pd.notna(x)])
         score_total_sante = score_maladies + score_entretien
 
-        # Vérifications spécifiques
-        cssvd_detecte = any("CSSVD" in str(row["Maladies / Ravageurs"]) and row["Sévérité"] != "1. Aucun" for _, row in df_sante.iterrows())
-        gourmands_forts = any("gourmands" in str(row["Paramètres"]).lower() and row["Valeur"] in ["3. Moyen", "3. moyen", "4. Fort"] for _, row in df_sante.iterrows())
-        loranthus_present = any("loranthus" in str(row["Paramètres"]).lower() and row["Valeur"] != "1. Aucun" for _, row in df_sante.iterrows())
+        cssvd_detecte = any("CSSVD" in str(row.get("Maladies / Ravageurs", "")) and row.get("Sévérité") != "1. Aucun" for _, row in df_sante.iterrows())
+        gourmands_forts = any("gourmands" in str(row.get("Paramètres", "")).lower() and row.get("Valeur") in ["3. Moyen", "3. moyen", "4. Fort"] for _, row in df_sante.iterrows())
+        loranthus_present = any("loranthus" in str(row.get("Paramètres", "")).lower() and row.get("Valeur") != "1. Aucun" for _, row in df_sante.iterrows())
 
         st.markdown("#### 🩺 Diagnostic Phytosanitaire & Entretien")
         col_s1, col_s2, col_s3 = st.columns(3)
@@ -1853,7 +1932,6 @@ def afficher():
         else:
             col_s3.error("🔴 État sanitaire global : CRITIQUE")
 
-        # Alertes ciblées
         if cssvd_detecte:
             st.error("🚨 **ALERTE CSSVD (Swollen Shoot)** : Présence suspectée ! Isolement immédiat et arrachage des pieds infectés préconisés selon le protocole national.")
         if gourmands_forts or loranthus_present:
@@ -1861,19 +1939,18 @@ def afficher():
 
         st.markdown("---")
 
+        # =========================================================
         # 6.2 CARACTÉRISTIQUES PHYSIQUES DU SOL
+        # =========================================================
         st.markdown("### 🏔️ 2. État et caractéristiques du sol")
-        toposequence = st.selectbox("Positionnement dans la toposéquence", ["Plateau", "Haut de versant", "Mi-versant", "Bas de versant", "Bas-fond"])
+        
+        default_topos = st.session_state.reponses_pdc.get("toposequence", "Plateau")
+        topos_options = ["Plateau", "Haut de versant", "Mi-versant", "Bas de versant", "Bas-fond"]
+        topos_index = topos_options.index(default_topos) if default_topos in topos_options else 0
+        
+        toposequence = st.selectbox("Positionnement dans la toposéquence", topos_options, index=topos_index)
 
-        if 'df_sol_caract' not in st.session_state:
-            st.session_state.df_sol_caract = [
-                {"Éléments d'observation (A)": "Couvert végétal", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "Existence de zones érodées", "Valeur B": "2. Non", "Obs B": "Ravinements..."},
-                {"Éléments d'observation (A)": "Présence de Matière organique", "Valeur A": "1. beaucoup", "Obs A": "", "Éléments d'observation (B)": "Existence de zones à risque d'érosion", "Valeur B": "2. Non", "Obs B": "Pente..."},
-                {"Éléments d'observation (A)": "Profondeur", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "", "Valeur B": "", "Obs B": ""},
-                {"Éléments d'observation (A)": "Texture", "Valeur A": "2. moyen", "Obs A": "", "Éléments d'observation (B)": "", "Valeur B": "", "Obs B": ""}
-            ]
-
-        sol_df = st.data_editor(
+        st.data_editor(
             st.session_state.df_sol_caract,
             num_rows="dynamic",
             key="editor_sol",
@@ -1881,47 +1958,55 @@ def afficher():
                 "Valeur A": st.column_config.SelectboxColumn("Valeur (A)", options=["1. beaucoup", "2. moyen", "3. Faible"]),
                 "Valeur B": st.column_config.SelectboxColumn("Valeur (B)", options=["1. Oui", "2. Non"])
             },
-            use_container_width=True
+            use_container_width=True,
+            on_change=update_sol
         )
 
         # --- DIAGNOSTIC AUTOMATIQUE 6.2 (SOL ET TOPOSEQUENCE) ---
-        df_sol = pd.DataFrame(sol_df)
+        df_sol = st.session_state.df_sol_caract
         
-        # Détection du risque d'érosion et d'asphyxie
-        zone_erodee = any(row["Valeur B"] == "1. Oui" for _, row in df_sol.iterrows() if "zones érodées" in str(row["Éléments d'observation (B)"]))
-        risque_erosion = any(row["Valeur B"] == "1. Oui" for _, row in df_sol.iterrows() if "risque d'érosion" in str(row["Éléments d'observation (B)"]))
-        faible_mo = any(row["Valeur A"] == "3. Faible" for _, row in df_sol.iterrows() if "Matière organique" in str(row["Éléments d'observation (A)"]))
+        zone_erodee = any(row.get("Valeur B") == "1. Oui" for _, row in df_sol.iterrows() if "zones érodées" in str(row.get("Éléments d'observation (B)", "")))
+        risque_erosion = any(row.get("Valeur B") == "1. Oui" for _, row in df_sol.iterrows() if "risque d'érosion" in str(row.get("Éléments d'observation (B)", "")))
+        faible_mo = any(row.get("Valeur A") == "3. Faible" for _, row in df_sol.iterrows() if "Matière organique" in str(row.get("Éléments d'observation (A)", "")))
 
         st.markdown("#### 🌱 Diagnostic d'Aptitude du Sol")
         col_sol1, col_sol2 = st.columns(2)
         
-        # Évaluation Toposéquence
         if toposequence in ["Bas-fond", "Bas de versant"]:
             col_sol1.warning(f"📍 Toposéquence ({toposequence}) : Risque d'hydromorphie / Asphyxie racinaire en saison des pluies. Drainages à prévoir.")
         else:
             col_sol1.success(f"📍 Toposéquence ({toposequence}) : Sol bien drainé a priori.")
 
-        # Évaluation Risque Érosion / Fertilité
         if zone_erodee or risque_erosion:
             col_sol2.error("⚠️ Risque d'érosion ÉLEVÉ : Aménagement en courbes de niveau ou enherbement contrôlé recommandé.")
         elif faible_mo:
-            col_sol2.warning("⚠️ Matière organique FAIBLE : Prévoir un apport de compost ou maintien des réidus de taille au sol.")
+            col_sol2.warning("⚠️ Matière organique FAIBLE : Prévoir un apport de compost ou maintien des résidus de taille au sol.")
         else:
             col_sol2.success("✅ Conservation du sol & fertilité satisfaisantes.")
 
         st.markdown("---")
 
+        # =========================================================
         # 6.3 PRATIQUES DE RÉCOLTE ET POST-RÉCOLTE
+        # =========================================================
         st.markdown("### 🧺 3. Pratiques de récolte et post-récolte")
         
         col_p1, col_p2 = st.columns(2)
         with col_p1:
-            freq_recolte = st.number_input("Fréquence des récoltes (jours entre 2 récoltes)", min_value=1, max_value=60, value=14)
-            temps_ecabossage = st.number_input("Temps entre récolte et écabossage (jours)", min_value=0, max_value=15, value=2)
-            duree_fermentation = st.number_input("Durée de la fermentation (jours)", min_value=1, max_value=10, value=6)
+            freq_recolte = st.number_input("Fréquence des récoltes (jours entre 2 récoltes)", min_value=1, max_value=60, value=int(st.session_state.reponses_pdc.get("frequence_recolte_jours", 14)))
+            temps_ecabossage = st.number_input("Temps entre récolte et écabossage (jours)", min_value=0, max_value=15, value=int(st.session_state.reponses_pdc.get("temps_ecabossage_jours", 2)))
+            duree_fermentation = st.number_input("Durée de la fermentation (jours)", min_value=1, max_value=10, value=int(st.session_state.reponses_pdc.get("duree_fermentation_jours", 6)))
+        
         with col_p2:
-            mode_fermentation = st.selectbox("Mode de fermentation", ["1. Bâche en plastique", "2. Feuilles de bananier", "3. Bac de fermentation", "4. Autre (à préciser)"])
-            methode_sechage = st.selectbox("Méthodes de séchage", ["1. Sur goudron", "2. Sur aire cimentée", "3. Sur bâche en plastique à terre", "4. Sur claie", "5. Autre (à préciser)"])
+            mode_options = ["1. Bâche en plastique", "2. Feuilles de bananier", "3. Bac de fermentation", "4. Autre (à préciser)"]
+            default_mode = st.session_state.reponses_pdc.get("mode_fermentation", mode_options[0])
+            mode_idx = mode_options.index(default_mode) if default_mode in mode_options else 0
+            mode_fermentation = st.selectbox("Mode de fermentation", mode_options, index=mode_idx)
+
+            sechage_options = ["1. Sur goudron", "2. Sur aire cimentée", "3. Sur bâche en plastique à terre", "4. Sur claie", "5. Autre (à préciser)"]
+            default_sechage = st.session_state.reponses_pdc.get("methode_sechage", sechage_options[3])
+            sechage_idx = sechage_options.index(default_sechage) if default_sechage in sechage_options else 3
+            methode_sechage = st.selectbox("Méthodes de séchage", sechage_options, index=sechage_idx)
 
         # Diagnostic qualité post-récolte
         st.markdown("#### 🍫 Diagnostic Qualité Post-Récolte")
@@ -1939,21 +2024,12 @@ def afficher():
 
         st.markdown("---")
 
+        # =========================================================
         # 6.4 UTILISATION DES ENGRAIS ET AMENDEMENTS
+        # =========================================================
         st.markdown("### 🧪 4. Utilisation des engrais / amendements")
-        if 'df_engrais' not in st.session_state:
-            st.session_state.df_engrais = [
-                {
-                    "Type d'engrais": "Minéraux",
-                    "Nom commercial / Formule": "NPK 0-23-19",
-                    "Quantité/an": "200 kg",
-                    "Période d'apport": "Mai",
-                    "Mode d'apport": "Au sol",
-                    "Applicateur": "1. Producteur"
-                }
-            ]
 
-        engrais_df = st.data_editor(
+        st.data_editor(
             st.session_state.df_engrais,
             num_rows="dynamic",
             key="editor_engrais",
@@ -1962,26 +2038,18 @@ def afficher():
                 "Mode d'apport": st.column_config.SelectboxColumn("Mode d'apport", options=["Foliaire", "Au sol"]),
                 "Applicateur": st.column_config.SelectboxColumn("Applicateur", options=["1. Producteur", "2. Applicateur"])
             },
-            use_container_width=True
+            use_container_width=True,
+            on_change=update_engrais
         )
 
         st.markdown("---")
 
+        # =========================================================
         # 6.5 UTILISATION DES PRODUITS PHYTOSANITAIRES
+        # =========================================================
         st.markdown("### 🛡️ 5. Produits phytosanitaires utilisés")
-        if 'df_phyto' not in st.session_state:
-            st.session_state.df_phyto = [
-                {
-                    "Type de produits": "Fongicide",
-                    "Nom commercial / Formule": "Ridomil Gold",
-                    "Quantité / traitement": "50g/15L",
-                    "Période de traitement": "Juin-Juillet",
-                    "Mode d'apport": "Pulvérisateur",
-                    "Applicateur": "2. Applicateur"
-                }
-            ]
 
-        phyto_df = st.data_editor(
+        st.data_editor(
             st.session_state.df_phyto,
             num_rows="dynamic",
             key="editor_phyto",
@@ -1990,49 +2058,53 @@ def afficher():
                 "Mode d'apport": st.column_config.SelectboxColumn("Mode d'apport", options=["Atomiseur", "Pulvérisateur"]),
                 "Applicateur": st.column_config.SelectboxColumn("Applicateur", options=["1. Producteur", "2. Applicateur"])
             },
-            use_container_width=True
+            use_container_width=True,
+            on_change=update_phyto
         )
 
         st.markdown("---")
 
+        # =========================================================
         # 6.6 GESTION DES EMBALLAGES VIDES
+        # =========================================================
         st.markdown("### 🗑️ 6. Gestion des emballages vides")
         gestion_emballages = st.text_area(
             "Que faites-vous des emballages après traitement/application ?",
+            value=st.session_state.reponses_pdc.get("gestion_emballages", ""),
             placeholder="Exemple : Rincés 3 fois, percés et ramassés par le programme de collecte de la coopérative...",
             height=100
         )
 
-        # SYNTHÈSE ET SAUVEGARDE DES DONNÉES DE L'ÉTAPE 6
-        st.session_state.df_sante_cacao = sante_df
-        st.session_state.df_sol_caract = sol_df
-        st.session_state.df_engrais = engrais_df
-        st.session_state.df_phyto = phyto_df
+        # =========================================================
+        # NAVIGATION ENTRE ÉTAPES ET SAUVEGARDE
+        # =========================================================
+        def sauvegarder_etape_6():
+            st.session_state.reponses_pdc.update({
+                "sante_cacaoyere": st.session_state.df_sante_cacao.to_dict("records"),
+                "toposequence": toposequence,
+                "caracteristiques_sol": st.session_state.df_sol_caract.to_dict("records"),
+                "frequence_recolte_jours": freq_recolte,
+                "temps_ecabossage_jours": temps_ecabossage,
+                "duree_fermentation_jours": duree_fermentation,
+                "mode_fermentation": mode_fermentation,
+                "methode_sechage": methode_sechage,
+                "utilisation_engrais": st.session_state.df_engrais.to_dict("records"),
+                "produits_phytosanitaires": st.session_state.df_phyto.to_dict("records"),
+                "gestion_emballages": gestion_emballages,
+                "score_pression_sanitaire": score_maladies,
+                "score_entretien_parcelle": score_entretien
+            })
 
-        # NAVIGATION ENTRE ÉTAPES
         st.markdown("---")
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
+                sauvegarder_etape_6()
                 st.session_state.etape_pdc = 5
                 st.rerun()
         with col2:
             if st.button("Suivant ➡️", use_container_width=True, type="primary"):
-                st.session_state.reponses_pdc.update({
-                    "sante_cacaoyere": sante_df,
-                    "toposequence": toposequence,
-                    "caracteristiques_sol": sol_df,
-                    "frequence_recolte_jours": freq_recolte,
-                    "temps_ecabossage_jours": temps_ecabossage,
-                    "duree_fermentation_jours": duree_fermentation,
-                    "mode_fermentation": mode_fermentation,
-                    "methode_sechage": methode_sechage,
-                    "utilisation_engrais": engrais_df,
-                    "produits_phytosanitaires": phyto_df,
-                    "gestion_emballages": gestion_emballages,
-                    "score_pression_sanitaire": score_maladies,
-                    "score_entretien_parcelle": score_entretien
-                })
+                sauvegarder_etape_6()
                 st.session_state.etape_pdc = 7
                 st.rerun()
 
