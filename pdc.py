@@ -2114,23 +2114,103 @@ def afficher():
                 st.rerun()
 
 
-
-                # ---------------------------------------------------------
+    # ---------------------------------------------------------
     # ÉTAPE 7 : PARTIE D - DONNÉES SOCIO-ÉCONOMIQUES (FICHE 4)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 7:
         st.subheader("Étape 7/15 : Données Socio-économiques (Fiche 4)")
 
-        # 1. COMPTE D'ÉPARGNE ET FINANCEMENT
-        st.markdown("### 🏦 1. Compte d'épargne et Financement")
-        if 'df_financement' not in st.session_state:
-            st.session_state.df_financement = [
+        # =========================================================
+        # 1. FONCTION DE CALLBACK GÉNÉRIQUE ET FONCTIONS DÉDIÉES
+        # =========================================================
+        def apply_editor_changes(key_editor, key_state_df):
+            """Applique proprement les deltas de st.data_editor au DataFrame en session_state."""
+            changes = st.session_state.get(key_editor, {})
+            df = st.session_state[key_state_df].copy()
+
+            # 1. Modifications de cellules
+            for row_idx_str, row_changes in changes.get("edited_rows", {}).items():
+                row_idx = int(row_idx_str)
+                for col_name, new_val in row_changes.items():
+                    if col_name in df.columns:
+                        df.iat[row_idx, df.columns.get_loc(col_name)] = new_val
+
+            # 2. Ajouts de lignes
+            for new_row in changes.get("added_rows", {}):
+                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+
+            # 3. Suppressions de lignes
+            deleted_indices = changes.get("deleted_rows", [])
+            if deleted_indices:
+                df = df.drop(index=deleted_indices).reset_index(drop=True)
+
+            st.session_state[key_state_df] = df
+
+        def update_financement():
+            apply_editor_changes("editor_financement", "df_financement")
+
+        def update_prod_historique():
+            apply_editor_changes("editor_prod_historique", "df_prod_historique")
+
+        def update_autres_revenus():
+            apply_editor_changes("editor_autres_revenus", "df_autres_revenus")
+
+        def update_depenses():
+            apply_editor_changes("editor_depenses", "df_depenses")
+
+        def update_main_oeuvre():
+            apply_editor_changes("editor_main_oeuvre", "df_main_oeuvre")
+
+        # =========================================================
+        # 2. INITIALISATION ET GARANTIE DES DATAFRAMES DANS SESSION STATE
+        # =========================================================
+        if "df_financement" not in st.session_state or not isinstance(st.session_state.df_financement, pd.DataFrame):
+            init_financement = st.session_state.reponses_pdc.get("financement", [
                 {"Service": "Mobile Money", "Compte d'épargne (Oui/Non)": "Oui", "Demande de crédit (Oui/Non)": "Non", "Crédit obtenu (Oui/Non)": "Non", "Montant (FCFA)": 0},
                 {"Service": "Microfinance", "Compte d'épargne (Oui/Non)": "Non", "Demande de crédit (Oui/Non)": "Non", "Crédit obtenu (Oui/Non)": "Non", "Montant (FCFA)": 0},
                 {"Service": "Banque", "Compte d'épargne (Oui/Non)": "Non", "Demande de crédit (Oui/Non)": "Non", "Crédit obtenu (Oui/Non)": "Non", "Montant (FCFA)": 0}
-            ]
+            ])
+            st.session_state.df_financement = pd.DataFrame(init_financement)
 
-        financement_df = st.data_editor(
+        if "df_prod_historique" not in st.session_state or not isinstance(st.session_state.df_prod_historique, pd.DataFrame):
+            init_prod_hist = st.session_state.reponses_pdc.get("prod_historique", [
+                {"Campagne": "Année N-1", "Production (kg)": 1500, "Prix moyen (FCFA/kg)": 1500},
+                {"Campagne": "Année N-2", "Production (kg)": 1200, "Prix moyen (FCFA/kg)": 1000},
+                {"Campagne": "Année N-3", "Production (kg)": 1000, "Prix moyen (FCFA/kg)": 900}
+            ])
+            st.session_state.df_prod_historique = pd.DataFrame(init_prod_hist)
+
+        if "df_autres_revenus" not in st.session_state or not isinstance(st.session_state.df_autres_revenus, pd.DataFrame):
+            init_autres_rev = st.session_state.reponses_pdc.get("autres_revenus", [
+                {"Source de revenu / Activité": "Vente de vivriers", "Montant estimé/an (FCFA)": 250000, "Observations": ""},
+                {"Source de revenu / Activité": "Élevage", "Montant estimé/an (FCFA)": 100000, "Observations": ""}
+            ])
+            st.session_state.df_autres_revenus = pd.DataFrame(init_autres_rev)
+
+        if "df_depenses" not in st.session_state or not isinstance(st.session_state.df_depenses, pd.DataFrame):
+            init_depenses = st.session_state.reponses_pdc.get("depenses_foyer", [
+                {"Dépenses": "Scolarité", "Périodicité": "Année", "Montant moyen (FCFA)": 150000},
+                {"Dépenses": "Nourriture", "Périodicité": "Mois", "Montant moyen (FCFA)": 50000},
+                {"Dépenses": "Santé", "Périodicité": "Année", "Montant moyen (FCFA)": 80000},
+                {"Dépenses": "Électricité", "Périodicité": "2 mois", "Montant moyen (FCFA)": 15000},
+                {"Dépenses": "Eau courante", "Périodicité": "Mois", "Montant moyen (FCFA)": 5000},
+                {"Dépenses": "Charges sociales (Funérailles, fêtes...)", "Périodicité": "Année", "Montant moyen (FCFA)": 100000}
+            ])
+            st.session_state.df_depenses = pd.DataFrame(init_depenses)
+
+        if "df_main_oeuvre" not in st.session_state or not isinstance(st.session_state.df_main_oeuvre, pd.DataFrame):
+            init_mo = st.session_state.reponses_pdc.get("main_oeuvre", [
+                {"Travailleur": "Travailleur 1", "Statut": "MO permanente", "Sexe": "M", "Coût annuel (FCFA)": 300000, "Temps de travail / an (jours)": 250},
+                {"Travailleur": "Groupe de travail (Entraide)", "Statut": "Non rémunérée (familiale)", "Sexe": "M", "Coût annuel (FCFA)": 0, "Temps de travail / an (jours)": 30}
+            ])
+            st.session_state.df_main_oeuvre = pd.DataFrame(init_mo)
+
+        # =========================================================
+        # 1. COMPTE D'ÉPARGNE ET FINANCEMENT
+        # =========================================================
+        st.markdown("### 🏦 1. Compte d'épargne et Financement")
+
+        st.data_editor(
             st.session_state.df_financement,
             num_rows="dynamic",
             key="editor_financement",
@@ -2140,13 +2220,14 @@ def afficher():
                 "Crédit obtenu (Oui/Non)": st.column_config.SelectboxColumn("Crédit obtenu", options=["Oui", "Non"]),
                 "Montant (FCFA)": st.column_config.NumberColumn("Montant (FCFA)", min_value=0, step=10000, format="%d FCFA")
             },
-            use_container_width=True
+            use_container_width=True,
+            on_change=update_financement
         )
 
         # --- DIAGNOSTIC AUTOMATIQUE 7.1 (INCLUSION FINANCIÈRE) ---
-        df_fin = pd.DataFrame(financement_df)
-        has_epargne = any(row["Compte d'épargne (Oui/Non)"] == "Oui" for _, row in df_fin.iterrows())
-        credit_obtenu = any(row["Crédit obtenu (Oui/Non)"] == "Oui" for _, row in df_fin.iterrows())
+        df_fin = st.session_state.df_financement
+        has_epargne = any(row.get("Compte d'épargne (Oui/Non)") == "Oui" for _, row in df_fin.iterrows())
+        credit_obtenu = any(row.get("Crédit obtenu (Oui/Non)") == "Oui" for _, row in df_fin.iterrows())
         montant_total_credit = df_fin["Montant (FCFA)"].sum() if "Montant (FCFA)" in df_fin.columns else 0
 
         st.markdown("#### 💳 Diagnostic d'Inclusion Financière")
@@ -2163,16 +2244,12 @@ def afficher():
 
         st.markdown("---")
 
+        # =========================================================
         # 2. PRODUCTION DE CACAO DES 3 DERNIÈRES ANNÉES
+        # =========================================================
         st.markdown("### 📦 2. Production de cacao des trois (3) dernières années")
-        if 'df_prod_historique' not in st.session_state:
-            st.session_state.df_prod_historique = [
-                {"Campagne": "Année N-1", "Production (kg)": 1500, "Prix moyen (FCFA/kg)": 1500},
-                {"Campagne": "Année N-2", "Production (kg)": 1200, "Prix moyen (FCFA/kg)": 1000},
-                {"Campagne": "Année N-3", "Production (kg)": 1000, "Prix moyen (FCFA/kg)": 900}
-            ]
 
-        prod_historique_df = st.data_editor(
+        st.data_editor(
             st.session_state.df_prod_historique,
             num_rows="dynamic",
             key="editor_prod_historique",
@@ -2180,24 +2257,27 @@ def afficher():
                 "Production (kg)": st.column_config.NumberColumn("Production (kg)", min_value=0, step=50, format="%d kg"),
                 "Prix moyen (FCFA/kg)": st.column_config.NumberColumn("Prix moyen (FCFA/kg)", min_value=0, step=50, format="%d FCFA")
             },
-            use_container_width=True
+            use_container_width=True,
+            on_change=update_prod_historique
         )
 
         # --- DIAGNOSTIC MULTI-ANNÉES COMPLET (7.2) ---
-        df_prod_calc = pd.DataFrame(prod_historique_df)
-        df_prod_calc["Revenu Brut (FCFA)"] = df_prod_calc["Production (kg)"] * df_prod_calc["Prix moyen (FCFA/kg)"]
+        df_prod_calc = st.session_state.df_prod_historique.copy()
         
-        # Inversion pour analyse chronologique si besoin ou extraction par indice
-        prod_n1 = df_prod_calc.iloc[0]["Production (kg)"] if len(df_prod_calc) > 0 else 0
-        prod_n2 = df_prod_calc.iloc[1]["Production (kg)"] if len(df_prod_calc) > 1 else 0
-        prod_n3 = df_prod_calc.iloc[2]["Production (kg)"] if len(df_prod_calc) > 2 else 0
+        # S'assurer des colonnes numériques
+        prod_col = df_prod_calc["Production (kg)"] if "Production (kg)" in df_prod_calc.columns else pd.Series([0])
+        prix_col = df_prod_calc["Prix moyen (FCFA/kg)"] if "Prix moyen (FCFA/kg)" in df_prod_calc.columns else pd.Series([0])
+        
+        df_prod_calc["Revenu Brut (FCFA)"] = prod_col * prix_col
+        
+        prod_n1 = prod_col.iloc[0] if len(prod_col) > 0 else 0
+        prod_n2 = prod_col.iloc[1] if len(prod_col) > 1 else 0
+        prod_n3 = prod_col.iloc[2] if len(prod_col) > 2 else 0
 
-        rev_n1 = df_prod_calc.iloc[0]["Revenu Brut (FCFA)"] if len(df_prod_calc) > 0 else 0
-        rev_n2 = df_prod_calc.iloc[1]["Revenu Brut (FCFA)"] if len(df_prod_calc) > 1 else 0
-        rev_n3 = df_prod_calc.iloc[2]["Revenu Brut (FCFA)"] if len(df_prod_calc) > 2 else 0
+        rev_n1 = df_prod_calc["Revenu Brut (FCFA)"].iloc[0] if len(df_prod_calc) > 0 else 0
 
         revenu_cacao_dernire_annee = rev_n1
-        moyenne_prod_3ans = df_prod_calc["Production (kg)"].mean() if not df_prod_calc.empty else 0
+        moyenne_prod_3ans = prod_col.mean() if not prod_col.empty else 0
 
         # Calcul de la tendance de production (N-3 à N-1)
         evo_prod_pct = ((prod_n1 - prod_n3) / prod_n3 * 100) if prod_n3 > 0 else 0
@@ -2218,25 +2298,24 @@ def afficher():
 
         st.markdown("---")
 
+        # =========================================================
         # 3. SOURCES DE REVENUS AUTRES QUE LE CACAO
+        # =========================================================
         st.markdown("### 💰 3. Sources de revenus autres que le cacao")
-        if 'df_autres_revenus' not in st.session_state:
-            st.session_state.df_autres_revenus = [
-                {"Source de revenu / Activité": "Vente de vivriers", "Montant estimé/an (FCFA)": 250000, "Observations": ""},
-                {"Source de revenu / Activité": "Élevage", "Montant estimé/an (FCFA)": 100000, "Observations": ""}
-            ]
 
-        autres_revenus_df = st.data_editor(
+        st.data_editor(
             st.session_state.df_autres_revenus,
             num_rows="dynamic",
             key="editor_autres_revenus",
             column_config={
                 "Montant estimé/an (FCFA)": st.column_config.NumberColumn("Montant estimé/an (FCFA)", min_value=0, step=10000, format="%d FCFA")
             },
-            use_container_width=True
+            use_container_width=True,
+            on_change=update_autres_revenus
         )
 
-        total_autres_revenus = pd.DataFrame(autres_revenus_df)["Montant estimé/an (FCFA)"].sum() if not pd.DataFrame(autres_revenus_df).empty else 0
+        df_autres = st.session_state.df_autres_revenus
+        total_autres_revenus = df_autres["Montant estimé/an (FCFA)"].sum() if "Montant estimé/an (FCFA)" in df_autres.columns else 0
         revenu_total_global = revenu_cacao_dernire_annee + total_autres_revenus
         part_cacao = (revenu_cacao_dernire_annee / revenu_total_global * 100) if revenu_total_global > 0 else 0
 
@@ -2252,19 +2331,12 @@ def afficher():
 
         st.markdown("---")
 
+        # =========================================================
         # 4. DÉPENSES COURANTES DU FOYER
+        # =========================================================
         st.markdown("### 🛒 4. Dépenses courantes du foyer")
-        if 'df_depenses' not in st.session_state:
-            st.session_state.df_depenses = [
-                {"Dépenses": "Scolarité", "Périodicité": "Année", "Montant moyen (FCFA)": 150000},
-                {"Dépenses": "Nourriture", "Périodicité": "Mois", "Montant moyen (FCFA)": 50000},
-                {"Dépenses": "Santé", "Périodicité": "Année", "Montant moyen (FCFA)": 80000},
-                {"Dépenses": "Électricité", "Périodicité": "2 mois", "Montant moyen (FCFA)": 15000},
-                {"Dépenses": "Eau courante", "Périodicité": "Mois", "Montant moyen (FCFA)": 5000},
-                {"Dépenses": "Charges sociales (Funérailles, fêtes...)", "Périodicité": "Année", "Montant moyen (FCFA)": 100000}
-            ]
 
-        depenses_df = st.data_editor(
+        st.data_editor(
             st.session_state.df_depenses,
             num_rows="dynamic",
             key="editor_depenses",
@@ -2272,14 +2344,15 @@ def afficher():
                 "Périodicité": st.column_config.SelectboxColumn("Périodicité", options=["Mois", "2 mois", "Trimestre", "Semestre", "Année"]),
                 "Montant moyen (FCFA)": st.column_config.NumberColumn("Montant (FCFA)", min_value=0, step=5000, format="%d FCFA")
             },
-            use_container_width=True
+            use_container_width=True,
+            on_change=update_depenses
         )
 
         # Calcul annualisé des dépenses ménagères
-        df_dep = pd.DataFrame(depenses_df)
+        df_dep = st.session_state.df_depenses
         def aux_annualiser(row):
-            m = row["Montant moyen (FCFA)"]
-            p = row["Périodicité"]
+            m = row.get("Montant moyen (FCFA)", 0)
+            p = row.get("Périodicité", "Année")
             if p == "Mois": return m * 12
             elif p == "2 mois": return m * 6
             elif p == "Trimestre": return m * 4
@@ -2291,15 +2364,12 @@ def afficher():
 
         st.markdown("---")
 
+        # =========================================================
         # 5. COÛT DE LA MAIN D'ŒUVRE
+        # =========================================================
         st.markdown("### 👥 5. Coût et gestion de la main d'œuvre")
-        if 'df_main_oeuvre' not in st.session_state:
-            st.session_state.df_main_oeuvre = [
-                {"Travailleur": "Travailleur 1", "Statut": "MO permanente", "Sexe": "M", "Coût annuel (FCFA)": 300000, "Temps de travail / an (jours)": 250},
-                {"Travailleur": "Groupe de travail (Entraide)", "Statut": "Non rémunérée (familiale)", "Sexe": "M", "Coût annuel (FCFA)": 0, "Temps de travail / an (jours)": 30}
-            ]
 
-        main_oeuvre_df = st.data_editor(
+        st.data_editor(
             st.session_state.df_main_oeuvre,
             num_rows="dynamic",
             key="editor_main_oeuvre",
@@ -2309,12 +2379,13 @@ def afficher():
                 "Coût annuel (FCFA)": st.column_config.NumberColumn("Coût annuel (FCFA)", min_value=0, step=10000, format="%d FCFA"),
                 "Temps de travail / an (jours)": st.column_config.NumberColumn("Temps (jours/an)", min_value=0, step=5)
             },
-            use_container_width=True
+            use_container_width=True,
+            on_change=update_main_oeuvre
         )
 
-        df_mo = pd.DataFrame(main_oeuvre_df)
-        total_cout_mo = df_mo["Coût annuel (FCFA)"].sum() if not df_mo.empty else 0
-        total_jours_mo = df_mo["Temps de travail / an (jours)"].sum() if not df_mo.empty else 0
+        df_mo = st.session_state.df_main_oeuvre
+        total_cout_mo = df_mo["Coût annuel (FCFA)"].sum() if "Coût annuel (FCFA)" in df_mo.columns else 0
+        total_jours_mo = df_mo["Temps de travail / an (jours)"].sum() if "Temps de travail / an (jours)" in df_mo.columns else 0
 
         st.markdown("#### 👷 Diagnostic de la Main d'Œuvre")
         col_m1, col_m2 = st.columns(2)
@@ -2323,7 +2394,9 @@ def afficher():
 
         st.markdown("---")
 
-        # --- BILAN FINANCIER GLOBAL CONSOLIDÉ ---
+        # =========================================================
+        # BILAN FINANCIER GLOBAL CONSOLIDÉ & SAUVEGARDE
+        # =========================================================
         st.markdown("### ⚖️ Bilan Financier Consolidé & Capacité d'Investissement")
         revenu_total_estime = revenu_cacao_dernire_annee + total_autres_revenus
         charges_totales = total_depenses_an + total_cout_mo
@@ -2342,34 +2415,31 @@ def afficher():
         else:
             st.success("🟢 **Solde financier positif** : Le ménage dispose d'une marge budgétaire pour investir dans les intrants et les aménagements de la parcelle.")
 
-        # SAUVEGARDE ÉTAPE 7
-        st.session_state.df_financement = financement_df
-        st.session_state.df_prod_historique = prod_historique_df
-        st.session_state.df_autres_revenus = autres_revenus_df
-        st.session_state.df_depenses = depenses_df
-        st.session_state.df_main_oeuvre = main_oeuvre_df
+        def sauvegarder_etape_7():
+            st.session_state.reponses_pdc.update({
+                "financement": st.session_state.df_financement.to_dict("records"),
+                "prod_historique": st.session_state.df_prod_historique.to_dict("records"),
+                "autres_revenus": st.session_state.df_autres_revenus.to_dict("records"),
+                "depenses_foyer": st.session_state.df_depenses.to_dict("records"),
+                "main_oeuvre": st.session_state.df_main_oeuvre.to_dict("records"),
+                "revenu_total_estime": revenu_total_estime,
+                "charges_totales_estimees": charges_totales,
+                "solde_net_estime": solde_net_estime,
+                "tendance_production_3ans_pct": evo_prod_pct,
+                "part_revenu_cacao_pct": part_cacao
+            })
 
         # NAVIGATION ENTRE ÉTAPES
         st.markdown("---")
         col1, col2 = st.columns([1, 1])
         with col1:
             if st.button("⬅️ Retour", use_container_width=True):
+                sauvegarder_etape_7()
                 st.session_state.etape_pdc = 6
                 st.rerun()
         with col2:
             if st.button("Suivant ➡️", use_container_width=True, type="primary"):
-                st.session_state.reponses_pdc.update({
-                    "financement": financement_df,
-                    "prod_historique": prod_historique_df,
-                    "autres_revenus": autres_revenus_df,
-                    "depenses_foyer": depenses_df,
-                    "main_oeuvre": main_oeuvre_df,
-                    "revenu_total_estime": revenu_total_estime,
-                    "charges_totales_estimees": charges_totales,
-                    "solde_net_estime": solde_net_estime,
-                    "tendance_production_3ans_pct": evo_prod_pct,
-                    "part_revenu_cacao_pct": part_cacao
-                })
+                sauvegarder_etape_7()
                 st.session_state.etape_pdc = 8
                 st.rerun()
 
