@@ -1500,56 +1500,87 @@ def afficher():
                 st.session_state.etape_pdc = 4
                 st.rerun()
 
-     # ---------------------------------------------------------
+    # ---------------------------------------------------------
     # ÉTAPE 4 : DIAGNOSTIC DES CULTURES, ÉQUIPEMENTS & ARBRES D'OMBRAGE
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 4:
         st.subheader("Étape 4/15 : Données sur les Cultures, Équipements & Agroforesterie")
 
-        # ---------------------------------------------------------
-        # 1. INITIALIZATION DES DATAFRAMES DANS LE SESSION_STATE
-        # ---------------------------------------------------------
-        colonnes_attendues_cult = [
-            "Culture", "Superficie (ha)", "Année création",
-            "Précédent cultural", "Origine matériel", "En production"
-        ]
-        if "temp_tableau_cultures" not in st.session_state or not isinstance(st.session_state.temp_tableau_cultures, pd.DataFrame):
+        # =========================================================
+        # 1. DEFINITION DES CALLBACKS D'EDITION SECURISEE
+        # =========================================================
+        
+        def apply_editor_changes(key_editor, key_state_df):
+            """Applique proprement les deltas de st.data_editor au DataFrame en session_state."""
+            changes = st.session_state.get(key_editor, {})
+            df = st.session_state[key_state_df].copy()
+
+            # 1. Modifications de cellules
+            for row_idx_str, row_changes in changes.get("edited_rows", {}).items():
+                row_idx = int(row_idx_str)
+                for col_name, new_val in row_changes.items():
+                    if col_name in df.columns:
+                        df.iat[row_idx, df.columns.get_loc(col_name)] = new_val
+
+            # 2. Ajouts de lignes
+            for new_row in changes.get("added_rows", {}):
+                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+
+            # 3. Suppressions de lignes
+            deleted_indices = changes.get("deleted_rows", [])
+            if deleted_indices:
+                df = df.drop(index=deleted_indices).reset_index(drop=True)
+
+            st.session_state[key_state_df] = df
+
+        def update_cultures():
+            apply_editor_changes("editor_cultures", "df_cultures_data")
+
+        def update_equipements():
+            apply_editor_changes("editor_equipements", "df_equipements_data")
+
+        def update_arbres():
+            apply_editor_changes("editor_arbres", "df_arbres_data")
+
+        # =========================================================
+        # 2. INITIALISATION DES DATAFRAMES (SESSION STATE)
+        # =========================================================
+
+        if "df_cultures_data" not in st.session_state:
             init_cult = st.session_state.reponses_pdc.get("tableau_cultures", [
                 {"Culture": "Cacao - Parcelle 1", "Superficie (ha)": 1.5, "Année création": 2012, "Précédent cultural": "Forêt", "Origine matériel": "CNRA / Certifié", "En production": "OUI"},
                 {"Culture": "Cacao - Parcelle 2", "Superficie (ha)": 1.0, "Année création": 2018, "Précédent cultural": "Friche", "Origine matériel": "Tout-venant", "En production": "OUI"},
                 {"Culture": "Hévéa", "Superficie (ha)": 0.0, "Année création": 2020, "Précédent cultural": "Savane", "Origine matériel": "Privé", "En production": "NON"},
                 {"Culture": "Palmier à huile", "Superficie (ha)": 0.0, "Année création": 2021, "Précédent cultural": "Friche", "Origine matériel": "Privé", "En production": "NON"},
-                {"Culture": "Vivrier (Manioc/Maïs)", "Superficie (ha)": 0.5, "Année création": 2023, "Précédent cultural": "Friche", "Origine matériel": "Local", "En production": "OUI"}
+                {"Culture": "Vivrier (Manioc/Maïs)", "Superficie (ha)": 0.5, "Année création": 2023, "Précédent cultural": "Friche", "Origine matériel": "Local", "En production": "OUI"},
             ])
-            st.session_state.temp_tableau_cultures = pd.DataFrame(init_cult)
+            st.session_state.df_cultures_data = pd.DataFrame(init_cult)
 
-        cols_eq_attendues = ["Type", "Désignation", "Quantité", "Année d'acquisition", "Coût (FCFA)", "État"]
-        if "temp_tableau_equipements" not in st.session_state or not isinstance(st.session_state.temp_tableau_equipements, pd.DataFrame):
+        if "df_equipements_data" not in st.session_state:
             init_eq = st.session_state.reponses_pdc.get("tableau_equipements", [
                 {"Type": "Matériel de traitement", "Désignation": "Pulvérisateur", "Quantité": 1, "Année d'acquisition": 2021, "Coût (FCFA)": 35000, "État": "Bon"},
                 {"Type": "Matériel de traitement", "Désignation": "Atomiseur", "Quantité": 0, "Année d'acquisition": 2020, "Coût (FCFA)": 0, "État": "Mauvais"},
                 {"Type": "Matériel de transport", "Désignation": "Brouette / Charette", "Quantité": 2, "Année d'acquisition": 2022, "Coût (FCFA)": 45000, "État": "Acceptable"},
-                {"Type": "Moyen de déplacement", "Désignation": "Moto terrain", "Quantité": 1, "Année d'acquisition": 2019, "Coût (FCFA)": 450000, "État": "Acceptable"}
+                {"Type": "Moyen de déplacement", "Désignation": "Moto terrain", "Quantité": 1, "Année d'acquisition": 2019, "Coût (FCFA)": 450000, "État": "Acceptable"},
             ])
-            st.session_state.temp_tableau_equipements = pd.DataFrame(init_eq)
+            st.session_state.df_equipements_data = pd.DataFrame(init_eq)
 
-        cols_arb_attendues = ["Espèce", "Nombre", "Latitude", "Longitude", "Statut", "Avantages Cacaoyère", "Usage", "Décision", "Remarque"]
-        if "temp_tableau_arbres" not in st.session_state or not isinstance(st.session_state.temp_tableau_arbres, pd.DataFrame):
+        if "df_arbres_data" not in st.session_state:
             init_arb = st.session_state.reponses_pdc.get("tableau_arbres", [
                 {"Espèce": "Akpi", "Nombre": 1, "Latitude": 6.020668, "Longitude": -4.357132, "Statut": "Préservé", "Avantages Cacaoyère": "1. Ombrage / 2. Fertilité sol", "Usage": "Alimentaire / Bois", "Décision": "A maintenir", "Remarque": ""},
                 {"Espèce": "Fraqué", "Nombre": 1, "Latitude": 6.020664, "Longitude": -4.356949, "Statut": "Préservé", "Avantages Cacaoyère": "1. Ombrage / 3. Protection érosion", "Usage": "Bois d'œuvre", "Décision": "A éliminer", "Remarque": "Situé à 1,5m d'un autre arbre"},
-                {"Espèce": "Fromager", "Nombre": 1, "Latitude": 6.020614, "Longitude": -4.356902, "Statut": "Préservé", "Avantages Cacaoyère": "1. Ombrage", "Usage": "Bois d'œuvre", "Décision": "A maintenir", "Remarque": ""}
+                {"Espèce": "Fromager", "Nombre": 1, "Latitude": 6.020614, "Longitude": -4.356902, "Statut": "Préservé", "Avantages Cacaoyère": "1. Ombrage", "Usage": "Bois d'œuvre", "Décision": "A maintenir", "Remarque": ""},
             ])
-            st.session_state.temp_tableau_arbres = pd.DataFrame(init_arb)
+            st.session_state.df_arbres_data = pd.DataFrame(init_arb)
 
         # =========================================================
-        # 1. TABLEAU : DONNÉES SUR LES CULTURES
+        # 3. TABLEAU : DONNÉES SUR LES CULTURES
         # =========================================================
         st.markdown("### 🌾 1. Données sur les cultures et parcelles")
         st.caption("Renseignez l'ensemble des parcelles cacaoyères et des autres spéculations sur l'exploitation.")
 
-        df_cult_out = st.data_editor(
-            st.session_state.temp_tableau_cultures,
+        st.data_editor(
+            st.session_state.df_cultures_data,
             num_rows="dynamic",
             use_container_width=True,
             column_config={
@@ -1558,20 +1589,20 @@ def afficher():
                 "Année création": st.column_config.NumberColumn("Année de création", min_value=1950, max_value=2026, step=1),
                 "Précédent cultural": st.column_config.SelectboxColumn("Précédent cultural", options=["Forêt", "Friche", "Savane", "Replantation Cacao", "Culture vivrière"]),
                 "Origine matériel": st.column_config.SelectboxColumn("Origine matériel végétal", options=["CNRA / Certifié", "Tout-venant", "Champ voisin", "Privé"]),
-                "En production": st.column_config.SelectboxColumn("En production ?", options=["OUI", "NON"])
+                "En production": st.column_config.SelectboxColumn("En production ?", options=["OUI", "NON"]),
             },
-            key="editor_cultures"
+            key="editor_cultures",
+            on_change=update_cultures
         )
-        # Synchronisation immédiate
-        st.session_state.temp_tableau_cultures = df_cult_out
 
-        # Calculs automatiques cultures
+        # Calculs automatiques
+        df_cult_current = st.session_state.df_cultures_data
         superficie_totale_cacao = 0.0
         superficie_autres = 0.0
 
-        if not df_cult_out.empty and "Culture" in df_cult_out.columns:
-            sup_series = pd.to_numeric(df_cult_out.get("Superficie (ha)"), errors="coerce").fillna(0.0)
-            mask_cacao = df_cult_out["Culture"].astype(str).str.contains("Cacao", case=False, na=False)
+        if not df_cult_current.empty and "Culture" in df_cult_current.columns:
+            sup_series = pd.to_numeric(df_cult_current.get("Superficie (ha)"), errors="coerce").fillna(0.0)
+            mask_cacao = df_cult_current["Culture"].astype(str).str.contains("Cacao", case=False, na=False)
             superficie_totale_cacao = float(sup_series[mask_cacao].sum())
             superficie_autres = float(sup_series[~mask_cacao].sum())
 
@@ -1583,13 +1614,13 @@ def afficher():
         st.markdown("---")
 
         # =========================================================
-        # 2. TABLEAU : MATÉRIEL AGRICOLE ET ÉQUIPEMENTS
+        # 4. TABLEAU : MATÉRIEL AGRICOLE ET ÉQUIPEMENTS
         # =========================================================
         st.markdown("### 🛠️ 2. Matériel agricole et équipements")
         st.caption("Inventaire des équipements de pulvérisation, transport et déplacement.")
 
-        df_eq_out = st.data_editor(
-            st.session_state.temp_tableau_equipements,
+        st.data_editor(
+            st.session_state.df_equipements_data,
             num_rows="dynamic",
             use_container_width=True,
             column_config={
@@ -1598,26 +1629,26 @@ def afficher():
                 "Quantité": st.column_config.NumberColumn("Quantité", min_value=0, step=1),
                 "Année d'acquisition": st.column_config.NumberColumn("Année d'acquisition", min_value=1980, max_value=2026, step=1),
                 "Coût (FCFA)": st.column_config.NumberColumn("Coût d'achat (FCFA)", min_value=0, step=5000, format="%d FCFA"),
-                "État": st.column_config.SelectboxColumn("État fonctionnel", options=["Bon", "Acceptable", "Mauvais"])
+                "État": st.column_config.SelectboxColumn("État fonctionnel", options=["Bon", "Acceptable", "Mauvais"]),
             },
-            key="editor_equipements"
+            key="editor_equipements",
+            on_change=update_equipements
         )
-        # Synchronisation immédiate
-        st.session_state.temp_tableau_equipements = df_eq_out
 
         # Calculs équipements
+        df_eq_current = st.session_state.df_equipements_data
         valeur_equipements = 0.0
         nb_pulverisateurs = 0
 
-        if not df_eq_out.empty:
-            qte_series = pd.to_numeric(df_eq_out.get("Quantité"), errors="coerce").fillna(0)
-            cout_series = pd.to_numeric(df_eq_out.get("Coût (FCFA)"), errors="coerce").fillna(0)
+        if not df_eq_current.empty:
+            qte_series = pd.to_numeric(df_eq_current.get("Quantité"), errors="coerce").fillna(0)
+            cout_series = pd.to_numeric(df_eq_current.get("Coût (FCFA)"), errors="coerce").fillna(0)
             valeur_equipements = float((qte_series * cout_series).sum())
 
-            if "Désignation" in df_eq_out.columns and "État" in df_eq_out.columns:
+            if "Désignation" in df_eq_current.columns and "État" in df_eq_current.columns:
                 mask_pulve = (
-                    df_eq_out["Désignation"].astype(str).str.contains("Pulvérisateur|Atomiseur", case=False, na=False)
-                ) & (df_eq_out["État"].astype(str) != "Mauvais")
+                    df_eq_current["Désignation"].astype(str).str.contains("Pulvérisateur|Atomiseur", case=False, na=False)
+                ) & (df_eq_current["État"].astype(str) != "Mauvais")
                 nb_pulverisateurs = int(qte_series[mask_pulve].sum())
 
         col_eq1, col_eq2 = st.columns(2)
@@ -1627,13 +1658,13 @@ def afficher():
         st.markdown("---")
 
         # =========================================================
-        # 3. TABLEAU : DIAGNOSTIC DES ARBRES D'OMBRAGE SUR L'EXPLOITATION
+        # 5. TABLEAU : DIAGNOSTIC DES ARBRES D'OMBRAGE
         # =========================================================
         st.markdown("### 🌳 3. Diagnostic des arbres d'ombrage et associés")
         st.caption("Relevé de la composante agroforestière (Nombre, localisation, avantages et décision d'aménagement).")
 
-        df_arb_out = st.data_editor(
-            st.session_state.temp_tableau_arbres,
+        st.data_editor(
+            st.session_state.df_arbres_data,
             num_rows="dynamic",
             use_container_width=True,
             column_config={
@@ -1642,26 +1673,35 @@ def afficher():
                 "Latitude": st.column_config.NumberColumn("Latitude GPS", format="%.6f"),
                 "Longitude": st.column_config.NumberColumn("Longitude GPS", format="%.6f"),
                 "Statut": st.column_config.SelectboxColumn("Statut", options=["Préservé", "Introduit / Planté", "Spontané"]),
-                "Avantages Cacaoyère": st.column_config.SelectboxColumn("Avantages pour la cacaoyère", options=["1. Ombrage", "2. Fertilité du sol", "3. Protection contre l'érosion", "4. Maintien de l'humidité", "5. Lutte contre l'enherbement"]),
+                "Avantages Cacaoyère": st.column_config.SelectboxColumn(
+                    "Avantages pour la cacaoyère",
+                    options=[
+                        "1. Ombrage",
+                        "2. Fertilité du sol",
+                        "3. Protection contre l'érosion",
+                        "4. Maintien de l'humidité",
+                        "5. Lutte contre l'enherbement",
+                    ],
+                ),
                 "Usage": st.column_config.SelectboxColumn("Usage principal", options=["Alimentaire", "Médicinale", "Protection des cacaoyers", "Bois d'œuvre", "Bois de chauffage"]),
                 "Décision": st.column_config.SelectboxColumn("Action recommandée", options=["A maintenir", "A éliminer", "A élaguer"], required=True),
-                "Remarque": st.column_config.TextColumn("Remarques / Distances")
+                "Remarque": st.column_config.TextColumn("Remarques / Distances"),
             },
-            key="editor_arbres"
+            key="editor_arbres",
+            on_change=update_arbres
         )
-        # Synchronisation immédiate
-        st.session_state.temp_tableau_arbres = df_arb_out
 
         # Calculs agroforestiers
+        df_arb_current = st.session_state.df_arbres_data
         total_arbres = 0
         arbres_conserves = 0
 
-        if not df_arb_out.empty:
-            nb_arb_series = pd.to_numeric(df_arb_out.get("Nombre"), errors="coerce").fillna(0)
+        if not df_arb_current.empty:
+            nb_arb_series = pd.to_numeric(df_arb_current.get("Nombre"), errors="coerce").fillna(0)
             total_arbres = int(nb_arb_series.sum())
 
-            if "Décision" in df_arb_out.columns:
-                mask_conserves = df_arb_out["Décision"].isin(["A maintenir", "A élaguer"])
+            if "Décision" in df_arb_current.columns:
+                mask_conserves = df_arb_current["Décision"].isin(["A maintenir", "A élaguer"])
                 arbres_conserves = int(nb_arb_series[mask_conserves].sum())
 
         arbres_par_ha = (total_arbres / superficie_totale_cacao) if superficie_totale_cacao > 0 else 0.0
@@ -1673,6 +1713,7 @@ def afficher():
         col_a3.metric("Densité brute", f"{arbres_par_ha:.1f} arb/ha")
         col_a4.metric("Densité conservée", f"{densite_conservee_ha:.1f} arb/ha")
 
+        # Conformité agroforestière / RDUE
         if 18 <= densite_conservee_ha <= 40:
             st.success(f"✅ **Densité agroforestière conforme (RDUE/CCC)** : {densite_conservee_ha:.1f} arbres/ha conservés (Cible : 18-40 arbres/ha).")
         elif densite_conservee_ha < 18:
@@ -1685,13 +1726,13 @@ def afficher():
         # =========================================================
         def sauvegarder_etape_4():
             st.session_state.reponses_pdc.update({
-                "tableau_cultures": st.session_state.temp_tableau_cultures.to_dict("records"),
+                "tableau_cultures": st.session_state.df_cultures_data.to_dict("records"),
                 "superficie_totale_cacao": superficie_totale_cacao,
                 "superficie_autres_cultures": superficie_autres,
-                "tableau_equipements": st.session_state.temp_tableau_equipements.to_dict("records"),
+                "tableau_equipements": st.session_state.df_equipements_data.to_dict("records"),
                 "valeur_total_equipements": valeur_equipements,
                 "nb_pulverisateurs_operationnels": nb_pulverisateurs,
-                "tableau_arbres": st.session_state.temp_tableau_arbres.to_dict("records"),
+                "tableau_arbres": st.session_state.df_arbres_data.to_dict("records"),
                 "total_arbres_ombrage": total_arbres,
                 "arbres_conserves": arbres_conserves,
                 "densite_arbres_ha": arbres_par_ha,
@@ -1712,6 +1753,7 @@ def afficher():
                 sauvegarder_etape_4()
                 st.session_state.etape_pdc = 5
                 st.rerun()
+
 
 
         # ---------------------------------------------------------
