@@ -888,11 +888,22 @@ def afficher():
     if "temp_tableau_equipements" not in st.session_state:
         st.session_state.temp_tableau_equipements = []
 
+    # --- INITIALISATION DES VARIABLES RACINES POUR SYNC SQLITE / SUPABASE ---
+    if "nom_producteur" not in st.session_state:
+        st.session_state.nom_producteur = ""
+    if "code_producteur" not in st.session_state:
+        st.session_state.code_producteur = ""
+    if "superficie" not in st.session_state:
+        st.session_state.superficie = 0.0
+
     # Initialisation du dictionnaire maître pour les 15 étapes
     if "pdc_data" not in st.session_state:
         st.session_state.pdc_data = {
             "Étape 1/15 : Localisation & Identification de la Section": {},
-            "Étape 2/15 : Données de la Parcelle": {},
+            "Étape 2/15 : Identification du Producteur & Données de la Parcelle": {
+                "👤 Identification du Producteur": {},
+                "📍 Données de la Parcelle": {}
+            },
             "Étape 3/15 : Données Socio-démographiques (Fiche 1)": {},
             "Étape 4/15 : Données sur les Cultures, Équipements & Agroforesterie": {
                 "🌾 Données sur les cultures et parcelles": {},
@@ -943,6 +954,7 @@ def afficher():
                 "💡 Recommandations du Conseiller Agricole": {}
             }
         }
+
 
     # --- AJOUT DES INITIALISATIONS POUR L'ÉTAPE 13 ---
     if "df_cultures_pdc" not in st.session_state:
@@ -1296,7 +1308,7 @@ def afficher():
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 2:
         st.subheader("Étape 2/15 : Identification du Producteur & Données de la Parcelle")
-        st.info("Saisie des informations d'identification officielles selon le modèle Conseil Café-Cacao et caractéristiques de la parcelle.")
+        st.info("Saisie des informations d'identification officielles selon le modèle Conseil Café-Cacao et caractéristiques de la parcelle. Les champs marqués d'un (*) sont obligatoires.")
 
         # --- PARTIE 1 : IDENTIFICATION DU PRODUCTEUR ---
         st.markdown("### 👤 Identification du Producteur (Situation de Référence)")
@@ -1305,17 +1317,17 @@ def afficher():
         
         with col_id1:
             nom_prenoms = st.text_input(
-                "Nom et prénoms du producteur", 
+                "Nom et prénoms du producteur *", 
                 placeholder="Ex: Kouamé Konan Jean", 
                 key="input_nom_prenoms_e2"
             )
             contact_tel = st.text_input(
-                "Contact (Tél)", 
+                "Contact (Tél) *", 
                 placeholder="Ex: 0708091011", 
                 key="input_contact_tel_e2"
             )
             code_national = st.text_input(
-                "Code National du producteur (Le Conseil du Café-Cacao)", 
+                "Code National du producteur (Le Conseil du Café-Cacao) *", 
                 placeholder="Ex: CCC-12345678", 
                 key="input_code_national_e2"
             )
@@ -1368,8 +1380,8 @@ def afficher():
         st.markdown("### 📍 Données de la Parcelle")
 
         superficie = st.number_input(
-            "Superficie de la plantation (ha)", 
-            min_value=0.1, 
+            "Superficie de la plantation (ha) *", 
+            min_value=0.0, 
             step=0.5, 
             key="input_superficie_e2"
         )
@@ -1405,37 +1417,53 @@ def afficher():
 
         with col2:
             if st.button("Suivant ➡️", key="btn_suivant_pdc_etape2", type="primary", use_container_width=True):
-                if "reponses_pdc" not in st.session_state:
-                    st.session_state.reponses_pdc = {}
+                # Vérification de la présence des champs obligatoires
+                champs_manquants = []
+                if not nom_prenoms.strip():
+                    champs_manquants.append("Nom et prénoms du producteur")
+                if not contact_tel.strip():
+                    champs_manquants.append("Contact (Tél)")
+                if not code_national.strip():
+                    champs_manquants.append("Code National du producteur")
+                if superficie <= 0.0:
+                    champs_manquants.append("Superficie de la plantation (doit être > 0)")
 
-                # Mise à jour globale des réponses (Identification + Parcelle)
-                st.session_state.reponses_pdc.update({
-                    # Identification Producteur
-                    "nom_prenoms_producteur": nom_prenoms,
-                    "contact_tel": contact_tel,
-                    "code_national_producteur": code_national,
-                    "code_groupe": code_groupe,
-                    "nom_entite_reconnue": nom_entite,
-                    "code_entite_reconnue": code_entite,
-                    "delegation_regionale": delegation_regionale,
-                    "departement": departement,
-                    "sous_prefecture": sous_prefecture,
-                    "village": village,
-                    "campement": campement,
-                    # Caractéristiques Parcelle
-                    "superficie": superficie,
-                    "annee_creation": annee_creation,
-                    "lat": lat,
-                    "lon": lon
-                })
-                
-                # Inscription directe dans la session racine pour SQLite / Supabase
-                st.session_state["nom_producteur"] = nom_prenoms
-                st.session_state["code_producteur"] = code_national
-                st.session_state["superficie"] = superficie
-                
-                st.session_state.etape_pdc = 3
-                st.rerun()
+                if champs_manquants:
+                    for champ in champs_manquants:
+                        st.error(f"⚠️ Le champ obligatoire **{champ}** n'est pas renseigné.")
+                else:
+                    if "reponses_pdc" not in st.session_state:
+                        st.session_state.reponses_pdc = {}
+
+                    # Mise à jour globale des réponses (Identification + Parcelle)
+                    st.session_state.reponses_pdc.update({
+                        # Identification Producteur
+                        "nom_prenoms_producteur": nom_prenoms.strip(),
+                        "contact_tel": contact_tel.strip(),
+                        "code_national_producteur": code_national.strip(),
+                        "code_groupe": code_groupe.strip(),
+                        "nom_entite_reconnue": nom_entite.strip(),
+                        "code_entite_reconnue": code_entite.strip(),
+                        "delegation_regionale": delegation_regionale.strip(),
+                        "departement": departement.strip(),
+                        "sous_prefecture": sous_prefecture.strip(),
+                        "village": village.strip(),
+                        "campement": campement.strip(),
+                        # Caractéristiques Parcelle
+                        "superficie": superficie,
+                        "annee_creation": annee_creation,
+                        "lat": lat,
+                        "lon": lon
+                    })
+                    
+                    # Inscription directe dans la session racine pour SQLite / Supabase
+                    st.session_state["nom_producteur"] = nom_prenoms.strip()
+                    st.session_state["code_producteur"] = code_national.strip()
+                    st.session_state["superficie"] = superficie
+                    
+                    st.session_state.etape_pdc = 3
+                    st.rerun()
+
 
 
     # ---------------------------------------------------------
