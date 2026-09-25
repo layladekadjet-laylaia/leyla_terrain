@@ -2445,14 +2445,102 @@ def afficher():
 
 
 
-                        # ---------------------------------------------------------
+    # ---------------------------------------------------------
     # ÉTAPE 8 : PLANIFICATION COMPLÈTE (PLAN 5 ANS & FICHE 7)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 8:
         st.subheader("Étape 8/15 : Plan d'Action & Programme Annuel (Fiche 7)")
         st.caption("Planification globale, matrice quinquennale, calendrier d'exécution")
 
-        # --- 8.1 GRILLE DE DÉCISION DYNAMIQUE ---
+        # =========================================================
+        # 1. FONCTIONS DE CALLBACKS POUR PERSISTANCE DES DATAFRAMES
+        # =========================================================
+        def apply_editor_changes(key_editor, key_state_df):
+            """Applique les deltas de st.data_editor au DataFrame st.session_state."""
+            changes = st.session_state.get(key_editor, {})
+            df = st.session_state[key_state_df].copy()
+
+            # Modifications
+            for row_idx_str, row_changes in changes.get("edited_rows", {}).items():
+                row_idx = int(row_idx_str)
+                for col_name, new_val in row_changes.items():
+                    if col_name in df.columns:
+                        df.iat[row_idx, df.columns.get_loc(col_name)] = new_val
+
+            # Ajouts
+            for new_row in changes.get("added_rows", {}):
+                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+
+            # Suppressions
+            deleted_indices = changes.get("deleted_rows", [])
+            if deleted_indices:
+                df = df.drop(index=deleted_indices).reset_index(drop=True)
+
+            st.session_state[key_state_df] = df
+
+        def update_analyse_problemes():
+            apply_editor_changes("editor_analyse_prob", "df_analyse_problemes")
+
+        def update_plan_action_5ans():
+            apply_editor_changes("editor_plan_action_5ans", "df_plan_action_5ans")
+
+        def update_programme_annuel():
+            apply_editor_changes("editor_prog_annuel", "df_programme_annuel")
+
+        # =========================================================
+        # 2. INITIALISATION ET GARANTIE DES DATAFRAMES EN SESSION STATE
+        # =========================================================
+        if "df_analyse_problemes" not in st.session_state or not isinstance(st.session_state.df_analyse_problemes, pd.DataFrame):
+            init_analyse = st.session_state.reponses_pdc.get("analyse_problemes", [
+                {
+                    "Domaine": "Peuplement du verger",
+                    "Problèmes ou Contraintes": "Forte densité (1500 pieds/ha)",
+                    "Causes": "Non-respect du dispositif de plantation",
+                    "Conséquences": "Prolifération des maladies et insectes",
+                    "Solutions": "Régler la densité"
+                },
+                {
+                    "Domaine": "Entretien du verger",
+                    "Problèmes ou Contraintes": "Présence de nombreux gourmands",
+                    "Causes": "Absence d'entretien",
+                    "Conséquences": "Attire les mirides / Réduit la vigueur",
+                    "Solutions": "Réaliser la taille d'entretien"
+                }
+            ])
+            st.session_state.df_analyse_problemes = pd.DataFrame(init_analyse)
+
+        if "df_plan_action_5ans" not in st.session_state or not isinstance(st.session_state.df_plan_action_5ans, pd.DataFrame):
+            init_plan_5ans = st.session_state.reponses_pdc.get("plan_action_5ans", [
+                {
+                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
+                    "Objectifs": "Remettre la parcelle en bon état de production",
+                    "Activités": "Régler la densité",
+                    "Coût (FCFA)": 200000,
+                    "A1": True, "A2": False, "A3": False, "A4": False, "A5": False,
+                    "Responsable": "Producteur",
+                    "Partenaires": "Coopérative"
+                }
+            ])
+            st.session_state.df_plan_action_5ans = pd.DataFrame(init_plan_5ans)
+
+        if "df_programme_annuel" not in st.session_state or not isinstance(st.session_state.df_programme_annuel, pd.DataFrame):
+            init_prog_annuel = st.session_state.reponses_pdc.get("programme_annuel", [
+                {
+                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
+                    "Activités": "Régler la densité",
+                    "Sous-activités": "Identifier les pieds à supprimer",
+                    "Indicateurs": "80% des pieds à supprimer identifiés",
+                    "T1": True, "T2": False, "T3": False, "T4": False,
+                    "Responsable d'exécution": "Producteur",
+                    "Responsable suivi": "Coopérative",
+                    "Coût FCFA": 0
+                }
+            ])
+            st.session_state.df_programme_annuel = pd.DataFrame(init_prog_annuel)
+
+        # =========================================================
+        # 8.1 GRILLE DE DÉCISION DYNAMIQUE
+        # =========================================================
         st.markdown("### 📊 1. Grille de décision")
         st.caption("Cochez les critères constatés sur la parcelle pour déterminer le type de décision.")
 
@@ -2516,27 +2604,12 @@ def afficher():
 
         st.markdown("---")
 
-        # --- 8.2 TABLEAU D'ANALYSE DES PROBLÈMES ---
+        # =========================================================
+        # 8.2 TABLEAU D'ANALYSE DES PROBLÈMES
+        # =========================================================
         st.markdown("### ⚠️ 2. Tableau d'analyse des problèmes")
-        if 'df_analyse_problemes' not in st.session_state:
-            st.session_state.df_analyse_problemes = [
-                {
-                    "Domaine": "Peuplement du verger",
-                    "Problèmes ou Contraintes": "Forte densité (1500 pieds/ha)",
-                    "Causes": "Non-respect du dispositif de plantation",
-                    "Conséquences": "Prolifération des maladies et insectes",
-                    "Solutions": "Régler la densité"
-                },
-                {
-                    "Domaine": "Entretien du verger",
-                    "Problèmes ou Contraintes": "Présence de nombreux gourmands",
-                    "Causes": "Absence d'entretien",
-                    "Conséquences": "Attire les mirides / Réduit la vigueur",
-                    "Solutions": "Réaliser la taille d'entretien"
-                }
-            ]
 
-        analyse_df = st.data_editor(
+        st.data_editor(
             st.session_state.df_analyse_problemes,
             num_rows="dynamic",
             key="editor_analyse_prob",
@@ -2551,27 +2624,18 @@ def afficher():
                 "Conséquences": st.column_config.TextColumn("Conséquences", width="medium"),
                 "Solutions": st.column_config.TextColumn("Solutions préconisées", width="medium")
             },
-            use_container_width=True
+            use_container_width=True,
+            on_change=update_analyse_problemes
         )
 
         st.markdown("---")
 
-        # --- 8.3 PLAN D'ACTION SUR 5 ANS ---
+        # =========================================================
+        # 8.3 PLAN D'ACTION SUR 5 ANS
+        # =========================================================
         st.markdown("### 📅 3. Plan d'Action Quinquennal (Sur 5 ans)")
-        if 'df_plan_action_5ans' not in st.session_state:
-            st.session_state.df_plan_action_5ans = [
-                {
-                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
-                    "Objectifs": "Remettre la parcelle en bon état de production",
-                    "Activités": "Régler la densité",
-                    "Coût (FCFA)": 200000,
-                    "A1": True, "A2": False, "A3": False, "A4": False, "A5": False,
-                    "Responsable": "Producteur",
-                    "Partenaires": "Coopérative"
-                }
-            ]
 
-        plan_edited_df = st.data_editor(
+        st.data_editor(
             st.session_state.df_plan_action_5ans,
             num_rows="dynamic",
             key="editor_plan_action_5ans",
@@ -2598,31 +2662,22 @@ def afficher():
                 "Responsable": st.column_config.SelectboxColumn("Responsable", options=["Producteur", "Manœuvre", "Équipe spécialisée"], default="Producteur"),
                 "Partenaires": st.column_config.TextColumn("Partenaires", width="medium")
             },
-            use_container_width=True
+            use_container_width=True,
+            on_change=update_plan_action_5ans
         )
 
-        total_budget_5ans = sum([row.get("Coût (FCFA)", 0) for row in plan_edited_df if isinstance(row, dict) and row.get("Coût (FCFA)")])
-        st.info(f"💰 **Budget total estimé du plan d'action sur 5 ans :** `{total_budget_5ans:,} FCFA`".replace(",", " "))
+        df_plan = st.session_state.df_plan_action_5ans
+        total_budget_5ans = df_plan["Coût (FCFA)"].sum() if "Coût (FCFA)" in df_plan.columns else 0
+        st.info(f"💰 **Budget total estimé du plan d'action sur 5 ans :** `{total_budget_5ans:,.0f} FCFA`".replace(",", " "))
 
         st.markdown("---")
 
-        # --- 8.4 PROGRAMME ANNUEL D'ACTIVITÉS (FICHE 7) ---
+        # =========================================================
+        # 8.4 PROGRAMME ANNUEL D'ACTIVITÉS (FICHE 7)
+        # =========================================================
         st.markdown("### 🗓️ 4. Programme Annuel d'Activités (Fiche 7)")
-        if 'df_programme_annuel' not in st.session_state:
-            st.session_state.df_programme_annuel = [
-                {
-                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
-                    "Activités": "Régler la densité",
-                    "Sous-activités": "Identifier les pieds à supprimer",
-                    "Indicateurs": "80% des pieds à supprimer identifiés",
-                    "T1": True, "T2": False, "T3": False, "T4": False,
-                    "Responsable d'exécution": "Producteur",
-                    "Responsable suivi": "Coopérative",
-                    "Coût FCFA": 0
-                }
-            ]
 
-        programme_df = st.data_editor(
+        st.data_editor(
             st.session_state.df_programme_annuel,
             num_rows="dynamic",
             key="editor_prog_annuel",
@@ -2639,33 +2694,45 @@ def afficher():
                 "Responsable suivi": st.column_config.SelectboxColumn("Suivi", options=["Coopérative", "ANADER", "Agent terrain"], default="Coopérative"),
                 "Coût FCFA": st.column_config.NumberColumn("Coût (FCFA)", min_value=0, step=2500, format="%d FCFA")
             },
-            use_container_width=True
+            use_container_width=True,
+            on_change=update_programme_annuel
         )
 
-        total_annuel = sum([row.get("Coût FCFA", 0) for row in programme_df if isinstance(row, dict) and row.get("Coût FCFA")])
-        st.info(f"💰 **Budget total du programme annuel :** `{total_annuel:,} FCFA`".replace(",", " "))
+        df_prog = st.session_state.df_programme_annuel
+        total_annuel = df_prog["Coût FCFA"].sum() if "Coût FCFA" in df_prog.columns else 0
+        st.info(f"💰 **Budget total du programme annuel :** `{total_annuel:,.0f} FCFA`".replace(",", " "))
 
         st.markdown("---")
 
-        # BOUTONS DE NAVIGATION ÉTAPE 8
+        # =========================================================
+        # FONCTION DE SAUVEGARDE ET BOUTONS DE NAVIGATION ÉTAPE 8
+        # =========================================================
+        def sauvegarder_etape_8():
+            if "reponses_pdc" not in st.session_state:
+                st.session_state.reponses_pdc = {}
+
+            st.session_state.reponses_pdc.update({
+                "decision_retenue": decision_calculee,
+                "analyse_problemes": st.session_state.df_analyse_problemes.to_dict("records"),
+                "plan_action_5ans": st.session_state.df_plan_action_5ans.to_dict("records"),
+                "programme_annuel": st.session_state.df_programme_annuel.to_dict("records"),
+                "budget_total_5ans": total_budget_5ans,
+                "budget_annuel_total": total_annuel
+            })
+
         col_e8_1, col_e8_2 = st.columns([1, 1])
         with col_e8_1:
             if st.button("⬅️ Retour", key="btn_retour_etape8", use_container_width=True):
+                sauvegarder_etape_8()
                 st.session_state.etape_pdc = 7
                 st.rerun()
 
         with col_e8_2:
             if st.button("Suivant ➡️", key="btn_suivant_etape8", type="primary", use_container_width=True):
-                if "reponses_pdc" not in st.session_state:
-                    st.session_state.reponses_pdc = {}
-                
-                st.session_state.reponses_pdc["decision_retenue"] = decision_calculee
-                st.session_state.reponses_pdc["budget_total_5ans"] = total_budget_5ans
-                st.session_state.reponses_pdc["budget_annuel_total"] = total_annuel
-                
-                # Passage à l'étape 9
+                sauvegarder_etape_8()
                 st.session_state.etape_pdc = 9
                 st.rerun()
+
 
     # ---------------------------------------------------------
     # ÉTAPE 9 : DÉTERMINATION DES MOYENS ET COÛTS (FICHE 8)
@@ -2674,20 +2741,47 @@ def afficher():
         st.subheader("Étape 9/15 : Détermination des moyens et des coûts (Fiche 8)")
         st.caption("Évaluation détaillée des coûts d'investissement, intrants et main d'œuvre par activité sur 5 ans.")
 
+        # 1. Callback de mise à jour des modifications st.data_editor
+        def update_moyens_cou_fiche8():
+            changes = st.session_state.get("editor_fiche8_moyens_couts", {})
+            df = st.session_state.df_moyens_cou_fiche8.copy()
+
+            # Modifications de cellules
+            for row_idx_str, row_changes in changes.get("edited_rows", {}).items():
+                row_idx = int(row_idx_str)
+                for col_name, new_val in row_changes.items():
+                    if col_name in df.columns:
+                        df.iat[row_idx, df.columns.get_loc(col_name)] = new_val
+
+            # Ajouts de lignes
+            for new_row in changes.get("added_rows", {}):
+                df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+
+            # Suppressions de lignes
+            deleted_indices = changes.get("deleted_rows", [])
+            if deleted_indices:
+                df = df.drop(index=deleted_indices).reset_index(drop=True)
+
+            st.session_state.df_moyens_cou_fiche8 = df
+
+        # 2. Champs de saisie de l'activité concernée
         activite_selectionnee = st.text_input(
             "Activité concernée :",
-            value="Activité 1 : Traitement phytosanitaire et fertilisation",
+            value=st.session_state.reponses_pdc.get("activite_fiche8", "Activité 1 : Traitement phytosanitaire et fertilisation"),
             placeholder="Entrez le nom de l'activité...",
             key="input_activite_fiche8"
         )
 
-        if 'df_moyens_cou_fiche8' not in st.session_state:
-            st.session_state.df_moyens_cou_fiche8 = [
+        # 3. Initialisation du DataFrame dans session state
+        if "df_moyens_cou_fiche8" not in st.session_state or not isinstance(st.session_state.df_moyens_cou_fiche8, pd.DataFrame):
+            init_fiche8 = st.session_state.reponses_pdc.get("moyens_fiche8_details", [
                 {"Catégorie": "Investissement", "Moyens spécifiques": "Atomiseur", "Unités": "Nombre", "Qté A1": 1, "Coût A1": 150000, "Qté A2": 0, "Coût A2": 0, "Qté A3": 0, "Coût A3": 0, "Qté A4": 0, "Coût A4": 0, "Qté A5": 0, "Coût A5": 0},
                 {"Catégorie": "Intrants", "Moyens spécifiques": "Engrais", "Unités": "kg", "Qté A1": 200, "Coût A1": 70000, "Qté A2": 200, "Coût A2": 70000, "Qté A3": 250, "Coût A3": 87500, "Qté A4": 250, "Coût A4": 87500, "Qté A5": 300, "Coût A5": 105000}
-            ]
+            ])
+            st.session_state.df_moyens_cou_fiche8 = pd.DataFrame(init_fiche8)
 
-        moyens_cou_df = st.data_editor(
+        # 4. Éditeur de données
+        st.data_editor(
             st.session_state.df_moyens_cou_fiche8,
             num_rows="dynamic",
             key="editor_fiche8_moyens_couts",
@@ -2706,89 +2800,46 @@ def afficher():
                 "Qté A5": st.column_config.NumberColumn("Qté A5", min_value=0, step=1),
                 "Coût A5": st.column_config.NumberColumn("Coût A5 (FCFA)", min_value=0, step=1000, format="%d FCFA")
             },
-            use_container_width=True
+            use_container_width=True,
+            on_change=update_moyens_cou_fiche8
         )
 
-        total_fiche8 = sum(
-            (row.get("Coût A1") or 0) + (row.get("Coût A2") or 0) + (row.get("Coût A3") or 0) + (row.get("Coût A4") or 0) + (row.get("Coût A5") or 0)
-            for row in moyens_cou_df if isinstance(row, dict)
-        )
+        # 5. Calcul du coût global sur 5 ans
+        df_f8 = st.session_state.df_moyens_cou_fiche8
+        cols_couts = [f"Coût A{i}" for i in range(1, 6) if f"Coût A{i}" in df_f8.columns]
+        total_fiche8 = df_f8[cols_couts].sum().sum() if not df_f8.empty and cols_couts else 0
 
-        st.info(f"💵 **Coût global estimé des moyens (Fiche 8) sur 5 ans :** `{total_fiche8:,} FCFA`".replace(",", " "))
+        st.info(f"💵 **Coût global estimé des moyens (Fiche 8) sur 5 ans :** `{total_fiche8:,.0f} FCFA`".replace(",", " "))
 
         st.markdown("---")
 
-        # BOUTONS DE NAVIGATION ÉTAPE 9
+        # Sauvegarde Étape 9
+        def sauvegarder_etape_9():
+            if "reponses_pdc" not in st.session_state:
+                st.session_state.reponses_pdc = {}
+
+            st.session_state.reponses_pdc.update({
+                "activite_fiche8": activite_selectionnee,
+                "moyens_fiche8_details": st.session_state.df_moyens_cou_fiche8.to_dict("records"),
+                "budget_fiche8_total": total_fiche8
+            })
+
+        # Navigation Étape 9
         col_e9_1, col_e9_2 = st.columns([1, 1])
         with col_e9_1:
             if st.button("⬅️ Retour", key="btn_retour_etape9", use_container_width=True):
-                st.session_state.etape_pdc = 8
-                st.rerun()
-
-        with col_e9_2:
-            if st.button("Suivant", key="btn_suivant_etape9", type="primary", use_container_width=True):
-                if "reponses_pdc" not in st.session_state:
-                    st.session_state.reponses_pdc = {}
-                
-                st.session_state.reponses_pdc["activite_fiche8"] = activite_selectionnee
-                st.session_state.reponses_pdc["moyens_fiche8_details"] = moyens_cou_df
-                st.session_state.reponses_pdc["budget_fiche8_total"] = total_fiche8
-                
-                # Passage à l'étape 10 (Audit)
-                st.session_state.etape_pdc = 10
-                st.rerun()
-
-
-    # ---------------------------------------------------------
-    # ÉTAPE 9 : AUDIT & DIAGNOSTIC QUALITÉ ET BILAN JSON
-    # ---------------------------------------------------------
-    elif st.session_state.etape_pdc == 9:
-        st.subheader("Étape 9/15 : Audit & Diagnostic Qualité du PDC")
-        st.caption("Évaluation de la conformité globale des données collectées")
-
-        donnees_pdc = st.session_state.get("reponses_pdc", {})
-        
-        # Diagnostic et calcul de conformité
-        score_global, pts_forts, avert, alertes = effectuer_diagnostic_exhaustif_json(donnees_pdc)
-
-        st.metric(label="Score de Conformité Global (Étapes 1 à 8)", value=f"{score_global} / 100")
-
-        if alertes:
-            st.error("🚨 **Alertes Critiques / Non-Conformités Majeures :**")
-            for alerte in alertes:
-                st.write(f"- {alerte}")
-
-        if avert:
-            st.warning("⚠️ **Avertissements & Points d'attention :**")
-            for av in avert:
-                st.write(f"- {av}")
-
-        with st.expander("✅ Voir les Points Forts validés"):
-            if pts_forts:
-                for pf in pts_forts:
-                    st.write(f"- {pf}")
-            else:
-                st.write("Aucun point fort enregistré pour le moment.")
-
-        st.markdown("---")
-        st.markdown("### 📄 Bilan global des données collectées (JSON)")
-        st.json(donnees_pdc)
-
-        st.markdown("---")
-
-        col_e9_1, col_e9_2 = st.columns([1, 1])
-        with col_e9_1:
-            if st.button("⬅️ Retour", key="btn_retour_etape9", use_container_width=True):
+                sauvegarder_etape_9()
                 st.session_state.etape_pdc = 8
                 st.rerun()
 
         with col_e9_2:
             if st.button("Suivant ➡️", key="btn_suivant_etape9", type="primary", use_container_width=True):
-                st.session_state.reponses_pdc["score_conformite_etape1_8"] = score_global
+                sauvegarder_etape_9()
                 st.session_state.etape_pdc = 10
                 st.rerun()
 
-                # ---------------------------------------------------------
+
+    # ---------------------------------------------------------
     # ÉTAPE 10 : AUDIT & DIAGNOSTIC DE CONFORMITÉ (BILAN FINAL PARTIE 1)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 10:
@@ -2797,14 +2848,13 @@ def afficher():
 
         donnees = st.session_state.get("reponses_pdc", {})
 
-                # --- 10.1 DIAGNOSTIC & AUDIT DE CONFORMITÉ ---
+        # --- 10.1 DIAGNOSTIC & AUDIT DE CONFORMITÉ ---
         st.markdown("### 🔍 Diagnostic Qualité du PDC")
         
-        # REMPLACER effectuer_diagnostic_exhaustif_json PAR evaluer_pdc
+        # Diagnostic via evaluer_pdc
         score_global, pts_forts, avert, alertes = evaluer_pdc(donnees)
 
         st.metric(label="Score de Conformité Global (Étapes 1 à 9)", value=f"{score_global} / 100")
-
 
         if alertes:
             st.error("🚨 **Alertes Critiques / Non-Conformités Majeures :**")
@@ -2833,13 +2883,19 @@ def afficher():
         col_s3.metric("Zone d'intervention", f"Zone {donnees.get('zone', '-')}")
 
         col_b1, col_b2, col_b3 = st.columns(3)
-        col_b1.metric("Budget Plan 5 ans", f"{donnees.get('budget_total_5ans', 0):,} FCFA".replace(",", " "))
-        col_b2.metric("Programme Annuel (A1)", f"{donnees.get('budget_annuel_total', 0):,} FCFA".replace(",", " "))
-        col_b3.metric("Moyens & Intrants (F8)", f"{donnees.get('budget_fiche8_total', 0):,} FCFA".replace(",", " "))
+        col_b1.metric("Budget Plan 5 ans", f"{donnees.get('budget_total_5ans', 0):,.0f} FCFA".replace(",", " "))
+        col_b2.metric("Programme Annuel (A1)", f"{donnees.get('budget_annuel_total', 0):,.0f} FCFA".replace(",", " "))
+        col_b3.metric("Moyens & Intrants (F8)", f"{donnees.get('budget_fiche8_total', 0):,.0f} FCFA".replace(",", " "))
 
         st.markdown("---")
 
-        # --- 10.3 ACTIONS / NAVIGATION ---
+        # --- 10.3 BILAN JSON COMPLET ---
+        with st.expander("📄 Voir le bilan des données brutes collectées (JSON)"):
+            st.json(donnees)
+
+        st.markdown("---")
+
+        # --- 10.4 NAVIGATION ---
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
             if st.button("⬅️ Retour", key="btn_retour_etape10", use_container_width=True):
@@ -2848,10 +2904,11 @@ def afficher():
                 
         with col_btn2:
             if st.button("Suivant  ➡️", key="btn_suivant_etape10", type="primary", use_container_width=True):
+                st.session_state.reponses_pdc["score_conformite_etape1_9"] = score_global
                 st.session_state.etape_pdc = 11
                 st.rerun()
 
-        # ---------------------------------------------------------
+       # ---------------------------------------------------------
     # ÉTAPE 11 : IDENTIFICATION DU PRODUCTEUR & LOCALISATION (PARTIE 2)
     # (PARTIE VI : STRUCTURATION DU PDC - 1.1 Identification)
     # ---------------------------------------------------------
@@ -2914,7 +2971,6 @@ def afficher():
 
     # ---------------------------------------------------------
     # ÉTAPE 12 : MÉNAGE & DESCRIPTION DE L'EXPLOITATION (NORMES CCC)
-    # (PARTIE VI : STRUCTURATION DU PDC - 1.2 Ménage & 1.3 Exploitation)
     # ---------------------------------------------------------
     elif st.session_state.etape_pdc == 12:
         st.subheader("Étape 12/15 : Informations Ménage & Description de l'Exploitation")
@@ -2925,13 +2981,14 @@ def afficher():
         # =========================================================
         st.markdown("### 💳 1.2.1 Situation de l'épargne")
 
-        if 'df_epargne_pdc' not in st.session_state:
-            st.session_state.df_epargne_pdc = [
+        if 'df_epargne_pdc' not in st.session_state or not isinstance(st.session_state.df_epargne_pdc, pd.DataFrame):
+            epargne_init = [
                 {"Épargne": "Mobile Money", "Avez-vous un compte ?": "Non", "Avez-vous de l'argent sur le compte ?": "Non", "Avez-vous bénéficié de financement ?": "Non", "Montant (FCFA)": 0},
                 {"Épargne": "Microfinance", "Avez-vous un compte ?": "Non", "Avez-vous de l'argent sur le compte ?": "Non", "Avez-vous bénéficié de financement ?": "Non", "Montant (FCFA)": 0},
                 {"Épargne": "Banque", "Avez-vous un compte ?": "Non", "Avez-vous de l'argent sur le compte ?": "Non", "Avez-vous bénéficié de financement ?": "Non", "Montant (FCFA)": 0},
                 {"Épargne": "Autres (à préciser)", "Avez-vous un compte ?": "Non", "Avez-vous de l'argent sur le compte ?": "Non", "Avez-vous bénéficié de financement ?": "Non", "Montant (FCFA)": 0},
             ]
+            st.session_state.df_epargne_pdc = pd.DataFrame(epargne_init)
 
         df_epargne_edite = st.data_editor(
             st.session_state.df_epargne_pdc,
@@ -2954,84 +3011,27 @@ def afficher():
         # =========================================================
         st.markdown("### 👥 1.2.2 Situation de la main-d'œuvre")
 
-        if "df_main_oeuvre_pdc" not in st.session_state:
-            st.session_state.df_main_oeuvre_pdc = [
-                {
-                    "Membre du ménage": "Propriétaire de l'exploitation",
-                    "Nb Femmes": 0,
-                    "Nb Hommes": 0,
-                    "Nb à l'école": 0,
-                    "Instruction": "Aucun",
-                    "Temps de travail": "Plein temps",
-                },
-                {
-                    "Membre du ménage": "Gérant ou représentant",
-                    "Nb Femmes": 0,
-                    "Nb Hommes": 0,
-                    "Nb à l'école": 0,
-                    "Instruction": "Aucun",
-                    "Temps de travail": "Plein temps",
-                },
-                {
-                    "Membre du ménage": "Conjoints",
-                    "Nb Femmes": 0,
-                    "Nb Hommes": 0,
-                    "Nb à l'école": 0,
-                    "Instruction": "Aucun",
-                    "Temps de travail": "Occasionnel",
-                },
-                {
-                    "Membre du ménage": "Enfants 0 - 6 ans",
-                    "Nb Femmes": 0,
-                    "Nb Hommes": 0,
-                    "Nb à l'école": 0,
-                    "Instruction": "Aucun",
-                    "Temps de travail": "Occasionnel",
-                },
-                {
-                    "Membre du ménage": "Enfant 6 - 18 ans",
-                    "Nb Femmes": 0,
-                    "Nb Hommes": 0,
-                    "Nb à l'école": 0,
-                    "Instruction": "Primaire",
-                    "Temps de travail": "Occasionnel",
-                },
-                {
-                    "Membre du ménage": "Enfant + 18 ans",
-                    "Nb Femmes": 0,
-                    "Nb Hommes": 0,
-                    "Nb à l'école": 0,
-                    "Instruction": "Secondaire",
-                    "Temps de travail": "Plein temps",
-                },
+        if "df_main_oeuvre_pdc" not in st.session_state or not isinstance(st.session_state.df_main_oeuvre_pdc, pd.DataFrame):
+            mo_init = [
+                {"Membre du ménage": "Propriétaire de l'exploitation", "Nb Femmes": 0, "Nb Hommes": 0, "Nb à l'école": 0, "Instruction": "Aucun", "Temps de travail": "Plein temps"},
+                {"Membre du ménage": "Gérant ou représentant", "Nb Femmes": 0, "Nb Hommes": 0, "Nb à l'école": 0, "Instruction": "Aucun", "Temps de travail": "Plein temps"},
+                {"Membre du ménage": "Conjoints", "Nb Femmes": 0, "Nb Hommes": 0, "Nb à l'école": 0, "Instruction": "Aucun", "Temps de travail": "Occasionnel"},
+                {"Membre du ménage": "Enfants 0 - 6 ans", "Nb Femmes": 0, "Nb Hommes": 0, "Nb à l'école": 0, "Instruction": "Aucun", "Temps de travail": "Occasionnel"},
+                {"Membre du ménage": "Enfant 6 - 18 ans", "Nb Femmes": 0, "Nb Hommes": 0, "Nb à l'école": 0, "Instruction": "Primaire", "Temps de travail": "Occasionnel"},
+                {"Membre du ménage": "Enfant + 18 ans", "Nb Femmes": 0, "Nb Hommes": 0, "Nb à l'école": 0, "Instruction": "Secondaire", "Temps de travail": "Plein temps"},
             ]
+            st.session_state.df_main_oeuvre_pdc = pd.DataFrame(mo_init)
 
         df_mo_edite = st.data_editor(
             st.session_state.df_main_oeuvre_pdc,
             key="editor_main_oeuvre_pdc",
             column_config={
-                "Membre du ménage": st.column_config.TextColumn(
-                    "Catégorie membre", disabled=True
-                ),
-                "Nb Femmes": st.column_config.NumberColumn(
-                    "F", min_value=0, step=1, help="Nombre de femmes"
-                ),
-                "Nb Hommes": st.column_config.NumberColumn(
-                    "M", min_value=0, step=1, help="Nombre d'hommes"
-                ),
-                "Nb à l'école": st.column_config.NumberColumn(
-                    "Encore à l'école", min_value=0, step=1
-                ),
-                "Instruction": st.column_config.SelectboxColumn(
-                    "Niveau d'instruction",
-                    options=["Aucun", "Primaire", "Secondaire", "Universitaire"],
-                    default="Aucun",
-                ),
-                "Temps de travail": st.column_config.SelectboxColumn(
-                    "Temps de travail sur plantation",
-                    options=["Plein temps", "Occasionnel", "Aucun"],
-                    default="Occasionnel",
-                ),
+                "Membre du ménage": st.column_config.TextColumn("Catégorie membre", disabled=True),
+                "Nb Femmes": st.column_config.NumberColumn("F", min_value=0, step=1, help="Nombre de femmes"),
+                "Nb Hommes": st.column_config.NumberColumn("M", min_value=0, step=1, help="Nombre d'hommes"),
+                "Nb à l'école": st.column_config.NumberColumn("Encore à l'école", min_value=0, step=1),
+                "Instruction": st.column_config.SelectboxColumn("Niveau d'instruction", options=["Aucun", "Primaire", "Secondaire", "Universitaire"], default="Aucun"),
+                "Temps de travail": st.column_config.SelectboxColumn("Temps de travail sur plantation", options=["Plein temps", "Occasionnel", "Aucun"], default="Occasionnel"),
             },
             use_container_width=True,
             num_rows="dynamic",
@@ -3044,33 +3044,39 @@ def afficher():
         # =========================================================
         st.markdown("### 🏡 1.3 Description & Caractéristiques de l'Exploitation")
 
-        # --- RÉCUPÉRATION DES DONNÉES DE L'ÉTAPE 4 (SESSION_STATE) ---
+        # Extraction sécurisée des données de l'étape 4
         reponses = st.session_state.get("reponses_pdc", {})
 
-        # 1. Extraction des superficies issues des cultures
-        surf_cacao_defaut = float(reponses.get("superficie_totale_cacao", 3.5))
-        surf_autres_defaut = float(reponses.get("superficie_autres_cultures", 0.5))
+        try:
+            surf_cacao_defaut = float(reponses.get("superficie_totale_cacao", 3.5))
+        except (ValueError, TypeError):
+            surf_cacao_defaut = 3.5
+
+        try:
+            surf_autres_defaut = float(reponses.get("superficie_autres_cultures", 0.5))
+        except (ValueError, TypeError):
+            surf_autres_defaut = 0.5
+
         surf_totale_defaut = surf_cacao_defaut + surf_autres_defaut
 
-        # 2. Extraction du tableau complet des arbres avec coordonnées GPS
-        tableau_arbres = reponses.get(
-            "tableau_arbres", st.session_state.get("temp_tableau_arbres", [])
-        )
+        tableau_arbres = reponses.get("tableau_arbres", st.session_state.get("temp_tableau_arbres", []))
 
-        # 3. Métriques d'arbres
-        nb_arbres_defaut = int(reponses.get("arbres_conserves", len(tableau_arbres)))
-        densite_ha_defaut = float(reponses.get("densite_conservee_ha", 0.0))
+        try:
+            nb_arbres_defaut = int(reponses.get("arbres_conserves", len(tableau_arbres)))
+        except (ValueError, TypeError):
+            nb_arbres_defaut = len(tableau_arbres)
 
-        # Extraction dynamique des essences renseignées dans l'Étape 4
-        essences_extraites = list(
-            set(
-                str(row.get("Espèce", "")).strip()
-                for row in tableau_arbres
-                if isinstance(row, dict) and row.get("Espèce")
-            )
-        )
+        try:
+            densite_ha_defaut = float(reponses.get("densite_conservee_ha", 0.0))
+        except (ValueError, TypeError):
+            densite_ha_defaut = 0.0
 
-        # Détermination automatique du niveau d'ombrage
+        essences_extraites = list({
+            str(row.get("Espèce", "")).strip()
+            for row in tableau_arbres
+            if isinstance(row, dict) and row.get("Espèce")
+        })
+
         if densite_ha_defaut < 10:
             ombrage_defaut = "Faible (< 10 arbres/ha)"
         elif 10 <= densite_ha_defaut <= 25:
@@ -3079,7 +3085,7 @@ def afficher():
             ombrage_defaut = "Excessif (> 25 arbres/ha)"
 
         # --- EXPANDER 1 : FORMULAIRE AGRONOMIQUE & FONCIER ---
-        with st.expander("📋 **1. Formulaire AgrONOMIQUE & FONCIER**", expanded=True):
+        with st.expander("📋 **1. Formulaire AGRONOMIQUE & FONCIER**", expanded=True):
             col1, col2 = st.columns(2)
 
             with col1:
@@ -3155,16 +3161,9 @@ def afficher():
                 )
 
         # --- EXPANDER 2 : CARTOGRAPHIE, ARBRES & INFRASTRUCTURES GÉOLOCALISÉES ---
-        with st.expander(
-            "🗺️ **2. Cartographie, Infrastructures & Repères Géolocalisés (Normes CCC & RDUE)**",
-            expanded=True,
-        ):
-            st.caption(
-                "Données relatives au croquis/polygone, aux waypoints du contour, aux"
-                " infrastructures et aux arbres d'ombrage géolocalisés."
-            )
+        with st.expander("🗺️ **2. Cartographie, Infrastructures & Repères Géolocalisés (Normes CCC & RDUE)**", expanded=True):
+            st.caption("Données relatives au croquis/polygone, aux waypoints du contour, aux infrastructures et aux arbres d'ombrage géolocalisés.")
 
-            # --- 2.1 COORDONNÉES RÉFÉRENCE & WAYPOINT CENTRAL ---
             col_geo1, col_geo2 = st.columns(2)
 
             with col_geo1:
@@ -3183,20 +3182,12 @@ def afficher():
             with col_geo2:
                 lat_ref = (
                     tableau_arbres[0].get("Latitude")
-                    if (
-                        tableau_arbres
-                        and isinstance(tableau_arbres[0], dict)
-                        and "Latitude" in tableau_arbres[0]
-                    )
+                    if (tableau_arbres and isinstance(tableau_arbres[0], dict) and "Latitude" in tableau_arbres[0])
                     else 6.67262
                 )
                 lon_ref = (
                     tableau_arbres[0].get("Longitude")
-                    if (
-                        tableau_arbres
-                        and isinstance(tableau_arbres[0], dict)
-                        and "Longitude" in tableau_arbres[0]
-                    )
+                    if (tableau_arbres and isinstance(tableau_arbres[0], dict) and "Longitude" in tableau_arbres[0])
                     else -5.28095
                 )
                 gps_defaut_str = f"{lat_ref:.6f} N, {lon_ref:.6f} W"
@@ -3209,13 +3200,9 @@ def afficher():
 
             st.markdown("---")
 
-            # --- 2.2 SAISIE DES SOMMETS / WAYPOINTS CONTOURNAUX (OPTION A & B) ---
+            # --- SOMMETS DU POLYGONE ---
             st.markdown("##### 📐 Sommets / Coins de la Parcelle (Polygone GPS)")
-            st.caption(
-                "Renseignez les waypoints des coins de la parcelle. Si ce tableau est"
-                " vide, Leyla générera automatiquement un contour unique basé sur le code"
-                " du producteur."
-            )
+            st.caption("Renseignez les waypoints des coins de la parcelle.")
 
             if "temp_tableau_sommets" not in st.session_state:
                 st.session_state.temp_tableau_sommets = []
@@ -3230,15 +3217,9 @@ def afficher():
                 num_rows="dynamic",
                 use_container_width=True,
                 column_config={
-                    "Sommet": st.column_config.TextColumn(
-                        "Nom du point / Sommet", required=True
-                    ),
-                    "Latitude": st.column_config.NumberColumn(
-                        "Latitude (ex: 6.67262)", format="%.6f"
-                    ),
-                    "Longitude": st.column_config.NumberColumn(
-                        "Longitude (ex: -5.28095)", format="%.6f"
-                    ),
+                    "Sommet": st.column_config.TextColumn("Nom du point / Sommet", required=True),
+                    "Latitude": st.column_config.NumberColumn("Latitude (ex: 6.67262)", format="%.6f"),
+                    "Longitude": st.column_config.NumberColumn("Longitude (ex: -5.28095)", format="%.6f"),
                 },
                 key="editor_sommets_pdc",
             )
@@ -3247,12 +3228,8 @@ def afficher():
 
             st.markdown("---")
 
-            # --- 2.3 SAISIE DES INFRASTRUCTURES & REPÈRES GÉOLOCALISÉS ---
+            # --- INFRASTRUCTURES & REPÈRES ---
             st.markdown("##### 📍 Infrastructures & Éléments Remarquables Géolocalisés")
-            st.caption(
-                "Positionnez précisément chaque infrastructure (Habitation, Puits, Bas-fond...)"
-                " avec ses coordonnées GPS."
-            )
 
             cols_reperes = ["Élément", "Latitude", "Longitude", "Remarque"]
             if "temp_tableau_reperes" not in st.session_state:
@@ -3286,12 +3263,8 @@ def afficher():
                         ],
                         required=True,
                     ),
-                    "Latitude": st.column_config.NumberColumn(
-                        "Latitude", format="%.6f"
-                    ),
-                    "Longitude": st.column_config.NumberColumn(
-                        "Longitude", format="%.6f"
-                    ),
+                    "Latitude": st.column_config.NumberColumn("Latitude", format="%.6f"),
+                    "Longitude": st.column_config.NumberColumn("Longitude", format="%.6f"),
                     "Remarque": st.column_config.TextColumn("Remarque / Description"),
                 },
                 key="editor_reperes_pdc",
@@ -3301,54 +3274,30 @@ def afficher():
 
             st.markdown("---")
 
-            # --- 2.4 SYNTHÈSE AGROFORESTIÈRE (SYNCHRONISÉE & VERROUILLÉE) ---
+            # --- SYNTHÈSE AGROFORESTIÈRE ---
             st.markdown("##### 🌳 Inventaire Agroforestier (🔒 Récupéré de l'Étape 4)")
-            essences_str_label = (
-                ", ".join(essences_extraites)
-                if essences_extraites
-                else "Aucune essence spécifiée"
-            )
+            essences_str_label = ", ".join(essences_extraites) if essences_extraites else "Aucune essence spécifiée"
 
             col_syn1, col_syn2 = st.columns(2)
             with col_syn1:
-                st.metric(
-                    label="Nombre d'arbres conservés géolocalisés",
-                    value=f"{nb_arbres_defaut} pieds",
-                )
+                st.metric(label="Nombre d'arbres conservés géolocalisés", value=f"{nb_arbres_defaut} pieds")
             with col_syn2:
-                st.info(
-                    f"• **Essences recensées :** {essences_str_label}\n\n"
-                    f"• **Densité / Ombrage :** {ombrage_defaut}"
-                )
+                st.info(f"• **Essences recensées :** {essences_str_label}\n\n• **Densité / Ombrage :** {ombrage_defaut}")
 
             nb_arbres_forestiers = nb_arbres_defaut
-            essences_arbres = (
-                essences_extraites
-                if essences_extraites
-                else ["Akpi", "Iroko", "Framiré"]
-            )
+            essences_arbres = essences_extraites if essences_extraites else ["Akpi", "Iroko", "Framiré"]
             densite_ombrage = ombrage_defaut
 
             st.markdown("---")
 
-            # --- 2.5 RENDU DU CROQUIS ---
-            st.markdown(
-                "##### 🎨 Rendu du Croquis de la Parcelle (Géolocalisation Automatique)"
-            )
-
+            # --- RENDU DU CROQUIS ---
+            st.markdown("##### 🎨 Rendu du Croquis de la Parcelle")
             col_gen1, col_gen2 = st.columns([1, 1])
             with col_gen1:
-                btn_generer_croquis = st.button(
-                    "🖌️ Générer le croquis automatique (CCC)",
-                    use_container_width=True,
-                )
+                btn_generer_croquis = st.button("🖌️ Générer le croquis automatique (CCC)", use_container_width=True)
 
             with col_gen2:
-                fichier_croquis = st.file_uploader(
-                    "Ou importer un croquis manuel (PNG/JPG)",
-                    type=["png", "jpg", "jpeg"],
-                    key="fichier_croquis_parcelle",
-                )
+                fichier_croquis = st.file_uploader("Ou importer un croquis manuel (PNG/JPG)", type=["png", "jpg", "jpeg"], key="fichier_croquis_parcelle")
 
             if btn_generer_croquis:
                 if "generer_croquis_parcelle" in globals():
@@ -3368,64 +3317,31 @@ def afficher():
                     )
                     st.session_state["croquis_genere"] = img_buf.getvalue()
                 else:
-                    st.warning(
-                        "La fonction `generer_croquis_parcelle` n'est pas encore définie dans"
-                        " le script."
-                    )
+                    st.warning("La fonction `generer_croquis_parcelle` n'est pas encore définie dans le script.")
 
             if fichier_croquis is not None:
-                st.image(
-                    fichier_croquis,
-                    caption="Croquis manuel importé pour le dossier CCC",
-                    use_container_width=True,
-                )
+                st.image(fichier_croquis, caption="Croquis manuel importé pour le dossier CCC", use_container_width=True)
             elif "croquis_genere" in st.session_state:
-                st.image(
-                    st.session_state["croquis_genere"],
-                    caption=(
-                        "Croquis automatique géolocalisé généré par Leyla (Normes CCC &"
-                        " RDUE)"
-                    ),
-                    use_container_width=True,
-                )
+                st.image(st.session_state["croquis_genere"], caption="Croquis automatique géolocalisé généré (Normes CCC & RDUE)", use_container_width=True)
 
-        # --- CALCULS & TABLEAU DE BORD VISUEL ---
+        # --- CALCULS & TABLEAU DE BORD SYNTHÉTIQUE ---
         surf_autre = max(0.0, surf_totale - (surf_cacao_prod + surf_cacao_jeune))
-        pct_cacao = (
-            ((surf_cacao_prod + surf_cacao_jeune) / surf_totale * 100)
-            if surf_totale > 0
-            else 0.0
-        )
+        pct_cacao = ((surf_cacao_prod + surf_cacao_jeune) / surf_totale * 100) if surf_totale > 0 else 0.0
 
         relief_str = ", ".join(relief_sol) if relief_sol else "Non précisé"
-        contraintes_str = (
-            ", ".join(contraintes) if contraintes else "Aucune contrainte majeure"
-        )
+        contraintes_str = ", ".join(contraintes) if contraintes else "Aucune contrainte majeure"
 
-        # Extraction des types d'infrastructures saisies pour le rapport textuel
-        elements_reperes_liste = list(
-            set(
-                r.get("Élément", "")
-                for r in st.session_state.get("temp_tableau_reperes", [])
-                if isinstance(r, dict) and r.get("Élément")
-            )
-        )
-        elements_str = (
-            ", ".join(elements_reperes_liste)
-            if elements_reperes_liste
-            else "Aucun élément spécifique"
-        )
+        elements_reperes_liste = list({
+            r.get("Élément", "")
+            for r in st.session_state.get("temp_tableau_reperes", [])
+            if isinstance(r, dict) and r.get("Élément")
+        })
+        elements_str = ", ".join(elements_reperes_liste) if elements_reperes_liste else "Aucun élément spécifique"
         voies_str = ", ".join(voies_acces) if voies_acces else "Non précisé"
-        essences_str = (
-            ", ".join(essences_arbres)
-            if essences_arbres
-            else "Aucune essence spécifiée"
-        )
+        essences_str = ", ".join(essences_arbres) if essences_arbres else "Aucune essence spécifiée"
 
         if "Vétuste" in age_moyen_plan:
-            diagnostic_age = (
-                "🚨 **Régénération urgente requise** (Verger en fin de cycle productif)."
-            )
+            diagnostic_age = "🚨 **Régénération urgente requise** (Verger en fin de cycle productif)."
             niveau_alerte = "error"
         elif "Vieillissant" in age_moyen_plan:
             diagnostic_age = "⚠️ **Replantation progressive à prévoir**."
@@ -3439,12 +3355,8 @@ def afficher():
 
         kpi1, kpi2, kpi3, kpi4 = st.columns(4)
         kpi1.metric("Superficie Totale", f"{surf_totale:.1f} ha")
-        kpi2.metric(
-            "Cacao Productif", f"{surf_cacao_prod:.1f} ha", f"{pct_cacao:.0f}% du total"
-        )
-        kpi3.metric(
-            "Arbres Forestiers", f"{nb_arbres_forestiers} pieds", f"{densite_ombrage}"
-        )
+        kpi2.metric("Cacao Productif", f"{surf_cacao_prod:.1f} ha", f"{pct_cacao:.0f}% du total")
+        kpi3.metric("Arbres Forestiers", f"{nb_arbres_forestiers} pieds", f"{densite_ombrage}")
         kpi4.metric("Autre / Jachère", f"{surf_autre:.1f} ha")
 
         if niveau_alerte == "error":
@@ -3469,43 +3381,29 @@ def afficher():
             st.info(
                 f"• **Infrastructures/Repères :** {elements_str}\n\n"
                 f"• **Accès :** {voies_str}\n\n"
-                f"• **Arbres d'ombrage :** {nb_arbres_forestiers} pieds"
-                f" ({essences_str})\n\n"
+                f"• **Arbres d'ombrage :** {nb_arbres_forestiers} pieds ({essences_str})\n\n"
                 f"• **Niveau d'ombrage :** {densite_ombrage}"
             )
 
-        # --- RAPPORT SYNTHÉTIQUE ---
-        st.markdown(
-            "#### 📝 Description Officielle (Générée automatiquement pour le Dossier CCC)"
-        )
+        # --- RAPPORT SYNTHÉTIQUE AUTOMATISÉ ---
+        st.markdown("#### 📝 Description Officielle (Générée automatiquement pour le Dossier CCC)")
 
         texte_description = (
-            f"L'exploitation sous le statut foncier **{statut_foncier}** couvre une"
-            f" superficie totale mesurée de **{surf_totale:.1f} hectares** (Waypoint"
-            f" GPS central : {waypoint_gps}). La spéculation principale est la"
-            f" cacaoculture qui occupe **{surf_cacao_prod + surf_cacao_jeune:.1f} ha**"
-            f" (soit **{surf_cacao_prod:.1f} ha** en verger productif et"
-            f" **{surf_cacao_jeune:.1f} ha** en phase d'immaturité), représentant"
-            f" **{pct_cacao:.1f}%** de la surface globale. Le verger présente un profil"
-            f" d'âge **{age_moyen_plan}**, installé sur un relief de type"
-            f" **{relief_str}**. Le croquis cartographique géolocalisé identifie les"
-            f" voies d'accès (**{voies_str}**) ainsi que les infrastructures/repères"
-            f" physiques sur la parcelle (**{elements_str}**). Sur le plan"
-            f" agroforestier, l'exploitation compte **{nb_arbres_forestiers} arbres"
-            f" forestiers d'ombrage** (principalement : {essences_str}), garantissant un"
-            f" niveau d'ombrage évalué comme **{densite_ombrage}**. "
+            f"L'exploitation sous le statut foncier **{statut_foncier}** couvre une superficie totale mesurée de "
+            f"**{surf_totale:.1f} hectares** (Waypoint GPS central : {waypoint_gps}). La spéculation principale est la "
+            f"cacaoculture qui occupe **{surf_cacao_prod + surf_cacao_jeune:.1f} ha** (soit **{surf_cacao_prod:.1f} ha** "
+            f"en verger productif et **{surf_cacao_jeune:.1f} ha** en phase d'immaturité), représentant **{pct_cacao:.1f}%** "
+            f"de la surface globale. Le verger présente un profil d'âge **{age_moyen_plan}**, installé sur un relief "
+            f"de type **{relief_str}**. Le croquis cartographique géolocalisé identifie les voies d'accès (**{voies_str}**) "
+            f"ainsi que les infrastructures/repères physiques sur la parcelle (**{elements_str}**). Sur le plan agroforestier, "
+            f"l'exploitation compte **{nb_arbres_forestiers} arbres forestiers d'ombrage** (principalement : {essences_str}), "
+            f"garantissant un niveau d'ombrage évalué comme **{densite_ombrage}**. "
         )
 
         if contraintes:
-            texte_description += (
-                "Sur le plan phytosanitaire et pédo-climatique, la parcelle subit les"
-                f" contraintes suivantes : **{contraintes_str}**."
-            )
+            texte_description += f"Sur le plan phytosanitaire et pédo-climatique, la parcelle subit les contraintes suivantes : **{contraintes_str}**."
         else:
-            texte_description += (
-                "Aucune contrainte phytosanitaire critique n'a été répertoriée lors de la"
-                " visite terrain."
-            )
+            texte_description += "Aucune contrainte phytosanitaire critique n'a été répertoriée lors de la visite terrain."
 
         st.markdown(texte_description)
         st.markdown("---")
@@ -3515,30 +3413,19 @@ def afficher():
         # =========================================================
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
-            if st.button(
-                "⬅️ Retour",
-                key="btn_retour_etape12",
-                use_container_width=True,
-            ):
+            if st.button("⬅️ Retour", key="btn_retour_etape12", use_container_width=True):
                 st.session_state.etape_pdc = 11
                 st.rerun()
 
         with col_btn2:
-            if st.button(
-                "Suivant ➡️",
-                key="btn_suivant_etape12",
-                type="primary",
-                use_container_width=True,
-            ):
+            if st.button("Suivant ➡️", key="btn_suivant_etape12", type="primary", use_container_width=True):
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
 
-                st.session_state.reponses_pdc["situation_epargne"] = (
-                    df_epargne_edite
-                )
-                st.session_state.reponses_pdc["situation_main_oeuvre"] = (
-                    df_mo_edite
-                )
+                # Conversion explicite des DataFrames en dictionnaires pour sérialisation
+                st.session_state.reponses_pdc["situation_epargne"] = df_epargne_edite.to_dict("records") if isinstance(df_epargne_edite, pd.DataFrame) else df_epargne_edite
+                st.session_state.reponses_pdc["situation_main_oeuvre"] = df_mo_edite.to_dict("records") if isinstance(df_mo_edite, pd.DataFrame) else df_mo_edite
+
                 st.session_state.reponses_pdc["description_exploitation"] = {
                     "statut_foncier": statut_foncier,
                     "superficie_totale": surf_totale,
@@ -3553,12 +3440,13 @@ def afficher():
                     "nb_arbres_forestiers": nb_arbres_forestiers,
                     "essences_arbres": essences_arbres,
                     "densite_ombrage": densite_ombrage,
+                    "sommets_polygon": liste_sommets,
+                    "reperes_geolocalises": liste_reperes,
                     "texte_synthese_auto": texte_description,
                 }
 
                 st.session_state.etape_pdc = 13
                 st.rerun()
-
 
 
     # =========================================================
@@ -3572,9 +3460,9 @@ def afficher():
             " bilan des équipements de l'exploitation."
         )
 
-        # --- Initialisation Sécurisée du Session State ---
-        if "df_cultures_pdc" not in st.session_state:
-            st.session_state.df_cultures_pdc = [
+        # --- Initialisation Sécurisée du Session State (DataFrames) ---
+        if "df_cultures_pdc" not in st.session_state or not isinstance(st.session_state.df_cultures_pdc, pd.DataFrame):
+            init_cultures = [
                 {
                     "Culture": "Cacao",
                     "Superficie (ha)": 3.5,
@@ -3584,8 +3472,10 @@ def afficher():
                     "Revenu (FCFA)": 2700000,
                 }
             ]
-        if "df_arbres_pdc" not in st.session_state:
-            st.session_state.df_arbres_pdc = [
+            st.session_state.df_cultures_pdc = pd.DataFrame(init_cultures)
+
+        if "df_arbres_pdc" not in st.session_state or not isinstance(st.session_state.df_arbres_pdc, pd.DataFrame):
+            init_arbres = [
                 {
                     "Nom de l'arbre": "Akpi",
                     "Nombre": 1,
@@ -3597,8 +3487,10 @@ def afficher():
                     "Remarque / Distance": "Bon état",
                 }
             ]
-        if "df_materiel_pdc" not in st.session_state:
-            st.session_state.df_materiel_pdc = [
+            st.session_state.df_arbres_pdc = pd.DataFrame(init_arbres)
+
+        if "df_materiel_pdc" not in st.session_state or not isinstance(st.session_state.df_materiel_pdc, pd.DataFrame):
+            init_materiel = [
                 {
                     "Type": "Matériel de traitement",
                     "Désignation": "Pulvérisateur à dos",
@@ -3608,6 +3500,7 @@ def afficher():
                     "État": "Bon",
                 }
             ]
+            st.session_state.df_materiel_pdc = pd.DataFrame(init_materiel)
 
         # ---------------------------------------------------------
         # 13.1 SYSTÈME DE CULTURES & REVENUS
@@ -3758,12 +3651,13 @@ def afficher():
 
         tot_revenu_agri = 0
         tot_prod_cacao = 0
+
         if not df_cult_calc.empty:
             if "Revenu (FCFA)" in df_cult_calc.columns:
                 tot_revenu_agri = int(
                     pd.to_numeric(
                         df_cult_calc["Revenu (FCFA)"], errors="coerce"
-                    ).sum()
+                    ).fillna(0).sum()
                 )
 
             if (
@@ -3779,31 +3673,32 @@ def afficher():
                             cacao_mask, "Production campagne préc. (kg)"
                         ],
                         errors="coerce",
-                    ).sum()
+                    ).fillna(0).sum()
                 )
 
         tot_arbres_maintenir = 0
         tot_arbres_eliminer = 0
-        if not df_arb_calc.empty:
-            if "Nombre" in df_arb_calc.columns and "Décision" in df_arb_calc.columns:
-                df_arb_calc["Nombre_num"] = pd.to_numeric(
-                    df_arb_calc["Nombre"], errors="coerce"
-                ).fillna(1)
-                tot_arbres_maintenir = int(
-                    df_arb_calc[df_arb_calc["Décision"] == "À maintenir"][
-                        "Nombre_num"
-                    ].sum()
-                )
-                tot_arbres_eliminer = int(
-                    df_arb_calc[
-                        df_arb_calc["Décision"].isin(["À éliminer", "À élaguer"])
-                    ]["Nombre_num"].sum()
-                )
+
+        if not df_arb_calc.empty and "Nombre" in df_arb_calc.columns and "Décision" in df_arb_calc.columns:
+            df_arb_calc["Nombre_clean"] = pd.to_numeric(
+                df_arb_calc["Nombre"], errors="coerce"
+            ).fillna(1)
+            
+            tot_arbres_maintenir = int(
+                df_arb_calc[df_arb_calc["Décision"] == "À maintenir"][
+                    "Nombre_clean"
+                ].sum()
+            )
+            tot_arbres_eliminer = int(
+                df_arb_calc[
+                    df_arb_calc["Décision"].isin(["À éliminer", "À élaguer"])
+                ]["Nombre_clean"].sum()
+            )
 
         st.markdown("#### 📊 Bilan Synthétique de l'Étape 13")
         kpi_e1, kpi_e2, kpi_e3 = st.columns(3)
-        kpi_e1.metric("Production Cacao Totale", f"{tot_prod_cacao:,} kg")
-        kpi_e2.metric("Revenu Agricole Global", f"{tot_revenu_agri:,} FCFA")
+        kpi_e1.metric("Production Cacao Totale", f"{tot_prod_cacao:,} kg".replace(",", " "))
+        kpi_e2.metric("Revenu Agricole Global", f"{tot_revenu_agri:,} FCFA".replace(",", " "))
         kpi_e3.metric(
             "Bilan Agroforesterie",
             f"{tot_arbres_maintenir} à maintenir",
@@ -3822,6 +3717,9 @@ def afficher():
                 key="btn_retour_etape13",
                 use_container_width=True,
             ):
+                st.session_state.df_cultures_pdc = pd.DataFrame(df_cultures_edite)
+                st.session_state.df_arbres_pdc = pd.DataFrame(df_arbres_edite)
+                st.session_state.df_materiel_pdc = pd.DataFrame(df_mat_edite)
                 st.session_state.etape_pdc = 12
                 st.rerun()
 
@@ -3832,32 +3730,32 @@ def afficher():
                 type="primary",
                 use_container_width=True,
             ):
-                st.session_state.df_cultures_pdc = df_cultures_edite
-                st.session_state.df_arbres_pdc = df_arbres_edite
-                st.session_state.df_materiel_pdc = df_mat_edite
+                # Mise à jour des DataFrames dans session_state
+                st.session_state.df_cultures_pdc = pd.DataFrame(df_cultures_edite)
+                st.session_state.df_arbres_pdc = pd.DataFrame(df_arbres_edite)
+                st.session_state.df_materiel_pdc = pd.DataFrame(df_mat_edite)
 
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
 
+                # Conversion sérialisable en dictionnaires
                 st.session_state.reponses_pdc["cultures_et_revenus"] = (
-                    df_cultures_edite
+                    df_cultures_edite.to_dict("records") if isinstance(df_cultures_edite, pd.DataFrame) else df_cultures_edite
                 )
                 st.session_state.reponses_pdc["inventaire_arbres"] = (
-                    df_arbres_edite
+                    df_arbres_edite.to_dict("records") if isinstance(df_arbres_edite, pd.DataFrame) else df_arbres_edite
                 )
                 st.session_state.reponses_pdc["materiel_agricole"] = (
-                    df_mat_edite
+                    df_mat_edite.to_dict("records") if isinstance(df_mat_edite, pd.DataFrame) else df_mat_edite
                 )
 
                 st.session_state.etape_pdc = 14
                 st.rerun()
 
 
-
-
-    # ---------------------------------------------------------
+    # =========================================================
     # ÉTAPE 14 : PLANIFICATION STRATÉGIQUE & PROGRAMME ANNUEL
-    # ---------------------------------------------------------
+    # =========================================================
     elif st.session_state.etape_pdc == 14:
         st.subheader(
             "Étape 14/15 : Planification Stratégique (5 Ans) & Programme Annuel"
@@ -3868,25 +3766,12 @@ def afficher():
             " trimestriel et des facteurs clés de succès du PDC."
         )
 
-        # ---------------------------------------------------------
-        # 14.1 PLANIFICATION STRATÉGIQUE SUR 5 ANS
-        # ---------------------------------------------------------
-        st.markdown(
-            "### 📈 II - Planification Stratégique sur les Cinq (5) Prochaines"
-            " Années"
-        )
-        st.caption(
-            "Précisez les axes, objectifs, activités, budgets et responsables sur"
-            " l'horizon 5 ans (A1 à A5)."
-        )
-
-        if "df_plan_quinquennal" not in st.session_state:
-            st.session_state.df_plan_quinquennal = [
+        # --- Initialisation Sécurisée du Session State (DataFrames) ---
+        if "df_plan_quinquennal" not in st.session_state or not isinstance(st.session_state.df_plan_quinquennal, pd.DataFrame):
+            init_quinquennal = [
                 {
                     "Stratégie / Axe": "Axe 1 : Réhabilitation du verger",
-                    "Objectifs": (
-                        "Restaurer la productivité des parcelles anciennes"
-                    ),
+                    "Objectifs": "Restaurer la productivité des parcelles anciennes",
                     "Activités": "Régler la densité (égourmandage, égrapillage)",
                     "Coût (FCFA)": 150000,
                     "A1": True,
@@ -3913,9 +3798,7 @@ def afficher():
                 {
                     "Stratégie / Axe": "Axe 2 : Plantation / Replantation",
                     "Objectifs": "Renouveler 2 ha en agroforesterie",
-                    "Activités": (
-                        "Replanter 2 ha avec espèces d'ombrage (Akpi/Iroko)"
-                    ),
+                    "Activités": "Replanter 2 ha avec espèces d'ombrage (Akpi/Iroko)",
                     "Coût (FCFA)": 600000,
                     "A1": False,
                     "A2": True,
@@ -3928,9 +3811,7 @@ def afficher():
                 {
                     "Stratégie / Axe": "Axe 3 : Diversification",
                     "Objectifs": "Sécuriser les revenus hors saison cacao",
-                    "Activités": (
-                        "Mise en place d'une parcelle vivrière (Banane/Piment)"
-                    ),
+                    "Activités": "Mise en place d'une parcelle vivrière (Banane/Piment)",
                     "Coût (FCFA)": 200000,
                     "A1": True,
                     "A2": False,
@@ -3941,6 +3822,54 @@ def afficher():
                     "Partenaires": "Coopérative",
                 },
             ]
+            st.session_state.df_plan_quinquennal = pd.DataFrame(init_quinquennal)
+
+        if "df_programme_annuel" not in st.session_state or not isinstance(st.session_state.df_programme_annuel, pd.DataFrame):
+            init_programme = [
+                {
+                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
+                    "Activités / Sous-activités": "Régler la densité (égourmandage, échenillonnage)",
+                    "Indicateur": "Nombre d'hectares traités (ex: 3.5 ha)",
+                    "T1": True,
+                    "T2": True,
+                    "T3": False,
+                    "T4": False,
+                    "Coût (FCFA)": 75000,
+                },
+                {
+                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
+                    "Activités / Sous-activités": "Réaliser la taille des loranthacées",
+                    "Indicateur": "Taux d'arbres nettoyés (%)",
+                    "T1": False,
+                    "T2": True,
+                    "T3": True,
+                    "T4": False,
+                    "Coût (FCFA)": 50000,
+                },
+                {
+                    "Axes stratégiques": "Axe 3 : Diversification",
+                    "Activités / Sous-activités": "Préparation terrain & planting banane/piment",
+                    "Indicateur": "Superficie installée (ha)",
+                    "T1": True,
+                    "T2": False,
+                    "T3": False,
+                    "T4": False,
+                    "Coût (FCFA)": 150000,
+                },
+            ]
+            st.session_state.df_programme_annuel = pd.DataFrame(init_programme)
+
+        # ---------------------------------------------------------
+        # 14.1 PLANIFICATION STRATÉGIQUE SUR 5 ANS
+        # ---------------------------------------------------------
+        st.markdown(
+            "### 📈 II - Planification Stratégique sur les Cinq (5) Prochaines"
+            " Années"
+        )
+        st.caption(
+            "Précisez les axes, objectifs, activités, budgets et responsables sur"
+            " l'horizon 5 ans (A1 à A5)."
+        )
 
         df_quinquennal_edite = st.data_editor(
             st.session_state.df_plan_quinquennal,
@@ -3987,46 +3916,6 @@ def afficher():
             "Planification opérationnelle par trimestre (T1 à T4) pour la première"
             " année de mise en œuvre."
         )
-
-        if "df_programme_annuel" not in st.session_state:
-            st.session_state.df_programme_annuel = [
-                {
-                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
-                    "Activités / Sous-activités": (
-                        "Régler la densité (égourmandage, échenillonnage)"
-                    ),
-                    "Indicateur": "Nombre d'hectares traités (ex: 3.5 ha)",
-                    "T1": True,
-                    "T2": True,
-                    "T3": False,
-                    "T4": False,
-                    "Coût (FCFA)": 75000,
-                },
-                {
-                    "Axes stratégiques": "Axe 1 : Réhabilitation du verger",
-                    "Activités / Sous-activités": (
-                        "Réaliser la taille des loranthacées"
-                    ),
-                    "Indicateur": "Taux d'arbres nettoyés (%)",
-                    "T1": False,
-                    "T2": True,
-                    "T3": True,
-                    "T4": False,
-                    "Coût (FCFA)": 50000,
-                },
-                {
-                    "Axes stratégiques": "Axe 3 : Diversification",
-                    "Activités / Sous-activités": (
-                        "Préparation terrain & planting banane/piment"
-                    ),
-                    "Indicateur": "Superficie installée (ha)",
-                    "T1": True,
-                    "T2": False,
-                    "T3": False,
-                    "T4": False,
-                    "Coût (FCFA)": 150000,
-                },
-            ]
 
         df_annuel_edite = st.data_editor(
             st.session_state.df_programme_annuel,
@@ -4088,32 +3977,31 @@ def afficher():
         df_quinq_calc = pd.DataFrame(df_quinquennal_edite)
         df_ann_calc = pd.DataFrame(df_annuel_edite)
 
-        cout_total_5ans = (
-            int(
+        cout_total_5ans = 0
+        if not df_quinq_calc.empty and "Coût (FCFA)" in df_quinq_calc.columns:
+            cout_total_5ans = int(
                 pd.to_numeric(
                     df_quinq_calc["Coût (FCFA)"], errors="coerce"
-                ).sum()
+                ).fillna(0).sum()
             )
-            if not df_quinq_calc.empty and "Coût (FCFA)" in df_quinq_calc.columns
-            else 0
-        )
-        cout_total_a1 = (
-            int(
+
+        cout_total_a1 = 0
+        if not df_ann_calc.empty and "Coût (FCFA)" in df_ann_calc.columns:
+            cout_total_a1 = int(
                 pd.to_numeric(
                     df_ann_calc["Coût (FCFA)"], errors="coerce"
-                ).sum()
+                ).fillna(0).sum()
             )
-            if not df_ann_calc.empty and "Coût (FCFA)" in df_ann_calc.columns
-            else 0
-        )
 
         st.markdown("#### 📊 Synthèse Budgétaire de la Planification")
         kpi_p1, kpi_p2 = st.columns(2)
         kpi_p1.metric(
-            "Budget Plan Quinquennal (5 Ans)", f"{cout_total_5ans:,} FCFA"
+            "Budget Plan Quinquennal (5 Ans)",
+            f"{cout_total_5ans:,} FCFA".replace(",", " ")
         )
         kpi_p2.metric(
-            "Budget Année 1 (Programme d'Action)", f"{cout_total_a1:,} FCFA"
+            "Budget Année 1 (Programme d'Action)",
+            f"{cout_total_a1:,} FCFA".replace(",", " ")
         )
 
         st.markdown("---")
@@ -4128,6 +4016,9 @@ def afficher():
                 key="btn_retour_etape14",
                 use_container_width=True,
             ):
+                st.session_state.df_plan_quinquennal = pd.DataFrame(df_quinquennal_edite)
+                st.session_state.df_programme_annuel = pd.DataFrame(df_annuel_edite)
+                st.session_state["facteurs_succes_pdc"] = facteurs_succes
                 st.session_state.etape_pdc = 13
                 st.rerun()
 
@@ -4138,28 +4029,29 @@ def afficher():
                 type="primary",
                 use_container_width=True,
             ):
+                # Mise à jour des objets DataFrames dans session_state
+                st.session_state.df_plan_quinquennal = pd.DataFrame(df_quinquennal_edite)
+                st.session_state.df_programme_annuel = pd.DataFrame(df_annuel_edite)
+                st.session_state["facteurs_succes_pdc"] = facteurs_succes
+
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
 
-                # Sauvegarde globale
+                # Conversion sérialisable en dictionnaires
                 st.session_state.reponses_pdc["plan_quinquennal"] = (
-                    df_quinquennal_edite
+                    df_quinquennal_edite.to_dict("records")
+                    if isinstance(df_quinquennal_edite, pd.DataFrame)
+                    else df_quinquennal_edite
                 )
                 st.session_state.reponses_pdc["programme_annuel"] = (
-                    df_annuel_edite
+                    df_annuel_edite.to_dict("records")
+                    if isinstance(df_annuel_edite, pd.DataFrame)
+                    else df_annuel_edite
                 )
-                st.session_state.reponses_pdc["facteurs_succes"] = (
-                    facteurs_succes
-                )
-                st.session_state["facteurs_succes_pdc"] = (
-                    facteurs_succes
-                )
+                st.session_state.reponses_pdc["facteurs_succes"] = facteurs_succes
 
                 st.session_state.etape_pdc = 15
                 st.rerun()
-
-
-
 
 
     # ---------------------------------------------------------
@@ -4189,48 +4081,38 @@ def afficher():
         df_ann = pd.DataFrame(reponses.get("programme_annuel", []))
         df_arb = pd.DataFrame(reponses.get("inventaire_arbres", []))
 
-        tot_revenu_actuel = (
-            int(
-                pd.to_numeric(df_cult["Revenu (FCFA)"], errors="coerce").sum()
+        tot_revenu_actuel = 0
+        if not df_cult.empty and "Revenu (FCFA)" in df_cult.columns:
+            tot_revenu_actuel = int(
+                pd.to_numeric(df_cult["Revenu (FCFA)"], errors="coerce").fillna(0).sum()
             )
-            if not df_cult.empty and "Revenu (FCFA)" in df_cult.columns
-            else 0
-        )
-        tot_cout_quinq = (
-            int(
-                pd.to_numeric(df_quinq["Coût (FCFA)"], errors="coerce").sum()
+
+        tot_cout_quinq = 0
+        if not df_quinq.empty and "Coût (FCFA)" in df_quinq.columns:
+            tot_cout_quinq = int(
+                pd.to_numeric(df_quinq["Coût (FCFA)"], errors="coerce").fillna(0).sum()
             )
-            if not df_quinq.empty and "Coût (FCFA)" in df_quinq.columns
-            else 0
-        )
-        tot_cout_a1 = (
-            int(
-                pd.to_numeric(df_ann["Coût (FCFA)"], errors="coerce").sum()
+
+        tot_cout_a1 = 0
+        if not df_ann.empty and "Coût (FCFA)" in df_ann.columns:
+            tot_cout_a1 = int(
+                pd.to_numeric(df_ann["Coût (FCFA)"], errors="coerce").fillna(0).sum()
             )
-            if not df_ann.empty and "Coût (FCFA)" in df_ann.columns
-            else 0
-        )
 
         nb_arbres_maintenus = 0
         if not df_arb.empty and "Décision" in df_arb.columns:
+            mask_maint = df_arb["Décision"] == "À maintenir"
             if "Nombre" in df_arb.columns:
-                df_arb["Nombre_num"] = pd.to_numeric(
-                    df_arb["Nombre"], errors="coerce"
-                ).fillna(1)
                 nb_arbres_maintenus = int(
-                    df_arb[df_arb["Décision"] == "À maintenir"][
-                        "Nombre_num"
-                    ].sum()
+                    pd.to_numeric(df_arb.loc[mask_maint, "Nombre"], errors="coerce").fillna(1).sum()
                 )
             else:
-                nb_arbres_maintenus = len(
-                    df_arb[df_arb["Décision"] == "À maintenir"]
-                )
+                nb_arbres_maintenus = int(mask_maint.sum())
 
         c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Revenu Actuel", f"{tot_revenu_actuel:,} FCFA")
-        c2.metric("Budget Quinquennal", f"{tot_cout_quinq:,} FCFA")
-        c3.metric("Investissement A1", f"{tot_cout_a1:,} FCFA")
+        c1.metric("Revenu Actuel", f"{tot_revenu_actuel:,} FCFA".replace(",", " "))
+        c2.metric("Budget Quinquennal", f"{tot_cout_quinq:,} FCFA".replace(",", " "))
+        c3.metric("Investissement A1", f"{tot_cout_a1:,} FCFA".replace(",", " "))
         c4.metric("Arbres Conservés", f"{nb_arbres_maintenus} pieds")
 
         st.markdown("---")
@@ -4342,11 +4224,43 @@ def afficher():
             " engagements sociaux du PDC.\n4. Faire un point trimestriel avec le"
             " conseiller de la coopérative pour valider le chronogramme T1 à T4."
         )
-        st.text_area(
+        recommandations_finales = st.text_area(
             "Recommandations stratégiques à l'attention du producteur",
-            value=recom_def,
+            value=st.session_state.get("recommandations_finales_pdc", recom_def),
             height=120,
             key="txt_recom_finales",
         )
 
         st.markdown("---")
+
+        # =========================================================
+        # NAVIGATION ET ENREGISTREMENT DE L'ÉTAPE 15
+        # =========================================================
+        col_btn1, col_btn2 = st.columns([1, 1])
+        with col_btn1:
+            if st.button(
+                "⬅️ Retour",
+                key="btn_retour_etape15",
+                use_container_width=True,
+            ):
+                st.session_state["recommandations_finales_pdc"] = recommandations_finales
+                st.session_state.etape_pdc = 14
+                st.rerun()
+
+        with col_btn2:
+            if st.button(
+                "💾 Valider & Finaliser le PDC",
+                key="btn_valider_pdc_final",
+                type="primary",
+                use_container_width=True,
+            ):
+                if "reponses_pdc" not in st.session_state:
+                    st.session_state.reponses_pdc = {}
+
+                st.session_state["recommandations_finales_pdc"] = recommandations_finales
+                st.session_state.reponses_pdc["recommandations_finales"] = recommandations_finales
+                st.session_state.reponses_pdc["score_faisabilite"] = score
+                st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
+
+                st.success("✅ Plan de Développement de Conseil (PDC) finalisé et enregistré avec succès !")
+
