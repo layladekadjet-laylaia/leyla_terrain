@@ -4234,15 +4234,67 @@ def afficher():
         st.markdown("---")
 
         # =========================================================
+        # 15.4 SIGNATURES TACTILES DES PARTIES
+        # =========================================================
+        st.markdown("### ✍️ 4. Validation & Signatures Tactiles")
+        st.caption("Signez directement avec le doigt ou un stylet sur les cadres ci-dessous.")
+
+        st.info(
+            "📜 **Engagement :** Je soussigné(e) confirme avoir pris connaissance "
+            "du diagnostic de mon exploitation et valide le plan d'action quinquennal établi."
+        )
+
+        col_sig_prod, col_sig_cons = st.columns(2)
+
+        # Zone 1 : Signature du Producteur
+        with col_sig_prod:
+            st.markdown("#### 🖊️ Signature du Producteur")
+            nom_producteur = st.text_input(
+                "Nom du Producteur",
+                value=st.session_state.get("nom_producteur_pdc", "Nom et Prénom"),
+                key="input_nom_producteur_sig"
+            )
+            st.caption("Tracez la signature du producteur ci-dessous :")
+            canvas_producteur = st_canvas(
+                fill_color="rgba(255, 255, 255, 0)",
+                stroke_width=2,
+                stroke_color="#000000",
+                background_color="#f0f2f6",
+                height=150,
+                width=300,
+                drawing_mode="freedraw",
+                key="canvas_prod",
+            )
+
+        # Zone 2 : Signature du Technicien 
+        with col_sig_cons:
+            st.markdown("#### 🖊️ Signature du Technicien")
+            nom_technicien = st.text_input(
+                "Nom du Technicien",
+                value=st.session_state.get("nom_conseiller_pdc", ""),
+                placeholder="Ex: Kouassi Yao",
+                key="input_nom_technicien_sig"
+            )
+            st.caption("Tracez la signature du technicien ci-dessous :")
+            canvas_technicien = st_canvas(
+                fill_color="rgba(255, 255, 255, 0)",
+                stroke_width=2,
+                stroke_color="#084081",
+                background_color="#f0f2f6",
+                height=150,
+                width=300,
+                drawing_mode="freedraw",
+                key="canvas_cons",
+            )
+
+        st.markdown("---")
+
+        # =========================================================
         # NAVIGATION ET ENREGISTREMENT DE L'ÉTAPE 15
         # =========================================================
         col_btn1, col_btn2 = st.columns([1, 1])
         with col_btn1:
-            if st.button(
-                "⬅️ Retour",
-                key="btn_retour_etape15",
-                use_container_width=True,
-            ):
+            if st.button("⬅️ Retour", key="btn_retour_etape15", use_container_width=True):
                 st.session_state["recommandations_finales_pdc"] = recommandations_finales
                 st.session_state.etape_pdc = 14
                 st.rerun()
@@ -4257,10 +4309,24 @@ def afficher():
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
 
+                # Sauvegarde globale des textes
                 st.session_state["recommandations_finales_pdc"] = recommandations_finales
                 st.session_state.reponses_pdc["recommandations_finales"] = recommandations_finales
                 st.session_state.reponses_pdc["score_faisabilite"] = score
                 st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
 
-                st.success("✅ Plan de Développement de Conseil (PDC) finalisé et enregistré avec succès !")
+                # Récupération des signatures (CORRECTION : canvas_technicien)
+                img_sig_prod = canvas_producteur.image_data if canvas_producteur else None
+                img_sig_tech = canvas_technicien.image_data if canvas_technicien else None
 
+                # Enregistrement des données des signataires
+                st.session_state.reponses_pdc["signataires"] = {
+                    "producteur_nom": nom_producteur,
+                    "producteur_signature": img_sig_prod,
+                    "technicien_nom": nom_technicien,
+                    "technicien_signature": img_sig_tech,
+                    "date_validation": pd.Timestamp.now().strftime("%d/%m/%Y à %H:%M")
+                }
+
+                st.session_state["pdc_finalise"] = True
+                st.success("✅ PDC finalisé avec succès ! Les signatures tactiles ont été enregistrées et seront intégrées au PDF.")
