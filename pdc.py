@@ -661,51 +661,25 @@ def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_loc
         raise e
 
 
+import os
+import tempfile
+import json
+import sqlite3
+import numpy as np
+import pandas as pd
+import streamlit as st
+from PIL import Image
 from fpdf import FPDF
 
-import json
-from fpdf import FPDF
+# =========================================================================
+# 1. FONCTIONS UTILITAIRES ET GÉNÉRATION PDF
+# =========================================================================
 
 def nettoyer_texte_pdf(chaine: str) -> str:
     """
     Nettoie les caractères UTF-8 non pris en charge par l'encodage latin-1 de FPDF.
     Remplace les puces complexes et les emojis par des équivalents ASCII.
     """
-    if chaine is None:
-        return ""
-    s = str(chaine)
-    # Remplacement des puces et caractères spéciaux fréquents
-    replacements = {
-        "•": "-",
-        "–": "-",
-        "—": "-",
-        "’": "'",
-        "“": '"',
-        "”": '"',
-        "…": "...",
-        "\u200b": "",  # Espace de largeur nulle
-    }
-    for k, v in replacements.items():
-        s = s.replace(k, v)
-    
-    # Conversion forcée en latin-1 avec remplacement des caractères inconnus
-    return s.encode("latin-1", "replace").decode("latin-1")
-
-
-import sqlite3
-import json
-import pandas as pd
-import streamlit as st
-from fpdf import FPDF
-
-# =========================================================================
-# 1. FONCTIONS UTILITAIRES ET GÉNÉRATION PDF (EN DEHORS DE AFFICHER)
-# =========================================================================
-
-from fpdf import FPDF
-import json
-
-def nettoyer_texte_pdf(chaine: str) -> str:
     if chaine is None:
         return ""
     s = str(chaine)
@@ -716,6 +690,35 @@ def nettoyer_texte_pdf(chaine: str) -> str:
     for k, v in replacements.items():
         s = s.replace(k, v)
     return s.encode("latin-1", "replace").decode("latin-1")
+
+
+def traiter_signature_pour_pdf(sig_data):
+    """
+    Convertit la matrice d'image (NumPy Array) ou l'objet signature en un fichier temporaire PNG
+    réutilisable par FPDF.
+    """
+    if sig_data is None:
+        return None
+
+    # CAS 1 : C'est une matrice d'image NumPy (issue de canvas_obj.image_data)
+    if isinstance(sig_data, np.ndarray):
+        try:
+            # Vérifier que le tableau n'est pas vide et contient des pixels dessinés
+            if sig_data.size > 0 and np.any(sig_data[:, :, 3] > 0 if sig_data.shape[2] == 4 else sig_data > 0):
+                img_pil = Image.fromarray(sig_data.astype('uint8'))
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+                img_pil.save(temp_file.name)
+                temp_file.close()
+                return temp_file.name
+        except Exception:
+            return None
+
+    # CAS 2 : C'est un chemin de fichier image
+    elif isinstance(sig_data, str) and os.path.exists(sig_data):
+        return sig_data
+
+    return None
+
 
 def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf = FPDF()
@@ -753,6 +756,10 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     reponses = data.get("reponses", {})
     if isinstance(reponses, dict) and reponses:
         for cle, val in reponses.items():
+            # Ne pas traiter les signataires ici s'ils sont gérés séparément à la fin
+            if cle == "signataires":
+                continue
+
             nom_cle = nettoyer_texte_pdf(str(cle).replace("_", " ").capitalize())
             
             if isinstance(val, list):
@@ -813,11 +820,67 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                 pdf.write(5, nettoyer_texte_pdf(f"   * Contenu : {details}\n"))
             pdf.ln(2)
 
+    # --- SECTION 3 : SIGNATURES ET VALIDATION ---
+    signataires = reponses.get("signataires", {}) if isinstance(reponses, dict) else {}
+    if signataires:
+        pdf.ln(5)
+        pdf.set_draw_color(180, 180, 180)
+        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.ln(5)
+
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, nettoyer_texte_pdf("3. VALIDATION ET SIGNATURES :"), ln=True)
+        pdf.ln(2)
+
+        date_val = signataires.get("date_validation", "")
+        if date_val:
+            pdf.set_font("Arial", "I", 9)
+            pdf.cell(0, 5, nettoyer_texte_pdf(f"Document validé le : {date_val}"), ln=True)
+            pdf.ln(3)
+
+        # Positions pour 2 colonnes (Producteur à gauche, Technicien à droite)
+        y_start_signatures = pdf.get_y()
+
+        # --- Signature Producteur ---
+        pdf.set_xy(10, y_start_signatures)
+        pdf.set_font("Arial", "B", 10)
+        prod_nom = signataires.get("producteur_nom", "Producteur")
+        pdf.cell(90, 6, nettoyer_texte_pdf(f"Producteur : {prod_nom}"), ln=True)
+
+        path_sig_prod = traiter_signature_pour_pdf(signataires.get("producteur_signature"))
+        if path_sig_prod:
+            pdf.image(path_sig_prod, x=10, y=pdf.get_y(), w=60)
+            if os.path.exists(path_sig_prod) and path_sig_prod.endswith(".png"):
+                try:
+                    os.remove(path_sig_prod)  # Nettoyage du fichier temporaire
+                except Exception:
+                    pass
+        elif signataires.get("producteur_signature") == "SIGNATURE_PRESENTE":
+            pdf.set_font("Arial", "I", 8)
+            pdf.cell(90, 5, nettoyer_texte_pdf("[Signature validée sur tablette]"), ln=True)
+
+        # --- Signature Technicien ---
+        pdf.set_xy(110, y_start_signatures)
+        pdf.set_font("Arial", "B", 10)
+        tech_nom = signataires.get("technicien_nom", "Technicien")
+        pdf.cell(90, 6, nettoyer_texte_pdf(f"Technicien : {tech_nom}"), ln=True)
+
+        path_sig_tech = traiter_signature_pour_pdf(signataires.get("technicien_signature"))
+        if path_sig_tech:
+            pdf.image(path_sig_tech, x=110, y=pdf.get_y(), w=60)
+            if os.path.exists(path_sig_tech) and path_sig_tech.endswith(".png"):
+                try:
+                    os.remove(path_sig_tech)  # Nettoyage du fichier temporaire
+                except Exception:
+                    pass
+        elif signataires.get("technicien_signature") == "SIGNATURE_PRESENTE":
+            pdf.set_font("Arial", "I", 8)
+            pdf.cell(90, 5, nettoyer_texte_pdf("[Signature validée sur tablette]"), ln=True)
+
     pdf_buffer = pdf.output(dest='S')
     if isinstance(pdf_buffer, str):
         return pdf_buffer.encode('latin-1', 'replace')
     return bytes(pdf_buffer)
-
 
 
 
