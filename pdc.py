@@ -4475,10 +4475,11 @@ def afficher():
 
                 st.session_state["pdc_finalise"] = True
                 
-                # Petit message de confirmation
+                # Notification à l'utilisateur
                 if img_sig_prod is not None or img_sig_tech is not None:
                     st.success("✅ PDC finalisé avec succès ! Signatures capturées.")
                 else:
                     st.warning("⚠️ PDC finalisé sans signature capturée. Assurez-vous d'avoir tracé un dessin.")
 
                 st.rerun()
+
