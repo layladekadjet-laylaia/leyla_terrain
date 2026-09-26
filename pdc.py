@@ -4406,7 +4406,7 @@ def afficher():
 
         st.markdown("---")
 
-        # =========================================================
+         # =========================================================
         # NAVIGATION ET ENREGISTREMENT DE L'ÉTAPE 15
         # =========================================================
         col_btn1, col_btn2 = st.columns([1, 1])
@@ -4435,26 +4435,29 @@ def afficher():
 
                 # Fonction Robuste d'Extraction d'Image Signature
                 def extraire_image_signature(canvas_obj):
-                    if canvas_obj is None or canvas_obj.image_data is None:
+                    if canvas_obj is None:
                         return None
                     
                     try:
-                        img_array = canvas_obj.image_data
-                        
-                        # Vérification 1 : Si le JSON contient des objets dessiner
+                        # 1. Vérification si un tracé existe dans les données JSON
+                        has_drawing = False
                         if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
                             objects = canvas_obj.json_data.get("objects", [])
                             if len(objects) > 0:
-                                return img_array
+                                has_drawing = True
                         
-                        # Vérification 2 (Fallback) : Vérifier la présence de pixels non nuls/tracés
-                        # On vérifie si la matrice d'image contient des variations par rapport au fond
+                        if not has_drawing:
+                            return None
+
+                        # 2. Récupération sécurisée du tableau image_data
+                        img_array = canvas_obj.image_data
                         if isinstance(img_array, np.ndarray) and img_array.size > 0:
-                            # Canal Alpha ou canaux RGBA modifiés
+                            # Vérification de présence de pixels dessinés (Canal Alpha ou RGBA)
                             if np.any(img_array[:, :, 3] > 0) or np.any(img_array[:, :, :3] < 240):
                                 return img_array
-                    except Exception:
-                        pass
+                    except (RuntimeError, Exception):
+                        # Capture l'exception levée si le canvas est vide ou non prêt
+                        return None
 
                     return None
 
@@ -4479,4 +4482,3 @@ def afficher():
                     st.warning("⚠️ PDC finalisé sans signature capturée. Assurez-vous d'avoir tracé un dessin.")
 
                 st.rerun()
-
