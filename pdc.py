@@ -4317,7 +4317,7 @@ def afficher():
                 st.session_state.reponses_pdc["score_faisabilite"] = score
                 st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
 
-                # Fonction de récupération sécurisée de l'image de signature
+                # Fonction de récupération et conversion sécurisée de la signature
                 def extraire_image_signature(canvas_obj):
                     if canvas_obj is None:
                         return None
@@ -4325,17 +4325,20 @@ def afficher():
                     # 1. Essai via l'attribut standard .image_data
                     try:
                         if canvas_obj.image_data is not None:
-                            return canvas_obj.image_data
+                            # Vérifier si l'image n'est pas complètement transparente/vide
+                            if np.any(canvas_obj.image_data[:, :, 3] > 0): 
+                                return canvas_obj.image_data
                     except Exception:
                         pass
 
-                    # 2. Secours via json_data / données brutes si le composant plante
+                    # 2. Secours : Si image_data a échoué mais qu'un tracé existe dans json_data
                     try:
                         if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
-                            # Vérifie si au moins un tracé a été effectué
                             objects = canvas_obj.json_data.get("objects", [])
                             if len(objects) > 0:
-                                return "SIGNATURE_PRESENTE"
+                                # Si image_data est disponible sous forme brute
+                                if hasattr(canvas_obj, "_raw_image_data"):
+                                    return canvas_obj._raw_image_data
                     except Exception:
                         pass
 
@@ -4356,3 +4359,4 @@ def afficher():
 
                 st.session_state["pdc_finalise"] = True
                 st.success("✅ PDC finalisé avec succès ! Les signatures tactiles ont été enregistrées.")
+
