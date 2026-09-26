@@ -4440,11 +4440,12 @@ def afficher():
                 st.session_state.reponses_pdc["score_faisabilite"] = score
                 st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
 
-                # Fonction de récupération sécurisée
+                # Extraction sécurisée de l'image de la signature
                 def extraire_image_signature(canvas_obj):
                     if canvas_obj is None:
                         return None
                     
+                    # Vérification si un tracé (dessin) existe
                     has_drawing = False
                     try:
                         if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
@@ -4457,9 +4458,10 @@ def afficher():
                     if not has_drawing:
                         return None
 
+                    # Extraction directe du tableau d'image
                     try:
-                        img_array = canvas_obj.image_data
-                        if img_array is not None and isinstance(img_array, np.ndarray):
+                        if canvas_obj.image_data is not None:
+                            img_array = np.array(canvas_obj.image_data)
                             if img_array.size > 0:
                                 return img_array
                     except Exception:
