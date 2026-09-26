@@ -697,13 +697,14 @@ def nettoyer_texte_pdf(chaine: str) -> str:
 
 def extraire_image_signature(canvas_obj):
     """
-    Extrait en toute sécurité le tableau d'image NumPy depuis le composant canvas.
-    Retourne la matrice NumPy de l'image si un tracé existe, sinon None.
+    Extrait en toute sécurité le tableau d'image NumPy depuis le composant canvas Streamlit.
+    Retourne la matrice NumPy (ndarray) si un dessin existe, sinon None.
+    NE RETOURNE PLUS JAMAIS DE TEXTE ("SIGNATURE_PRESENTE").
     """
     if canvas_obj is None:
         return None
     
-    # 1. Vérification si un tracé (dessin) existe réellement dans le canvas
+    # 1. Vérification si un tracé (objets dessinés) existe dans le canvas
     has_drawing = False
     try:
         if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
@@ -736,16 +737,16 @@ def traiter_signature_pour_pdf(sig_data):
     if sig_data is None:
         return None
 
-    # CAS 1 : C'est une matrice d'image NumPy (issue de canvas_obj.image_data)
+    # CAS 1 : Matrice d'image NumPy (issue de canvas_obj.image_data)
     if isinstance(sig_data, np.ndarray):
         try:
             if sig_data.size > 0:
-                # Si l'image a un canal alpha (RGBA), vérifier qu'il y a un tracé visible
+                # Si l'image a un canal alpha (RGBA), vérifier qu'il y a au moins un pixel tracé
                 if sig_data.ndim == 3 and sig_data.shape[2] == 4:
                     if not np.any(sig_data[:, :, 3] > 0):
                         return None
                 
-                # Conversion en image PIL et sauvegarde temporaire en PNG
+                # Conversion en image PIL et sauvegarde temporaire en fichier PNG
                 img_pil = Image.fromarray(sig_data.astype('uint8'))
                 temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
                 img_pil.save(temp_file.name, format="PNG")
@@ -754,7 +755,7 @@ def traiter_signature_pour_pdf(sig_data):
         except Exception:
             return None
 
-    # CAS 2 : C'est un chemin vers un fichier image existant sur le disque
+    # CAS 2 : Chemin vers un fichier image existant sur le disque
     elif isinstance(sig_data, str) and os.path.exists(sig_data):
         return sig_data
 
@@ -861,7 +862,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                 pdf.write(5, nettoyer_texte_pdf(f"   * Contenu : {details}\n"))
             pdf.ln(2)
 
-    # --- SECTION 3 : VALIDATION ET SIGNATURES ---
+    # --- SECTION 3 : VALIDATION ET SIGNATURES MANUSCRITES ---
     signataires = reponses.get("signataires", {}) if isinstance(reponses, dict) else {}
     if signataires:
         pdf.ln(5)
@@ -879,7 +880,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
             pdf.cell(0, 5, nettoyer_texte_pdf(f"Document validé le : {date_val}"), ln=True)
             pdf.ln(3)
 
-        # Repère Y de début pour affichage côte à côte
+        # Repère Y de début pour l'alignement des deux colonnes
         y_start_signatures = pdf.get_y()
 
         # --- Colonne Gauche : Producteur ---
@@ -890,9 +891,9 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
 
         path_sig_prod = traiter_signature_pour_pdf(signataires.get("producteur_signature"))
         if path_sig_prod:
-            # Insère la signature sous forme d'image
+            # Dessine le tracé sous forme d'image sur le PDF
             pdf.image(path_sig_prod, x=10, y=pdf.get_y() + 2, w=55)
-            # Suppression du fichier temporaire créé
+            # Nettoyage du fichier temporaire sur le serveur
             if os.path.exists(path_sig_prod) and path_sig_prod.endswith(".png"):
                 try:
                     os.remove(path_sig_prod)
@@ -910,9 +911,9 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
 
         path_sig_tech = traiter_signature_pour_pdf(signataires.get("technicien_signature"))
         if path_sig_tech:
-            # Insère la signature sous forme d'image
+            # Dessine le tracé sous forme d'image sur le PDF
             pdf.image(path_sig_tech, x=110, y=pdf.get_y() + 2, w=55)
-            # Suppression du fichier temporaire créé
+            # Nettoyage du fichier temporaire sur le serveur
             if os.path.exists(path_sig_tech) and path_sig_tech.endswith(".png"):
                 try:
                     os.remove(path_sig_tech)
