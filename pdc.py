@@ -4401,73 +4401,78 @@ def afficher():
         st.markdown("---")
 
 
-        # =========================================================
-        # NAVIGATION ET ENREGISTREMENT DE L'ÉTAPE 15
-        # =========================================================
-        col_btn1, col_btn2 = st.columns([1, 1])
-        with col_btn1:
-            if st.button("⬅️ Retour", key="btn_retour_etape15", use_container_width=True):
-                st.session_state["recommandations_finales_pdc"] = recommandations_finales
-                st.session_state.etape_pdc = 14
-                st.rerun()
+# =========================================================
+# NAVIGATION ET ENREGISTREMENT DE L'ÉTAPE 15 (CORRIGÉ)
+# =========================================================
+import datetime
 
-        with col_btn2:
-            if st.button(
-                "💾 Valider & Finaliser le PDC",
-                key="btn_valider_pdc_final",
-                type="primary",
-                use_container_width=True,
-            ):
-                if "reponses_pdc" not in st.session_state:
-                    st.session_state.reponses_pdc = {}
+col_btn1, col_btn2 = st.columns([1, 1])
+with col_btn1:
+    if st.button("⬅️ Retour", key="btn_retour_etape15", use_container_width=True):
+        st.session_state["recommandations_finales_pdc"] = recommandations_finales
+        st.session_state.etape_pdc = 14
+        st.rerun()
 
-                # Sauvegarde globale des textes
-                st.session_state["recommandations_finales_pdc"] = recommandations_finales
-                st.session_state.reponses_pdc["recommandations_finales"] = recommandations_finales
-                st.session_state.reponses_pdc["score_faisabilite"] = score
-                st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
+with col_btn2:
+    if st.button(
+        "💾 Valider & Finaliser le PDC",
+        key="btn_valider_pdc_final",
+        type="primary",
+        use_container_width=True,
+    ):
+        if "reponses_pdc" not in st.session_state:
+            st.session_state.reponses_pdc = {}
 
-                # Extraction sécurisée de l'image de la signature
-                def extraire_image_signature(canvas_obj):
-                    if canvas_obj is None:
-                        return None
-                    
-                    # Vérification si un tracé (dessin) existe
-                    has_drawing = False
-                    try:
-                        if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
-                            objects = canvas_obj.json_data.get("objects", [])
-                            if len(objects) > 0:
-                                has_drawing = True
-                    except Exception:
-                        pass
+        # Sauvegarde globale des textes
+        st.session_state["recommandations_finales_pdc"] = recommandations_finales
+        st.session_state.reponses_pdc["recommandations_finales"] = recommandations_finales
+        st.session_state.reponses_pdc["score_faisabilite"] = score
+        st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
 
-                    if not has_drawing:
-                        return None
+        # Extraction sécurisée de l'image de la signature (Renvoyait du texte auparavant)
+        def extraire_image_signature(canvas_obj):
+            if canvas_obj is None:
+                return None
+            
+            # Vérification si un tracé (dessin) existe
+            has_drawing = False
+            try:
+                if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
+                    objects = canvas_obj.json_data.get("objects", [])
+                    if len(objects) > 0:
+                        has_drawing = True
+            except Exception:
+                pass
 
-                    # Extraction directe du tableau d'image
-                    try:
-                        if canvas_obj.image_data is not None:
-                            img_array = np.array(canvas_obj.image_data)
-                            if img_array.size > 0:
-                                return img_array
-                    except Exception:
-                        pass
+            if not has_drawing:
+                return None
 
-                    return "SIGNATURE_PRESENTE"
+            # Extraction directe du tableau d'image NumPy
+            try:
+                if canvas_obj.image_data is not None:
+                    img_array = np.array(canvas_obj.image_data)
+                    if img_array.size > 0:
+                        return img_array
+            except Exception:
+                pass
 
-                # Extractions sécurisées
-                img_sig_prod = extraire_image_signature(canvas_producteur)
-                img_sig_tech = extraire_image_signature(canvas_technicien)
+            # Si la récupération échoue, on renvoie None (et NON UNE CHAÎNE DE TEXTE)
+            return None
 
-                # Enregistrement des données des signataires
-                st.session_state.reponses_pdc["signataires"] = {
-                    "producteur_nom": nom_producteur,
-                    "producteur_signature": img_sig_prod,
-                    "technicien_nom": nom_technicien,
-                    "technicien_signature": img_sig_tech,
-                    "date_validation": pd.Timestamp.now().strftime("%d/%m/%Y à %H:%M")
-                }
+        # Extractions sécurisées des tableaux NumPy d'images
+        img_sig_prod = extraire_image_signature(canvas_producteur)
+        img_sig_tech = extraire_image_signature(canvas_technicien)
 
-                st.session_state["pdc_finalise"] = True
-                st.success("✅ PDC finalisé avec succès ! Les signatures tactiles ont été enregistrées.")
+        # Enregistrement des données des signataires
+        st.session_state.reponses_pdc["signataires"] = {
+            "producteur_nom": nom_producteur,
+            "producteur_signature": img_sig_prod,  # Stocke la matrice NumPy d'image
+            "technicien_nom": nom_technicien,
+            "technicien_signature": img_sig_tech,  # Stocke la matrice NumPy d'image
+            "date_validation": datetime.datetime.now().strftime("%d/%m/%Y à %H:%M")
+        }
+
+        st.session_state["pdc_finalise"] = True
+        st.success("✅ PDC finalisé avec succès ! Les signatures tactiles ont été enregistrées.")
+        st.rerun()
+
