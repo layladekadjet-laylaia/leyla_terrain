@@ -4380,32 +4380,32 @@ def afficher():
                 st.session_state.reponses_pdc["score_faisabilite"] = score
                 st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
 
-                # Fonction de récupération et conversion sécurisée de la signature
+                # Fonction de récupération sécurisée
                 def extraire_image_signature(canvas_obj):
                     if canvas_obj is None:
                         return None
                     
-                    # 1. Essai via l'attribut standard .image_data
-                    try:
-                        if canvas_obj.image_data is not None:
-                            # Vérifier si l'image n'est pas complètement transparente/vide
-                            if np.any(canvas_obj.image_data[:, :, 3] > 0): 
-                                return canvas_obj.image_data
-                    except Exception:
-                        pass
-
-                    # 2. Secours : Si image_data a échoué mais qu'un tracé existe dans json_data
+                    has_drawing = False
                     try:
                         if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
                             objects = canvas_obj.json_data.get("objects", [])
                             if len(objects) > 0:
-                                # Si image_data est disponible sous forme brute
-                                if hasattr(canvas_obj, "_raw_image_data"):
-                                    return canvas_obj._raw_image_data
+                                has_drawing = True
                     except Exception:
                         pass
 
-                    return None
+                    if not has_drawing:
+                        return None
+
+                    try:
+                        img_array = canvas_obj.image_data
+                        if img_array is not None and isinstance(img_array, np.ndarray):
+                            if img_array.size > 0:
+                                return img_array
+                    except Exception:
+                        pass
+
+                    return "SIGNATURE_PRESENTE"
 
                 # Extractions sécurisées
                 img_sig_prod = extraire_image_signature(canvas_producteur)
@@ -4422,4 +4422,3 @@ def afficher():
 
                 st.session_state["pdc_finalise"] = True
                 st.success("✅ PDC finalisé avec succès ! Les signatures tactiles ont été enregistrées.")
-
