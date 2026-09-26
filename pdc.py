@@ -672,7 +672,7 @@ from PIL import Image
 from fpdf import FPDF
 
 # =========================================================================
-# 1. FONCTIONS UTILITAIRES ET GÉNÉRATION PDF
+# 1. UTILS ET NETTOYAGE DU TEXTE POUR FPDF (LATIN-1)
 # =========================================================================
 
 def nettoyer_texte_pdf(chaine: str) -> str:
@@ -692,10 +692,47 @@ def nettoyer_texte_pdf(chaine: str) -> str:
     return s.encode("latin-1", "replace").decode("latin-1")
 
 
+# =========================================================================
+# 2. FONCTIONS DE GESTION DES SIGNATURES TACTILES
+# =========================================================================
+
+def extraire_image_signature(canvas_obj):
+    """
+    Extrait en toute sécurité le tableau d'image NumPy depuis le composant canvas.
+    """
+    if canvas_obj is None:
+        return None
+    
+    # 1. Vérification si un tracé (dessin) existe dans le canvas
+    has_drawing = False
+    try:
+        if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
+            objects = canvas_obj.json_data.get("objects", [])
+            if len(objects) > 0:
+                has_drawing = True
+    except Exception:
+        pass
+
+    if not has_drawing:
+        return None
+
+    # 2. Récupération directe du tableau image_data
+    try:
+        img_array = canvas_obj.image_data
+        if img_array is not None and isinstance(img_array, np.ndarray):
+            if img_array.size > 0:
+                return img_array
+    except Exception:
+        pass
+
+    # 3. Secours : si l'attribut image_data lève une exception lors du clic
+    return "SIGNATURE_PRESENTE"
+
+
 def traiter_signature_pour_pdf(sig_data):
     """
-    Convertit la matrice d'image (NumPy Array) ou l'objet signature en un fichier temporaire PNG
-    réutilisable par FPDF.
+    Convertit la matrice d'image (NumPy Array) ou l'objet signature en un fichier 
+    temporaire PNG réutilisable par FPDF.
     """
     if sig_data is None:
         return None
@@ -703,22 +740,31 @@ def traiter_signature_pour_pdf(sig_data):
     # CAS 1 : C'est une matrice d'image NumPy (issue de canvas_obj.image_data)
     if isinstance(sig_data, np.ndarray):
         try:
-            # Vérifier que le tableau n'est pas vide et contient des pixels dessinés
-            if sig_data.size > 0 and np.any(sig_data[:, :, 3] > 0 if sig_data.shape[2] == 4 else sig_data > 0):
+            # Vérifier que le tableau n'est pas vide et contient du tracé
+            if sig_data.size > 0:
+                # Si RGBA, vérifier la transparence sur le canal Alpha (index 3)
+                if sig_data.ndim == 3 and sig_data.shape[2] == 4:
+                    if not np.any(sig_data[:, :, 3] > 0):
+                        return None
+                
                 img_pil = Image.fromarray(sig_data.astype('uint8'))
                 temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-                img_pil.save(temp_file.name)
+                img_pil.save(temp_file.name, format="PNG")
                 temp_file.close()
                 return temp_file.name
         except Exception:
             return None
 
-    # CAS 2 : C'est un chemin de fichier image
+    # CAS 2 : C'est un chemin vers un fichier image existant
     elif isinstance(sig_data, str) and os.path.exists(sig_data):
         return sig_data
 
     return None
 
+
+# =========================================================================
+# 3. GÉNÉRATEUR DU RAPPORT PDF (PDC)
+# =========================================================================
 
 def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf = FPDF()
@@ -756,7 +802,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     reponses = data.get("reponses", {})
     if isinstance(reponses, dict) and reponses:
         for cle, val in reponses.items():
-            # Ne pas traiter les signataires ici s'ils sont gérés séparément à la fin
+            # Exclure le dictionnaire signataires du listing brut (traité à la fin)
             if cle == "signataires":
                 continue
 
@@ -788,7 +834,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
 
     pdf.ln(5)
 
-    # --- SECTION 2 : RAPPORTS SQLITE LOCAUX (DIAGNOSTICS & MODULES) ---
+    # --- SECTION 2 : RAPPORTS SQLITE LOCAUX ---
     historique = data.get("historique_modules", [])
     if historique:
         pdf.set_draw_color(180, 180, 180)
@@ -820,7 +866,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                 pdf.write(5, nettoyer_texte_pdf(f"   * Contenu : {details}\n"))
             pdf.ln(2)
 
-    # --- SECTION 3 : SIGNATURES ET VALIDATION ---
+    # --- SECTION 3 : VALIDATION ET SIGNATURES ---
     signataires = reponses.get("signataires", {}) if isinstance(reponses, dict) else {}
     if signataires:
         pdf.ln(5)
@@ -838,10 +884,10 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
             pdf.cell(0, 5, nettoyer_texte_pdf(f"Document validé le : {date_val}"), ln=True)
             pdf.ln(3)
 
-        # Positions pour 2 colonnes (Producteur à gauche, Technicien à droite)
+        # Repères de position pour double colonne
         y_start_signatures = pdf.get_y()
 
-        # --- Signature Producteur ---
+        # --- Colonne Gauche : Producteur ---
         pdf.set_xy(10, y_start_signatures)
         pdf.set_font("Arial", "B", 10)
         prod_nom = signataires.get("producteur_nom", "Producteur")
@@ -849,17 +895,17 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
 
         path_sig_prod = traiter_signature_pour_pdf(signataires.get("producteur_signature"))
         if path_sig_prod:
-            pdf.image(path_sig_prod, x=10, y=pdf.get_y(), w=60)
+            pdf.image(path_sig_prod, x=10, y=pdf.get_y() + 2, w=55)
             if os.path.exists(path_sig_prod) and path_sig_prod.endswith(".png"):
                 try:
-                    os.remove(path_sig_prod)  # Nettoyage du fichier temporaire
+                    os.remove(path_sig_prod)
                 except Exception:
                     pass
         elif signataires.get("producteur_signature") == "SIGNATURE_PRESENTE":
             pdf.set_font("Arial", "I", 8)
             pdf.cell(90, 5, nettoyer_texte_pdf("[Signature validée sur tablette]"), ln=True)
 
-        # --- Signature Technicien ---
+        # --- Colonne Droite : Technicien ---
         pdf.set_xy(110, y_start_signatures)
         pdf.set_font("Arial", "B", 10)
         tech_nom = signataires.get("technicien_nom", "Technicien")
@@ -867,10 +913,10 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
 
         path_sig_tech = traiter_signature_pour_pdf(signataires.get("technicien_signature"))
         if path_sig_tech:
-            pdf.image(path_sig_tech, x=110, y=pdf.get_y(), w=60)
+            pdf.image(path_sig_tech, x=110, y=pdf.get_y() + 2, w=55)
             if os.path.exists(path_sig_tech) and path_sig_tech.endswith(".png"):
                 try:
-                    os.remove(path_sig_tech)  # Nettoyage du fichier temporaire
+                    os.remove(path_sig_tech)
                 except Exception:
                     pass
         elif signataires.get("technicien_signature") == "SIGNATURE_PRESENTE":
