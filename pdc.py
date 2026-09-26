@@ -4375,7 +4375,35 @@ def afficher():
         st.markdown("---")
 
         # =========================================================
-        # NAVIGATION ET ENREGISTREMENT DE L'ÉTAPE 15
+        # 1. DÉFINITION DE LA FONCTION D'EXTRACTION (Au niveau global)
+        # =========================================================
+        def extraire_image_signature(canvas_obj):
+            if canvas_obj is None:
+                return None
+            try:
+                # Lecture directe de la matrice NumPy du canvas
+                img_array = canvas_obj.image_data
+                if isinstance(img_array, np.ndarray) and img_array.size > 0:
+                    # Vérification s'il y a des pixels dessinés (Canal Alpha > 0 ou couleur < 240)
+                    if np.any(img_array[:, :, 3] > 0) or np.any(img_array[:, :, :3] < 240):
+                        return img_array
+            except Exception:
+                pass
+            return None
+
+        # =========================================================
+        # 2. CAPTURE AUTOMATIQUE EN CONTINU DANS LE SESSION STATE
+        # =========================================================
+        img_sig_prod = extraire_image_signature(canvas_producteur)
+        img_sig_tech = extraire_image_signature(canvas_technicien)
+
+        if img_sig_prod is not None:
+            st.session_state["sig_prod_temp"] = img_sig_prod
+        if img_sig_tech is not None:
+            st.session_state["sig_tech_temp"] = img_sig_tech
+
+        # =========================================================
+        # 3. NAVIGATION ET ENREGISTREMENT DE L'ÉTAPE 15
         # =========================================================
         col_btn1, col_btn2 = st.columns([1, 1])
 
@@ -4395,46 +4423,28 @@ def afficher():
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
 
-                # Enregistrement des textes et scores
+                # Récupération des signatures capturées (ou des variables temporaires)
+                sig_producteur_finale = st.session_state.get("sig_prod_temp", img_sig_prod)
+                sig_technicien_finale = st.session_state.get("sig_tech_temp", img_sig_tech)
+
+                # Enregistrement des données dans le session_state
                 st.session_state["recommandations_finales_pdc"] = recommandations_finales
                 st.session_state.reponses_pdc["recommandations_finales"] = recommandations_finales
                 st.session_state.reponses_pdc["score_faisabilite"] = score
                 st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
 
-                # Extraction simplifiée et directe du tableau d'image
-                def extraire_image_signature(canvas_obj):
-                    if canvas_obj is None:
-                        return None
-                    try:
-                        img_array = canvas_obj.image_data
-                        if isinstance(img_array, np.ndarray) and img_array.size > 0:
-                            # Vérification qu'au moins un pixel a été dessiné
-                            if np.any(img_array[:, :, 3] > 0) or np.any(img_array[:, :, :3] < 240):
-                                return img_array
-                    except Exception:
-                        pass
-                    return None
-
-                img_sig_prod = extraire_image_signature(canvas_producteur)
-                img_sig_tech = extraire_image_signature(canvas_technicien)
-
-                # Sauvegarde des signataires dans le session_state
                 st.session_state.reponses_pdc["signataires"] = {
                     "producteur_nom": nom_producteur,
-                    "producteur_signature": img_sig_prod,
+                    "producteur_signature": sig_producteur_finale,
                     "technicien_nom": nom_technicien,
-                    "technicien_signature": img_sig_tech,
+                    "technicien_signature": sig_technicien_finale,
                     "date_validation": pd.Timestamp.now().strftime("%d/%m/%Y à %H:%M")
                 }
 
                 st.session_state["pdc_finalise"] = True
-                
-                # Notification à l'utilisateur
-                if img_sig_prod is not None or img_sig_tech is not None:
-                    st.success("✅ PDC finalisé avec succès ! Signatures capturées.")
+
+                # Affichage des messages de confirmation (SANS st.rerun())
+                if sig_producteur_finale is not None or sig_technicien_finale is not None:
+                    st.success("✅ PDC finalisé avec succès ! Signatures enregistrées.")
                 else:
-                    st.warning("⚠️ PDC finalisé sans signature capturée.")
-
-                st.rerun()
-
-
+                    st.warning("⚠️ PDC finalisé mais aucune signature n'a été détectée.")
