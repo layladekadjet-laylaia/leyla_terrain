@@ -3,6 +3,7 @@ streamlit
 streamlit-aggrid
 streamlit-geolocation
 customtkinter
+streamlit-drawable-canvas
 
 # --- Cartographie & Géolocalisation ---
 geopy
