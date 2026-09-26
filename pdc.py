@@ -4316,9 +4316,20 @@ def afficher():
                 st.session_state.reponses_pdc["score_faisabilite"] = score
                 st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
 
-                # Récupération des signatures (CORRECTION : canvas_technicien)
-                img_sig_prod = canvas_producteur.image_data if canvas_producteur else None
-                img_sig_tech = canvas_technicien.image_data if canvas_technicien else None
+                                # Récupération sécurisée des signatures
+                img_sig_prod = None
+                if canvas_producteur is not None:
+                    try:
+                        img_sig_prod = canvas_producteur.image_data
+                    except Exception:
+                        img_sig_prod = None
+
+                img_sig_tech = None
+                if canvas_technicien is not None:
+                    try:
+                        img_sig_tech = canvas_technicien.image_data
+                    except Exception:
+                        img_sig_tech = None
 
                 # Enregistrement des données des signataires
                 st.session_state.reponses_pdc["signataires"] = {
@@ -4328,6 +4339,7 @@ def afficher():
                     "technicien_signature": img_sig_tech,
                     "date_validation": pd.Timestamp.now().strftime("%d/%m/%Y à %H:%M")
                 }
+
 
                 st.session_state["pdc_finalise"] = True
                 st.success("✅ PDC finalisé avec succès ! Les signatures tactiles ont été enregistrées et seront intégrées au PDF.")
