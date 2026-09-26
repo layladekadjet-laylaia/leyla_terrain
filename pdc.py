@@ -660,6 +660,8 @@ def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_loc
         print(f"Erreur lors de la sauvegarde SQLite locale : {e}")
         raise e
 
+
+
 import os
 import tempfile
 import json
@@ -699,7 +701,6 @@ def extraire_image_signature(canvas_obj):
     """
     Extrait en toute sécurité le tableau d'image NumPy depuis le composant canvas Streamlit.
     Retourne la matrice NumPy (ndarray) si un dessin existe, sinon None.
-    NE RETOURNE PLUS JAMAIS DE TEXTE ("SIGNATURE_PRESENTE").
     """
     if canvas_obj is None:
         return None
@@ -732,7 +733,7 @@ def extraire_image_signature(canvas_obj):
 def traiter_signature_pour_pdf(sig_data):
     """
     Convertit la matrice d'image (NumPy) ou un chemin existant en fichier PNG temporaire 
-    utilisable par FPDF.
+    avec fond blanc transparent géré pour FPDF.
     """
     if sig_data is None:
         return None
@@ -746,10 +747,13 @@ def traiter_signature_pour_pdf(sig_data):
                     if not np.any(sig_data[:, :, 3] > 0):
                         return None
                 
-                # Conversion en image PIL et sauvegarde temporaire en fichier PNG
-                img_pil = Image.fromarray(sig_data.astype('uint8'))
+                # Conversion en image PIL avec fond blanc (pour éviter les fonds noirs dans FPDF)
+                img_pil = Image.fromarray(sig_data.astype('uint8'), 'RGBA')
+                background = Image.new('RGBA', img_pil.size, (255, 255, 255, 255))
+                alpha_composite = Image.alpha_composite(background, img_pil).convert("RGB")
+                
                 temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-                img_pil.save(temp_file.name, format="PNG")
+                alpha_composite.save(temp_file.name, format="PNG")
                 temp_file.close()
                 return temp_file.name
         except Exception:
@@ -880,7 +884,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
             pdf.cell(0, 5, nettoyer_texte_pdf(f"Document validé le : {date_val}"), ln=True)
             pdf.ln(3)
 
-        # Repère Y de début pour l'alignement des deux colonnes
+        # Positions fixes pour le placement côte à côte
         y_start_signatures = pdf.get_y()
 
         # --- Colonne Gauche : Producteur ---
@@ -888,12 +892,11 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
         pdf.set_font("Arial", "B", 10)
         prod_nom = signataires.get("producteur_nom", "Producteur")
         pdf.cell(90, 6, nettoyer_texte_pdf(f"Producteur : {prod_nom}"), ln=True)
+        y_after_prod_title = pdf.get_y()
 
         path_sig_prod = traiter_signature_pour_pdf(signataires.get("producteur_signature"))
         if path_sig_prod:
-            # Dessine le tracé sous forme d'image sur le PDF
-            pdf.image(path_sig_prod, x=10, y=pdf.get_y() + 2, w=55)
-            # Nettoyage du fichier temporaire sur le serveur
+            pdf.image(path_sig_prod, x=10, y=y_after_prod_title + 2, w=55)
             if os.path.exists(path_sig_prod) and path_sig_prod.endswith(".png"):
                 try:
                     os.remove(path_sig_prod)
@@ -908,12 +911,11 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
         pdf.set_font("Arial", "B", 10)
         tech_nom = signataires.get("technicien_nom", "Technicien")
         pdf.cell(90, 6, nettoyer_texte_pdf(f"Technicien : {tech_nom}"), ln=True)
+        y_after_tech_title = pdf.get_y()
 
         path_sig_tech = traiter_signature_pour_pdf(signataires.get("technicien_signature"))
         if path_sig_tech:
-            # Dessine le tracé sous forme d'image sur le PDF
-            pdf.image(path_sig_tech, x=110, y=pdf.get_y() + 2, w=55)
-            # Nettoyage du fichier temporaire sur le serveur
+            pdf.image(path_sig_tech, x=110, y=y_after_tech_title + 2, w=55)
             if os.path.exists(path_sig_tech) and path_sig_tech.endswith(".png"):
                 try:
                     os.remove(path_sig_tech)
