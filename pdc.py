@@ -4345,7 +4345,7 @@ def afficher():
                 fill_color="rgba(255, 255, 255, 0)",
                 stroke_width=3,
                 stroke_color="#000000",
-                background_color="#f0f2f6",
+                background_color="#FFFFFF",  # Fond blanc pur pour un contraste exact
                 height=160,
                 width=300,
                 drawing_mode="freedraw",
@@ -4365,7 +4365,7 @@ def afficher():
                 fill_color="rgba(255, 255, 255, 0)",
                 stroke_width=3,
                 stroke_color="#084081",
-                background_color="#f0f2f6",
+                background_color="#FFFFFF",  # Fond blanc pur
                 height=160,
                 width=300,
                 drawing_mode="freedraw",
@@ -4375,18 +4375,26 @@ def afficher():
         st.markdown("---")
 
         # =========================================================
-        # 1. DÉFINITION DE LA FONCTION D'EXTRACTION (Au niveau global)
+        # 1. FONCTION DE DÉTECTION ET EXTRACTION DE SIGNATURE
         # =========================================================
         def extraire_image_signature(canvas_obj):
             if canvas_obj is None:
                 return None
             try:
-                # Lecture directe de la matrice NumPy du canvas
-                img_array = canvas_obj.image_data
-                if isinstance(img_array, np.ndarray) and img_array.size > 0:
-                    # Vérification s'il y a des pixels dessinés (Canal Alpha > 0 ou couleur < 240)
-                    if np.any(img_array[:, :, 3] > 0) or np.any(img_array[:, :, :3] < 240):
-                        return img_array
+                # 1. Vérification par le JSON de tracé (Méthode la plus fiable)
+                if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
+                    objects = canvas_obj.json_data.get("objects", [])
+                    if len(objects) > 0 and hasattr(canvas_obj, "image_data"):
+                        if isinstance(canvas_obj.image_data, np.ndarray) and canvas_obj.image_data.size > 0:
+                            return canvas_obj.image_data
+
+                # 2. Vérification secours par Analyse des Pixels
+                if hasattr(canvas_obj, "image_data") and canvas_obj.image_data is not None:
+                    img_array = canvas_obj.image_data
+                    if isinstance(img_array, np.ndarray) and img_array.size > 0:
+                        # Si au moins un pixel est plus sombre que 200 (trace de trait)
+                        if np.any(img_array[:, :, :3] < 200) or np.any(img_array[:, :, 3] > 0):
+                            return img_array
             except Exception:
                 pass
             return None
@@ -4423,11 +4431,11 @@ def afficher():
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
 
-                # Récupération des signatures capturées (ou des variables temporaires)
+                # Récupération prioritaire dans le session_state temporaire
                 sig_producteur_finale = st.session_state.get("sig_prod_temp", img_sig_prod)
                 sig_technicien_finale = st.session_state.get("sig_tech_temp", img_sig_tech)
 
-                # Enregistrement des données dans le session_state
+                # Enregistrement des données globales
                 st.session_state["recommandations_finales_pdc"] = recommandations_finales
                 st.session_state.reponses_pdc["recommandations_finales"] = recommandations_finales
                 st.session_state.reponses_pdc["score_faisabilite"] = score
@@ -4443,8 +4451,9 @@ def afficher():
 
                 st.session_state["pdc_finalise"] = True
 
-                # Affichage des messages de confirmation (SANS st.rerun())
+                # Affichage des messages de confirmation
                 if sig_producteur_finale is not None or sig_technicien_finale is not None:
                     st.success("✅ PDC finalisé avec succès ! Signatures enregistrées.")
                 else:
                     st.warning("⚠️ PDC finalisé mais aucune signature n'a été détectée.")
+
