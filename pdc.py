@@ -694,48 +694,13 @@ def nettoyer_texte_pdf(chaine: str) -> str:
 
 
 # =========================================================================
-# 2. FONCTIONS DE GESTION DES SIGNATURES TACTILES
+# 2. FONCTIONS DE GESTION DES SIGNATURES POUR LE PDF
 # =========================================================================
-
-def extraire_image_signature(canvas_obj):
-    """
-    Extrait en toute sécurité le tableau d'image NumPy depuis le composant canvas Streamlit.
-    Empêche le plantage RuntimeError de streamlit-drawable-canvas quand le canvas est vide.
-    """
-    if canvas_obj is None:
-        return None
-    
-    # 1. Vérification si un tracé (objets dessinés) existe dans le canvas
-    has_drawing = False
-    try:
-        if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
-            objects = canvas_obj.json_data.get("objects", [])
-            if len(objects) > 0:
-                has_drawing = True
-    except Exception:
-        pass
-
-    if not has_drawing:
-        return None
-
-    # 2. Récupération sécurisée du tableau image_data (Matrice NumPy RGBA)
-    try:
-        # Protège contre le RuntimeError si image_data n'est pas encore prêt
-        img_array = canvas_obj.image_data
-        if img_array is not None and isinstance(img_array, np.ndarray):
-            if img_array.size > 0:
-                return img_array
-    except (RuntimeError, Exception):
-        # Capturé en cas de RuntimeError levé par _require_image_data_url
-        return None
-
-    return None
-
 
 def traiter_signature_pour_pdf(sig_data):
     """
-    Convertit la matrice d'image (NumPy) ou un chemin existant en fichier PNG temporaire 
-    avec fond blanc transparent géré pour FPDF.
+    Convertit la matrice d'image (NumPy RGBA) ou un chemin existant en fichier PNG temporaire 
+    avec fond blanc aplati utilisable proprement par FPDF.
     """
     if sig_data is None:
         return None
@@ -749,7 +714,7 @@ def traiter_signature_pour_pdf(sig_data):
                     if not np.any(sig_data[:, :, 3] > 0):
                         return None
                 
-                # Conversion en image PIL avec fond blanc (pour éviter les fonds noirs dans FPDF)
+                # Conversion en image PIL avec fond blanc (pour éviter les carrés noirs dans FPDF)
                 img_pil = Image.fromarray(sig_data.astype('uint8'), 'RGBA')
                 background = Image.new('RGBA', img_pil.size, (255, 255, 255, 255))
                 alpha_composite = Image.alpha_composite(background, img_pil).convert("RGB")
@@ -926,6 +891,9 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
         else:
             pdf.set_font("Arial", "I", 8)
             pdf.cell(90, 5, nettoyer_texte_pdf("[Signature non fournie]"), ln=True)
+
+        # Ajustement du pointeur Y sous le bloc signature (hauteur max ~ 30mm)
+        pdf.set_y(y_start_signatures + 35)
 
     pdf_buffer = pdf.output(dest='S')
     if isinstance(pdf_buffer, str):
