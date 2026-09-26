@@ -4290,6 +4290,7 @@ def afficher():
 
         st.markdown("---")
 
+
         # =========================================================
         # NAVIGATION ET ENREGISTREMENT DE L'ÉTAPE 15
         # =========================================================
@@ -4316,20 +4317,33 @@ def afficher():
                 st.session_state.reponses_pdc["score_faisabilite"] = score
                 st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
 
-                                # Récupération sécurisée des signatures
-                img_sig_prod = None
-                if canvas_producteur is not None:
+                # Fonction de récupération sécurisée de l'image de signature
+                def extraire_image_signature(canvas_obj):
+                    if canvas_obj is None:
+                        return None
+                    
+                    # 1. Essai via l'attribut standard .image_data
                     try:
-                        img_sig_prod = canvas_producteur.image_data
+                        if canvas_obj.image_data is not None:
+                            return canvas_obj.image_data
                     except Exception:
-                        img_sig_prod = None
+                        pass
 
-                img_sig_tech = None
-                if canvas_technicien is not None:
+                    # 2. Secours via json_data / données brutes si le composant plante
                     try:
-                        img_sig_tech = canvas_technicien.image_data
+                        if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
+                            # Vérifie si au moins un tracé a été effectué
+                            objects = canvas_obj.json_data.get("objects", [])
+                            if len(objects) > 0:
+                                return "SIGNATURE_PRESENTE"
                     except Exception:
-                        img_sig_tech = None
+                        pass
+
+                    return None
+
+                # Extractions sécurisées
+                img_sig_prod = extraire_image_signature(canvas_producteur)
+                img_sig_tech = extraire_image_signature(canvas_technicien)
 
                 # Enregistrement des données des signataires
                 st.session_state.reponses_pdc["signataires"] = {
@@ -4340,6 +4354,5 @@ def afficher():
                     "date_validation": pd.Timestamp.now().strftime("%d/%m/%Y à %H:%M")
                 }
 
-
                 st.session_state["pdc_finalise"] = True
-                st.success("✅ PDC finalisé avec succès ! Les signatures tactiles ont été enregistrées et seront intégrées au PDF.")
+                st.success("✅ PDC finalisé avec succès ! Les signatures tactiles ont été enregistrées.")
