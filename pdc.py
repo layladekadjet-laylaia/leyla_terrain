@@ -4165,309 +4165,285 @@ def afficher():
                 st.rerun()
 
 
-    # ---------------------------------------------------------
-    # ÉTAPE 15 : RÉSUMÉ GLOBAL, ÉVALUATION DU SUCCÈS & GÉNÉRATION DU PDC FINAL
-    # (SYNTHÈSE DU PLAN DE DÉVELOPPEMENT DE CONSEIL)
-    # ---------------------------------------------------------
-    elif st.session_state.etape_pdc == 15:
-        st.subheader(
-            "Étape 15/15 : Bilan Synthétique, Faisabilité & Validation du PDC"
-        )
-        st.caption(
-            "Évaluation de la viabilité du plan, score de réussite prévisionnel et"
-            " impression du document final."
-        )
+import io
+import numpy as np
+import pandas as pd
+from PIL import Image
+import streamlit as st
+from streamlit_drawable_canvas import st_canvas
 
-        # Récupération sécurisée des données
-        reponses = st.session_state.get("reponses_pdc", {})
+# ---------------------------------------------------------
+# ÉTAPE 15 : RÉSUMÉ GLOBAL & VALIDATION
+# ---------------------------------------------------------
+elif st.session_state.etape_pdc == 15:
+    st.subheader(
+        "Étape 15/15 : Bilan Synthétique, Faisabilité & Validation du PDC"
+    )
+    st.caption(
+        "Évaluation de la viabilité du plan, score de réussite prévisionnel et"
+        " impression du document final."
+    )
 
-        # =========================================================
-        # 15.1 SYNTHÈSE & RÉSUMÉ DES MODULES
-        # =========================================================
-        st.markdown("### 📋 1. Synthèse Générale de l'Exploitation")
+    reponses = st.session_state.get("reponses_pdc", {})
 
-        # Calculs de synthèse sécurisés
-        df_cult = pd.DataFrame(reponses.get("cultures_et_revenus", []))
-        df_quinq = pd.DataFrame(reponses.get("plan_quinquennal", []))
-        df_ann = pd.DataFrame(reponses.get("programme_annuel", []))
-        df_arb = pd.DataFrame(reponses.get("inventaire_arbres", []))
+    # =========================================================
+    # 15.1 SYNTHÈSE & RÉSUMÉ DES MODULES
+    # =========================================================
+    st.markdown("### 📋 1. Synthèse Générale de l'Exploitation")
 
-        tot_revenu_actuel = 0
-        if not df_cult.empty and "Revenu (FCFA)" in df_cult.columns:
-            tot_revenu_actuel = int(
-                pd.to_numeric(df_cult["Revenu (FCFA)"], errors="coerce").fillna(0).sum()
-            )
+    df_cult = pd.DataFrame(reponses.get("cultures_et_revenus", []))
+    df_quinq = pd.DataFrame(reponses.get("plan_quinquennal", []))
+    df_ann = pd.DataFrame(reponses.get("programme_annuel", []))
+    df_arb = pd.DataFrame(reponses.get("inventaire_arbres", []))
 
-        tot_cout_quinq = 0
-        if not df_quinq.empty and "Coût (FCFA)" in df_quinq.columns:
-            tot_cout_quinq = int(
-                pd.to_numeric(df_quinq["Coût (FCFA)"], errors="coerce").fillna(0).sum()
-            )
-
-        tot_cout_a1 = 0
-        if not df_ann.empty and "Coût (FCFA)" in df_ann.columns:
-            tot_cout_a1 = int(
-                pd.to_numeric(df_ann["Coût (FCFA)"], errors="coerce").fillna(0).sum()
-            )
-
-        nb_arbres_maintenus = 0
-        if not df_arb.empty and "Décision" in df_arb.columns:
-            mask_maint = df_arb["Décision"] == "À maintenir"
-            if "Nombre" in df_arb.columns:
-                nb_arbres_maintenus = int(
-                    pd.to_numeric(df_arb.loc[mask_maint, "Nombre"], errors="coerce").fillna(1).sum()
-                )
-            else:
-                nb_arbres_maintenus = int(mask_maint.sum())
-
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("Revenu Actuel", f"{tot_revenu_actuel:,} FCFA".replace(",", " "))
-        c2.metric("Budget Quinquennal", f"{tot_cout_quinq:,} FCFA".replace(",", " "))
-        c3.metric("Investissement A1", f"{tot_cout_a1:,} FCFA".replace(",", " "))
-        c4.metric("Arbres Conservés", f"{nb_arbres_maintenus} pieds")
-
-        st.markdown("---")
-
-        # =========================================================
-        # 15.2 ÉVALUATION DE LA RÉUSSITE ET DE LA VIABILITÉ DU PDC
-        # =========================================================
-        st.markdown(
-            "### 📊 2. Évaluation de la Faisabilité & Diagnostic de Réussite"
-        )
-        st.caption(
-            "Analyse des critères de viabilité financière, technique et sociale du"
-            " producteur."
+    tot_revenu_actuel = 0
+    if not df_cult.empty and "Revenu (FCFA)" in df_cult.columns:
+        tot_revenu_actuel = int(
+            pd.to_numeric(df_cult["Revenu (FCFA)"], errors="coerce").fillna(0).sum()
         )
 
-        # Calcul automatique d'un score de faisabilité (Base 100)
-        score = 0
-        criteres = []
-
-        # Critère 1 : Capacité financière
-        ratio_invest = (
-            (tot_cout_a1 / tot_revenu_actuel) if tot_revenu_actuel > 0 else 1.0
+    tot_cout_quinq = 0
+    if not df_quinq.empty and "Coût (FCFA)" in df_quinq.columns:
+        tot_cout_quinq = int(
+            pd.to_numeric(df_quinq["Coût (FCFA)"], errors="coerce").fillna(0).sum()
         )
-        if ratio_invest <= 0.4:
-            score += 35
-            criteres.append(
-                "✅ **Capacité financière solide** : Le coût de l'Année 1 représente"
-                " moins de 40% des revenus actuels."
-            )
-        elif ratio_invest <= 0.7:
-            score += 20
-            criteres.append(
-                "⚠️ **Capacité financière moyenne** : L'investissement A1 nécessite"
-                " un préfinancement ou un crédit léger."
+
+    tot_cout_a1 = 0
+    if not df_ann.empty and "Coût (FCFA)" in df_ann.columns:
+        tot_cout_a1 = int(
+            pd.to_numeric(df_ann["Coût (FCFA)"], errors="coerce").fillna(0).sum()
+        )
+
+    nb_arbres_maintenus = 0
+    if not df_arb.empty and "Décision" in df_arb.columns:
+        mask_maint = df_arb["Décision"] == "À maintenir"
+        if "Nombre" in df_arb.columns:
+            nb_arbres_maintenus = int(
+                pd.to_numeric(df_arb.loc[mask_maint, "Nombre"], errors="coerce").fillna(1).sum()
             )
         else:
-            score += 10
-            criteres.append(
-                "❌ **Tension de trésorerie** : L'investissement A1 dépasse 70% du"
-                " revenu actuel (Besoin urgent d'appui/subvention)."
-            )
+            nb_arbres_maintenus = int(mask_maint.sum())
 
-        # Critère 2 : Agroforesterie & Normes Durables
-        if nb_arbres_maintenus >= 10:
-            score += 35
-            criteres.append(
-                "✅ **Norme Agroforesterie respectée** : Densité d'ombrage conforme"
-                " aux directives CCC (>10 pieds/ha)."
-            )
-        else:
-            score += 15
-            criteres.append(
-                "⚠️ **Agroforesterie à renforcer** : Prévoir l'introduction d'arbres"
-                " d'ombrage supplémentaires."
-            )
+    c1, c2, c3, c4 = st.columns(4)
+    c1.metric("Revenu Actuel", f"{tot_revenu_actuel:,} FCFA".replace(",", " "))
+    c2.metric("Budget Quinquennal", f"{tot_cout_quinq:,} FCFA".replace(",", " "))
+    c3.metric("Investissement A1", f"{tot_cout_a1:,} FCFA".replace(",", " "))
+    c4.metric("Arbres Conservés", f"{nb_arbres_maintenus} pieds")
 
-        # Critère 3 : Planification et Clarté des Objectifs
-        if len(df_quinq) >= 3 and len(df_ann) >= 2:
-            score += 30
-            criteres.append(
-                "✅ **Plan d'Action Complet** : Les axes de réhabilitation,"
-                " replantation et diversification sont structurés."
-            )
-        else:
-            score += 15
-            criteres.append(
-                "⚠️ **Plan d'Action partiel** : Compléter les activités"
-                " trimestrielles pour garantir le suivi."
-            )
+    st.markdown("---")
 
-        # Stockage dans le session_state pour accès global
-        st.session_state["score_faisabilite"] = score
-        st.session_state["criteres_faisabilite"] = criteres
+    # =========================================================
+    # 15.2 ÉVALUATION DE LA RÉUSSITE ET DE LA VIABILITÉ DU PDC
+    # =========================================================
+    st.markdown(
+        "### 📊 2. Évaluation de la Faisabilité & Diagnostic de Réussite"
+    )
 
-        # Affichage du Score et du Statut de Réussite
-        st.markdown(f"#### Score de Faisabilité Global : **{score} / 100**")
-        st.progress(score / 100)
+    score = 0
+    criteres = []
 
-        if score >= 85:
-            st.success(
-                "🎉 **PDC Très Viable (Très Forte Chance de Réussite)** : Le"
-                " producteur dispose de toutes les conditions pour exécuter son"
-                " plan avec succès et améliorer durablement ses conditions de vie."
-            )
-        elif score >= 60:
-            st.info(
-                "👍 **PDC Viable sous conditions** : Le plan est réalisable, mais"
-                " nécessite un accompagnement technique soutenu et un suivi de la"
-                " trésorerie."
-            )
-        else:
-            st.warning(
-                "⚠️ **Risque Élevé d'Échec** : Ajuster les ambitions financières ou"
-                " rechercher des partenaires/coopératives pour cofinancer l'Année"
-                " 1."
-            )
-
-        st.markdown("**Détails du Diagnostic :**")
-        for crit in criteres:
-            st.markdown(f"- {crit}")
-
-        st.markdown("---")
-
-        # =========================================================
-        # 15.3 RECOMMANDATIONS ET CONCLUSION
-        # =========================================================
-        st.markdown("### 💡 3. Recommandations du Conseiller Agricole")
-        recom_def = (
-            "1. Prioriser les travaux d'assainissement sanitaire (taille des"
-            " loranthacées) dès le T1.\n2. Sécuriser les plants d'arbres d'ombrage"
-            " auprès des pépinières agréées par le Conseil Café-Cacao.\n3. Veiller à"
-            " la scolarisation effective des enfants du ménage conformément aux"
-            " engagements sociaux du PDC.\n4. Faire un point trimestriel avec le"
-            " conseiller de la coopérative pour valider le chronogramme T1 à T4."
+    ratio_invest = (
+        (tot_cout_a1 / tot_revenu_actuel) if tot_revenu_actuel > 0 else 1.0
+    )
+    if ratio_invest <= 0.4:
+        score += 35
+        criteres.append(
+            "✅ **Capacité financière solide** : Le coût de l'Année 1 représente"
+            " moins de 40% des revenus actuels."
         )
-        recommandations_finales = st.text_area(
-            "Recommandations stratégiques à l'attention du producteur",
-            value=st.session_state.get("recommandations_finales_pdc", recom_def),
-            height=120,
-            key="txt_recom_finales",
+    elif ratio_invest <= 0.7:
+        score += 20
+        criteres.append(
+            "⚠️ **Capacité financière moyenne** : L'investissement A1 nécessite"
+            " un préfinancement ou un crédit léger."
+        )
+    else:
+        score += 10
+        criteres.append(
+            "❌ **Tension de trésorerie** : L'investissement A1 dépasse 70% du"
+            " revenu actuel (Besoin urgent d'appui/subvention)."
         )
 
-        st.markdown("---")
-
-        # =========================================================
-        # 15.4 SIGNATURES TACTILES DES PARTIES
-        # =========================================================
-        st.markdown("### ✍️ 4. Validation & Signatures Tactiles")
-        st.caption("Signez directement avec le doigt ou un stylet sur les cadres ci-dessous.")
-
-        st.info(
-            "📜 **Engagement :** Je soussigné(e) confirme avoir pris connaissance "
-            "du diagnostic de mon exploitation et valide le plan d'action quinquennal établi."
+    if nb_arbres_maintenus >= 10:
+        score += 35
+        criteres.append(
+            "✅ **Norme Agroforesterie respectée** : Densité d'ombrage conforme"
+            " aux directives CCC (>10 pieds/ha)."
+        )
+    else:
+        score += 15
+        criteres.append(
+            "⚠️ **Agroforesterie à renforcer** : Prévoir l'introduction d'arbres"
+            " d'ombrage supplémentaires."
         )
 
-        col_sig_prod, col_sig_cons = st.columns([1, 1])
+    if len(df_quinq) >= 3 and len(df_ann) >= 2:
+        score += 30
+        criteres.append(
+            "✅ **Plan d'Action Complet** : Les axes de réhabilitation,"
+            " replantation et diversification sont structurés."
+        )
+    else:
+        score += 15
+        criteres.append(
+            "⚠️ **Plan d'Action partiel** : Compléter les activités"
+            " trimestrielles pour garantir le suivi."
+        )
 
-        with col_sig_prod:
-            st.markdown("#### 🖊️ Signature du Producteur")
-            nom_producteur = st.text_input(
-                "Nom du Producteur",
-                value=st.session_state.get("nom_producteur_pdc", "Nom et Prénom"),
-                key="input_nom_producteur_sig"
-            )
-            st.caption("Tracez la signature du producteur :")
-            canvas_producteur = st_canvas(
-                fill_color="rgba(255, 255, 255, 0)",
-                stroke_width=2,
-                stroke_color="#000000",
-                background_color="#f0f2f6",
-                height=150,
-                width=280,
-                drawing_mode="freedraw",
-                key="canvas_prod",
-            )
+    st.session_state["score_faisabilite"] = score
+    st.session_state["criteres_faisabilite"] = criteres
 
-        with col_sig_cons:
-            st.markdown("#### 🖊️ Signature du Technicien")
-            nom_technicien = st.text_input(
-                "Nom du Technicien",
-                value=st.session_state.get("nom_conseiller_pdc", ""),
-                placeholder="Ex: Kouassi Yao",
-                key="input_nom_technicien_sig"
-            )
-            st.caption("Tracez la signature du technicien :")
-            canvas_technicien = st_canvas(
-                fill_color="rgba(255, 255, 255, 0)",
-                stroke_width=2,
-                stroke_color="#084081",
-                background_color="#f0f2f6",
-                height=150,
-                width=280,
-                drawing_mode="freedraw",
-                key="canvas_cons",
-            )
+    st.markdown(f"#### Score de Faisabilité Global : **{score} / 100**")
+    st.progress(score / 100)
 
-        st.markdown("---")
+    if score >= 85:
+        st.success("🎉 **PDC Très Viable (Très Forte Chance de Réussite)**")
+    elif score >= 60:
+        st.info("👍 **PDC Viable sous conditions**")
+    else:
+        st.warning("⚠️ **Risque Élevé d'Échec**")
 
-        # =========================================================
-        # NAVIGATION ET ENREGISTREMENT DE L'ÉTAPE 15
-        # =========================================================
-        col_btn1, col_btn2 = st.columns([1, 1])
+    for crit in criteres:
+        st.markdown(f"- {crit}")
 
-        with col_btn1:
-            if st.button("⬅️ Retour", key="btn_retour_etape15", use_container_width=True):
-                st.session_state["recommandations_finales_pdc"] = recommandations_finales
-                st.session_state.etape_pdc = 14
-                st.rerun()
+    st.markdown("---")
 
-        with col_btn2:
-            if st.button(
-                "💾 Valider & Finaliser le PDC",
-                key="btn_valider_pdc_final",
-                type="primary",
-                use_container_width=True,
-            ):
-                if "reponses_pdc" not in st.session_state:
-                    st.session_state.reponses_pdc = {}
+    # =========================================================
+    # 15.3 RECOMMANDATIONS ET CONCLUSION
+    # =========================================================
+    st.markdown("### 💡 3. Recommandations du Conseiller Agricole")
+    recom_def = (
+        "1. Prioriser les travaux d'assainissement sanitaire (taille des"
+        " loranthacées) dès le T1.\n2. Sécuriser les plants d'arbres d'ombrage"
+        " auprès des pépinières agréées par le Conseil Café-Cacao.\n3. Veiller à"
+        " la scolarisation effective des enfants du ménage conformément aux"
+        " engagements sociaux du PDC.\n4. Faire un point trimestriel avec le"
+        " conseiller de la coopérative pour valider le chronogramme T1 à T4."
+    )
+    recommandations_finales = st.text_area(
+        "Recommandations stratégiques à l'attention du producteur",
+        value=st.session_state.get("recommandations_finales_pdc", recom_def),
+        height=120,
+        key="txt_recom_finales",
+    )
 
-                # Enregistrement des textes et scores
-                st.session_state["recommandations_finales_pdc"] = recommandations_finales
-                st.session_state.reponses_pdc["recommandations_finales"] = recommandations_finales
-                st.session_state.reponses_pdc["score_faisabilite"] = score
-                st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
+    st.markdown("---")
 
-                # Extraction sécurisée des tracés canvas sous forme de tableaux NumPy
-                def extraire_image_signature(canvas_obj):
-                    if canvas_obj is None:
-                        return None
-                    has_drawing = False
-                    try:
-                        if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
-                            objects = canvas_obj.json_data.get("objects", [])
-                            if len(objects) > 0:
-                                has_drawing = True
-                    except Exception:
-                        pass
+    # =========================================================
+    # 15.4 SIGNATURES TACTILES DES PARTIES
+    # =========================================================
+    st.markdown("### ✍️ 4. Validation & Signatures Tactiles")
+    st.caption("Signez directement avec le doigt ou un stylet sur les cadres ci-dessous.")
 
-                    if not has_drawing:
-                        return None
+    st.info(
+        "📜 **Engagement :** Je soussigné(e) confirme avoir pris connaissance "
+        "du diagnostic de mon exploitation et valide le plan d'action quinquennal établi."
+    )
 
-                    try:
-                        img_array = canvas_obj.image_data
-                        if img_array is not None and isinstance(img_array, np.ndarray):
-                            if img_array.size > 0:
-                                return img_array
-                    except Exception:
-                        pass
+    col_sig_prod, col_sig_cons = st.columns([1, 1])
 
+    with col_sig_prod:
+        st.markdown("#### 🖊️ Signature du Producteur")
+        nom_producteur = st.text_input(
+            "Nom du Producteur",
+            value=st.session_state.get("nom_producteur_pdc", "Nom et Prénom"),
+            key="input_nom_producteur_sig"
+        )
+        st.caption("Tracez la signature du producteur :")
+        canvas_producteur = st_canvas(
+            fill_color="rgba(255, 255, 255, 0)",
+            stroke_width=2,
+            stroke_color="#000000",
+            background_color="#f0f2f6",
+            height=150,
+            width=280,
+            drawing_mode="freedraw",
+            key="canvas_prod",
+        )
+
+    with col_sig_cons:
+        st.markdown("#### 🖊️ Signature du Technicien")
+        nom_technicien = st.text_input(
+            "Nom du Technicien",
+            value=st.session_state.get("nom_conseiller_pdc", ""),
+            placeholder="Ex: Kouassi Yao",
+            key="input_nom_technicien_sig"
+        )
+        st.caption("Tracez la signature du technicien :")
+        canvas_technicien = st_canvas(
+            fill_color="rgba(255, 255, 255, 0)",
+            stroke_width=2,
+            stroke_color="#084081",
+            background_color="#f0f2f6",
+            height=150,
+            width=280,
+            drawing_mode="freedraw",
+            key="canvas_cons",
+        )
+
+    st.markdown("---")
+
+    # =========================================================
+    # NAVIGATION ET ENREGISTREMENT DE L'ÉTAPE 15
+    # =========================================================
+    col_btn1, col_btn2 = st.columns([1, 1])
+
+    with col_btn1:
+        if st.button("⬅️ Retour", key="btn_retour_etape15", use_container_width=True):
+            st.session_state["recommandations_finales_pdc"] = recommandations_finales
+            st.session_state.etape_pdc = 14
+            st.rerun()
+
+    with col_btn2:
+        if st.button(
+            "💾 Valider & Finaliser le PDC",
+            key="btn_valider_pdc_final",
+            type="primary",
+            use_container_width=True,
+        ):
+            if "reponses_pdc" not in st.session_state:
+                st.session_state.reponses_pdc = {}
+
+            st.session_state["recommandations_finales_pdc"] = recommandations_finales
+            st.session_state.reponses_pdc["recommandations_finales"] = recommandations_finales
+            st.session_state.reponses_pdc["score_faisabilite"] = score
+            st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
+
+            # FONCTION CORRIGÉE : Convertit le canvas en octets d'image PNG
+            def extraire_image_signature_png(canvas_obj):
+                if canvas_obj is None:
                     return None
+                try:
+                    # Vérifier si l'utilisateur a vraiment dessiné
+                    if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
+                        objects = canvas_obj.json_data.get("objects", [])
+                        if len(objects) > 0 and canvas_obj.image_data is not None:
+                            # Conversion du tableau NumPy RGBA en PIL Image
+                            img_array = canvas_obj.image_data.astype(np.uint8)
+                            img = Image.fromarray(img_array)
+                            
+                            # Conversion en octets PNG
+                            buffer = io.BytesIO()
+                            img.save(buffer, format="PNG")
+                            return buffer.getvalue() # Renvoie les octets PNG
+                except Exception as e:
+                    st.error(f"Erreur d'extraction de signature : {e}")
+                return None
 
-                img_sig_prod = extraire_image_signature(canvas_producteur)
-                img_sig_tech = extraire_image_signature(canvas_technicien)
+            img_sig_prod = extraire_image_signature_png(canvas_producteur)
+            img_sig_tech = extraire_image_signature_png(canvas_technicien)
 
-                # Sauvegarde des signataires
-                st.session_state.reponses_pdc["signataires"] = {
-                    "producteur_nom": nom_producteur,
-                    "producteur_signature": img_sig_prod,
-                    "technicien_nom": nom_technicien,
-                    "technicien_signature": img_sig_tech,
-                    "date_validation": pd.Timestamp.now().strftime("%d/%m/%Y à %H:%M")
-                }
+            # Sauvegarde dans session_state
+            st.session_state.reponses_pdc["signataires"] = {
+                "producteur_nom": nom_producteur,
+                "producteur_signature": img_sig_prod, # Stocke les octets PNG réels
+                "technicien_nom": nom_technicien,
+                "technicien_signature": img_sig_tech, # Stocke les octets PNG réels
+                "date_validation": pd.Timestamp.now().strftime("%d/%m/%Y à %H:%M")
+            }
 
-                st.session_state["pdc_finalise"] = True
-                st.success("✅ PDC finalisé avec succès ! Les signatures tactiles ont été enregistrées.")
-                st.rerun()
+            st.session_state["pdc_finalise"] = True
+            st.success("✅ PDC finalisé avec succès ! Les signatures ont été enregistrées en tant qu'images.")
+            st.rerun()
+
 
