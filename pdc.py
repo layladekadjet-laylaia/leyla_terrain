@@ -700,7 +700,7 @@ def nettoyer_texte_pdf(chaine: str) -> str:
 def extraire_image_signature(canvas_obj):
     """
     Extrait en toute sécurité le tableau d'image NumPy depuis le composant canvas Streamlit.
-    Retourne la matrice NumPy (ndarray) si un dessin existe, sinon None.
+    Empêche le plantage RuntimeError de streamlit-drawable-canvas quand le canvas est vide.
     """
     if canvas_obj is None:
         return None
@@ -718,14 +718,16 @@ def extraire_image_signature(canvas_obj):
     if not has_drawing:
         return None
 
-    # 2. Récupération directe du tableau image_data (Matrice NumPy RGBA)
+    # 2. Récupération sécurisée du tableau image_data (Matrice NumPy RGBA)
     try:
+        # Protège contre le RuntimeError si image_data n'est pas encore prêt
         img_array = canvas_obj.image_data
         if img_array is not None and isinstance(img_array, np.ndarray):
             if img_array.size > 0:
                 return img_array
-    except Exception:
-        pass
+    except (RuntimeError, Exception):
+        # Capturé en cas de RuntimeError levé par _require_image_data_url
+        return None
 
     return None
 
