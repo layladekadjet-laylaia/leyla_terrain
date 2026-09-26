@@ -4374,7 +4374,7 @@ def afficher():
 
         st.markdown("---")
 
-         # =========================================================
+        # =========================================================
         # NAVIGATION ET ENREGISTREMENT DE L'ÉTAPE 15
         # =========================================================
         col_btn1, col_btn2 = st.columns([1, 1])
@@ -4401,32 +4401,18 @@ def afficher():
                 st.session_state.reponses_pdc["score_faisabilite"] = score
                 st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
 
-                # Fonction Robuste d'Extraction d'Image Signature
+                # Extraction simplifiée et directe du tableau d'image
                 def extraire_image_signature(canvas_obj):
                     if canvas_obj is None:
                         return None
-                    
                     try:
-                        # 1. Vérification si un tracé existe dans les données JSON
-                        has_drawing = False
-                        if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
-                            objects = canvas_obj.json_data.get("objects", [])
-                            if len(objects) > 0:
-                                has_drawing = True
-                        
-                        if not has_drawing:
-                            return None
-
-                        # 2. Récupération sécurisée du tableau image_data
                         img_array = canvas_obj.image_data
                         if isinstance(img_array, np.ndarray) and img_array.size > 0:
-                            # Vérification de présence de pixels dessinés (Canal Alpha ou RGBA)
+                            # Vérification qu'au moins un pixel a été dessiné
                             if np.any(img_array[:, :, 3] > 0) or np.any(img_array[:, :, :3] < 240):
                                 return img_array
-                    except (RuntimeError, Exception):
-                        # Capture l'exception levée si le canvas est vide ou non prêt
-                        return None
-
+                    except Exception:
+                        pass
                     return None
 
                 img_sig_prod = extraire_image_signature(canvas_producteur)
@@ -4447,7 +4433,8 @@ def afficher():
                 if img_sig_prod is not None or img_sig_tech is not None:
                     st.success("✅ PDC finalisé avec succès ! Signatures capturées.")
                 else:
-                    st.warning("⚠️ PDC finalisé sans signature capturée. Assurez-vous d'avoir tracé un dessin.")
+                    st.warning("⚠️ PDC finalisé sans signature capturée.")
 
                 st.rerun()
+
 
