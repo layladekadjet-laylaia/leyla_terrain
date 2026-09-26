@@ -10,6 +10,7 @@ from PIL import Image
 from shapely.geometry import Point, Polygon
 from fpdf import FPDF
 from generate_croquis import generer_croquis_parcelle
+from streamlit_drawable_canvas import st_canvas
 import datetime
 import io
 import matplotlib.pyplot as plt
