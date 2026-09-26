@@ -730,12 +730,26 @@ def extraire_image_signature(canvas_obj):
 
 
 def traiter_signature_pour_pdf(sig_data):
-    """
-    Convertit la matrice d'image (NumPy Array) ou l'objet signature en un fichier 
-    temporaire PNG réutilisable par FPDF.
-    """
     if sig_data is None:
         return None
+
+    # Conversion de la matrice NumPy en fichier temporaire PNG pour FPDF
+    if isinstance(sig_data, np.ndarray):
+        try:
+            if sig_data.size > 0:
+                img_pil = Image.fromarray(sig_data.astype('uint8'))
+                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+                img_pil.save(temp_file.name, format="PNG")
+                temp_file.close()
+                return temp_file.name
+        except Exception:
+            return None
+
+    elif isinstance(sig_data, str) and os.path.exists(sig_data):
+        return sig_data
+
+    return None
+
 
     # CAS 1 : C'est une matrice d'image NumPy (issue de canvas_obj.image_data)
     if isinstance(sig_data, np.ndarray):
