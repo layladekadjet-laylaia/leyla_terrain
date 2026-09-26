@@ -4294,6 +4294,10 @@ def afficher():
                 " trimestrielles pour garantir le suivi."
             )
 
+        # Stockage dans le session_state pour accès global
+        st.session_state["score_faisabilite"] = score
+        st.session_state["criteres_faisabilite"] = criteres
+
         # Affichage du Score et du Statut de Réussite
         st.markdown(f"#### Score de Faisabilité Global : **{score} / 100**")
         st.progress(score / 100)
@@ -4343,8 +4347,6 @@ def afficher():
         )
 
         st.markdown("---")
-
-
 
         # =========================================================
         # 15.4 SIGNATURES TACTILES DES PARTIES
@@ -4421,15 +4423,13 @@ def afficher():
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
 
-                # Récupération sécurisée sans déclencher de NameError
-                score_val = st.session_state.get("score_faisabilite", 65)
-                criteres_val = st.session_state.get("criteres_faisabilite", [])
-
+                # Enregistrement des textes et scores
                 st.session_state["recommandations_finales_pdc"] = recommandations_finales
                 st.session_state.reponses_pdc["recommandations_finales"] = recommandations_finales
-                st.session_state.reponses_pdc["score_faisabilite"] = score_val
-                st.session_state.reponses_pdc["criteres_faisabilite"] = criteres_val
+                st.session_state.reponses_pdc["score_faisabilite"] = score
+                st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
 
+                # Extraction sécurisée des tracés canvas sous forme de tableaux NumPy
                 def extraire_image_signature(canvas_obj):
                     if canvas_obj is None:
                         return None
@@ -4458,6 +4458,7 @@ def afficher():
                 img_sig_prod = extraire_image_signature(canvas_producteur)
                 img_sig_tech = extraire_image_signature(canvas_technicien)
 
+                # Sauvegarde des signataires
                 st.session_state.reponses_pdc["signataires"] = {
                     "producteur_nom": nom_producteur,
                     "producteur_signature": img_sig_prod,
@@ -4467,5 +4468,6 @@ def afficher():
                 }
 
                 st.session_state["pdc_finalise"] = True
-                st.success("✅ PDC finalisé avec succès !")
+                st.success("✅ PDC finalisé avec succès ! Les signatures tactiles ont été enregistrées.")
                 st.rerun()
+
