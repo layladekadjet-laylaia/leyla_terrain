@@ -19,8 +19,6 @@ from generate_croquis import generer_croquis_parcelle
 # --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(page_title="Leyla Agri - Tablette Terrain", page_icon="📱", layout="centered")
 
-
-
 # --- INITIALISATION DES DONNÉES DU PDC EN SESSION (15 ÉTAPES) ---
 if "pdc_data" not in st.session_state:
     st.session_state.pdc_data = {
@@ -266,19 +264,6 @@ def init_local_db():
 
 init_local_db()
 
-
-
-import streamlit as st
-import sqlite3
-import os
-import json
-import time
-from datetime import datetime
-import requests
-import numpy as np
-import pandas as pd
-import urllib.parse
-
 # --- TITRE PRINCIPAL ---
 st.title("📱 Leyla Agri - Mode Terrain")
 st.markdown("---")
@@ -314,9 +299,7 @@ if not st.session_state.get("identifie", False):
             else:
                 st.error("Veuillez remplir tous les champs d'identification.")
     
-    # Interrompt immédiatement l'exécution pour éviter le double rendu du sidebar
     st.stop()
-
 
 # --- BARRE LATÉRALE (EXÉCUTÉE UNIQUEMENT SI IDENTIFIÉ) ---
 with st.sidebar:
@@ -389,19 +372,23 @@ with st.sidebar:
         except Exception as e:
             st.warning(f"Note SQLite : {e}")
 
+        # TRANSMISSION DU MODE D'IMPRESSION DANS LE PAYLOAD
         payload_pdf = {
             "nom_producteur": nom_prod,
             "code_ccc": code_prod,
             "zone": section_zone,
             "score_faisabilite": score_final,
             "reponses": reponses_completes,
-            "historique_modules": rapports_sqlite
+            "historique_modules": rapports_sqlite,
+            "mode_impression": mode_impression  # True = Vue Impression, False = Textuel
         }
         
         try:
             pdf_data = pdc.generer_pdf_pdc_fonction(payload_pdf)
             st.session_state["pdf_bytes_pdc"] = pdf_data
-            st.success("✅ PDF complet généré !")
+            
+            type_format = "Vue Impression" if mode_impression else "Textuel"
+            st.success(f"✅ PDF ({type_format}) généré avec succès !")
             st.balloons()
             st.rerun()
         except Exception as e:
@@ -421,7 +408,6 @@ with st.sidebar:
             key="sb_btn_download_pdf"
         )
 
- 
     # CENTRE D'ENREGISTREMENT MULTI-MODULES (SQLITE)
     st.markdown("---")
     st.markdown("## 💾 Sauvegarde Terrain")
@@ -476,7 +462,7 @@ with st.sidebar:
                 if isinstance(v, (str, int, float, bool, list, dict)):
                     session_complete[k] = v
 
-        # Génération auto du PDF s'il manque
+        # Génération auto du PDF s'il manque (Prend en compte l'état de la case à cocher)
         if st.session_state.get("pdf_bytes_pdc") is None:
             try:
                 payload_auto_pdf = {
@@ -485,7 +471,8 @@ with st.sidebar:
                     "zone": sec,
                     "score_faisabilite": st.session_state.get("score_pdc", 0),
                     "reponses": session_complete,
-                    "historique_modules": []
+                    "historique_modules": [],
+                    "mode_impression": mode_impression
                 }
                 st.session_state["pdf_bytes_pdc"] = pdc.generer_pdf_pdc_fonction(payload_auto_pdf)
             except Exception:
@@ -655,10 +642,10 @@ else:
         "Sélectionnez le module à exécuter :",
         [
             "-- Choisir un module --",
-            "1. PDC"
+            "1. Diagnostic Phytosanitaire",
             "2. Géo-intelligence & RDUE",
             "3. Estimation de Rendement",
-            "4. PDC",            
+            "4. PDC"
         ],
         key="sb_choix_module_principal"
     )
