@@ -435,47 +435,7 @@ with st.sidebar:
             key="sb_btn_download_pdf"
         )
 
-        # --- MODULE INTEGRÉ : TRANSMISSION VIA GMAIL ---
-        st.markdown("---")
-        st.markdown("### ✉️ Partage par E-mail")
-        
-        type_dest = st.radio(
-            "Type de structure :", 
-            ["Coopératives", "Cabinets de Conseil"], 
-            key="sb_radio_type_dest"
-        )
-        
-        entreprises_dispos = list(ANNUAIRE_DESTINATAIRES[type_dest].keys())
-        entite_choisie = st.selectbox(
-            "Sélectionner la structure :", 
-            entreprises_dispos, 
-            key="sb_select_entite"
-        )
-        
-        email_cible = ANNUAIRE_DESTINATAIRES[type_dest][entite_choisie]
-        
-        nom_prod_mail = st.session_state.get("nom_producteur") or st.session_state.get("producteur") or "Inconnu"
-        code_prod_mail = st.session_state.get("code_producteur") or st.session_state.get("code_ccc") or "CCC-001"
-        
-        sujet_mail = urllib.parse.quote(f"Rapport PDC - {nom_prod_mail} ({code_prod_mail}) - {entite_choisie}")
-        corps_mail = urllib.parse.quote(
-            f"Bonjour,\n\n"
-            f"Veuillez trouver ci-joint le rapport Plan de Développement de Conseil (PDC) pour le producteur {nom_prod_mail} (Code: {code_prod_mail}).\n\n"
-            f"Ce document a été généré via l'application Leyla Agri (Mode Terrain).\n\n"
-            f"N'oubliez pas d'attacher le fichier PDF téléchargé (PDC_{code_p}_{nom_p}.pdf) avant de cliquer sur Envoyer.\n\n"
-            f"Cordialement,\n"
-            f"{st.session_state.get('technicien', 'L\'Agent de Terrain')}"
-        )
-        
-        lien_mailto = f"mailto:{email_cible}?subject={sujet_mail}&body={corps_mail}"
-        
-        st.caption(f"📩 Destinataire : `{email_cible}`")
-        st.link_button(
-            label=f"📧 Ouvrir Gmail pour {entite_choisie}",
-            url=lien_mailto,
-            use_container_width=True
-        )
-
+ 
     # CENTRE D'ENREGISTREMENT MULTI-MODULES (SQLITE)
     st.markdown("---")
     st.markdown("## 💾 Sauvegarde Terrain")
