@@ -19,21 +19,7 @@ from generate_croquis import generer_croquis_parcelle
 # --- CONFIGURATION DE LA PAGE ---
 st.set_page_config(page_title="Leyla Agri - Tablette Terrain", page_icon="📱", layout="centered")
 
-# --- ANNUAIRE DES DESTINATAIRES (COOPÉRATIVES ET CABINETS) ---
-ANNUAIRE_DESTINATAIRES = {
-    "Coopératives": {
-        "SOCOAMO": "directionsocoamo@gmail.com",
-        "COOP-CA menecentre": "directionmenecentre@gmail.com",
-        "SOCAGNIPI": "directionsocagnipi",
-        "ROBERTPORTE": "directionrobertporte",
-        "NECAB": "directionnecab@gmail.com" 
-    },
-    "Cabinets de Conseil": {
-        "Cabinet AgriForce": "agriforce@gmail.com",
-        "Cabinet Audit & Agro": "direction@audit-agro.ci",
-        "Cabinet Conseils & Developpement": "contact@ccd.ci"
-    }
-}
+
 
 # --- INITIALISATION DES DONNÉES DU PDC EN SESSION (15 ÉTAPES) ---
 if "pdc_data" not in st.session_state:
@@ -669,7 +655,7 @@ else:
         "Sélectionnez le module à exécuter :",
         [
             "-- Choisir un module --",
-            "1. Diagnostic Phytosanitaire",
+            "1. PDC"
             "2. Géo-intelligence & RDUE",
             "3. Estimation de Rendement",
             "4. PDC",            
