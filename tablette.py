@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import requests
 import streamlit as st
+import base64
 
 # --- IMPORTATION DU MODULE PDC ET CROQUIS ---
 import pdc
@@ -26,7 +27,7 @@ if st.session_state.get("afficher_ballons_flag", False):
 if "pdc_data" not in st.session_state:
   st.session_state.pdc_data = {
       "Étape 1/15 : Localisation & Identification de la Section": {},
-      "Étape 2/15 : Données Socio-démographiques & Identification Producteur": {},  # PAGE 2 (Situation de Référence)
+      "Étape 2/15 : Données Socio-démographiques & Identification Producteur": {},
       "Étape 3/15 : Données de la Parcelle & Exploitation": {},
       "Étape 4/15 : Données sur les Cultures, Équipements & Agroforesterie": {
           "🌾 Données sur les cultures et parcelles": {},
@@ -98,7 +99,6 @@ class NpEncoder(json.JSONEncoder):
 
 
 def nettoyer_pour_json(d):
-  """Nettoie et convertit dynamiquement toutes les données pour la sérialisation JSON sans pertes."""
   if isinstance(d, dict):
     return {
         str(k): nettoyer_pour_json(v)
@@ -116,13 +116,12 @@ def nettoyer_pour_json(d):
   elif isinstance(d, (np.floating, float)):
     return float(d)
   elif isinstance(d, bytes):
-    return None  # Les binaires bruts sont gérés par le Storage Supabase
+    return None
   else:
     return str(d) if d is not None else None
 
 
 def uploader_pdf_supabase(pdf_bytes, nom_fichier):
-  """Téléverse le PDF complet vers Supabase Storage."""
   try:
     url_supabase = st.secrets["supabase"]["url"]
     key_supabase = st.secrets["supabase"]["key"]
@@ -142,13 +141,14 @@ def uploader_pdf_supabase(pdf_bytes, nom_fichier):
       return (
           f"{url_supabase}/storage/v1/object/public/{bucket_name}/{nom_fichier}"
       )
-    return None
+    else:
+      st.sidebar.error(f"⚠️ Erreur Storage HTTP {response.status_code}")
+      return None
   except Exception as e:
     st.sidebar.error(f"❌ Erreur Storage Supabase : {e}")
     return None
 
 
-# --- INITIALISATION BASE SQLITE LOCALE ---
 def init_local_db():
   conn = sqlite3.connect("leyla_terrain.db")
   cursor = conn.cursor()
@@ -182,6 +182,8 @@ if "identifie" not in st.session_state:
   st.session_state.identifie = False
 if "pdf_bytes_pdc" not in st.session_state:
   st.session_state["pdf_bytes_pdc"] = None
+if "afficher_apercu_pdf" not in st.session_state:
+  st.session_state["afficher_apercu_pdf"] = False
 
 # --- ENTÊTE & IDENTIFICATION ---
 st.title("📱 Leyla Agri - Mode Terrain")
@@ -222,11 +224,13 @@ with st.sidebar:
     st.rerun()
 
   st.markdown("---")
-  st.markdown("## 📄 Gestion du Document PDF")
+  st.markdown("## 📄 Gestion & Impression du PDF")
 
-  # --- BOUTON DE GÉNÉRATION MANUELLE DU PDF ---
+  # 1. Génération du PDF
   if st.button(
-      "📄 Générer le PDF du PDC", type="secondary", use_container_width=True
+      "⚙️ Générer / Actualiser le PDF",
+      type="secondary",
+      use_container_width=True,
   ):
     page_2_data = st.session_state.pdc_data.get(
         "Étape 2/15 : Données Socio-démographiques & Identification Producteur",
@@ -235,13 +239,11 @@ with st.sidebar:
     nom_prod = (
         page_2_data.get("nom_prenoms_producteur")
         or st.session_state.get("nom_producteur")
-        or st.session_state.get("nom_prenoms_producteur")
         or "Producteur Inconnu"
     )
     code_prod = (
         page_2_data.get("code_national_producteur")
         or st.session_state.get("code_producteur")
-        or st.session_state.get("code_national_producteur")
         or "CCC-000"
     )
 
@@ -276,11 +278,13 @@ with st.sidebar:
       st.session_state["pdf_bytes_pdc"] = pdc.generer_pdf_pdc_fonction(
           payload_pdf
       )
+      st.session_state["afficher_apercu_pdf"] = True
       st.success("✅ PDF généré avec succès !")
+      st.rerun()
     except Exception as e:
-      st.error(f"❌ Erreur lors de la génération du PDF : {e}")
+      st.error(f"❌ Erreur génération PDF : {e}")
 
-  # --- BOUTON DE TÉLÉCHARGEMENT DU PDF ---
+  # 2. Bouton Télécharger Nativement (Correction du bug de téléchargement)
   if st.session_state.get("pdf_bytes_pdc") is not None:
     st.download_button(
         label="📥 Télécharger le PDF",
@@ -288,36 +292,38 @@ with st.sidebar:
         file_name=f"PDC_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
         mime="application/pdf",
         use_container_width=True,
+        type="primary",
     )
+
+    # 3. Basculer l'Aperçu Impression
+    if st.button("👁️ Masquer / Voir Vue Impression", use_container_width=True):
+      st.session_state["afficher_apercu_pdf"] = not st.session_state.get(
+          "afficher_apercu_pdf", False
+      )
+      st.rerun()
 
   st.markdown("---")
   st.markdown("## 💾 Sauvegarde Intégrale Tablette")
 
-  # --- ENREGISTREMENT TOTAL DANS LA TABLETTE ---
   if st.button(
       "💾 Enregistrer TOUTE la tablette",
       type="primary",
       use_container_width=True,
   ):
-    # 1. Extraction impérative des données de la PAGE 2 (Situation de Référence)
     page_2_data = st.session_state.pdc_data.get(
         "Étape 2/15 : Données Socio-démographiques & Identification Producteur",
         {},
     )
-
     nom_prod = (
         page_2_data.get("nom_prenoms_producteur")
         or st.session_state.get("nom_producteur")
-        or st.session_state.get("nom_prenoms_producteur")
         or "Producteur Inconnu"
     )
     code_prod = (
         page_2_data.get("code_national_producteur")
         or st.session_state.get("code_producteur")
-        or st.session_state.get("code_national_producteur")
         or "CCC-000"
     )
-
     superficie = (
         st.session_state.get("superficie")
         or page_2_data.get("superficie_ha")
@@ -329,7 +335,6 @@ with st.sidebar:
         or "0"
     )
 
-    # 2. CAPTURE SANS EXCEPTION DE TOUTES LES PAGES (DU DÉBUT À LA FIN)
     capture_complete_tablette = {
         "metadata_agent": {
             "cooperative": st.session_state.get("cooperative"),
@@ -337,7 +342,7 @@ with st.sidebar:
             "technicien": st.session_state.get("technicien"),
             "date_capture": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         },
-        "page_2_identification_reference": page_2_data,  # Intégration impérative Page 2
+        "page_2_identification_reference": page_2_data,
         "donnees_15_etapes_pdc": st.session_state.get("pdc_data", {}),
         "variables_globales_session": {
             k: v
@@ -349,7 +354,6 @@ with st.sidebar:
         },
     }
 
-    # Génération automatique du PDF au moment de l'enregistrement si absent
     if st.session_state.get("pdf_bytes_pdc") is None:
       try:
         payload_pdf = {
@@ -401,10 +405,7 @@ with st.sidebar:
       conn.close()
 
       st.session_state["afficher_ballons_flag"] = True
-      st.success(
-          f"✅ Capture intégrale enregistrée ! Producteur (Page 2) :"
-          f" **{nom_prod}** ({code_prod})"
-      )
+      st.success(f"✅ Capture enregistrée : **{nom_prod}** ({code_prod})")
       time.sleep(0.5)
       st.rerun()
     except Exception as e:
@@ -442,7 +443,7 @@ with st.sidebar:
             "apikey": key_supabase,
             "Authorization": f"Bearer {key_supabase}",
             "Content-Type": "application/json",
-            "Prefer": "return=minimal",
+            "Prefer": "return=representation",  # Permet de retourner l'objet inséré pour confirmer
         }
         endpoint = f"{url_supabase}/rest/v1/producteurs_parcelles"
 
@@ -478,27 +479,21 @@ with st.sidebar:
             nom_f = f"PDC_INTEGRAL_{code_clean}_{row_id}.pdf"
             url_pdf_public = uploader_pdf_supabase(pdf_b, nom_f)
 
-          # Conversion sécurisée de age_parcelle en int pour respecter la contrainte Supabase NOT NULL
           try:
             age_int = int(float(age_p)) if age_p else 0
           except ValueError:
             age_int = 0
 
-          # Payload complet envoyé au serveur central
           payload = {
               "cooperative_id": str(coop) if coop else "",
               "section_id": str(sec) if sec else "",
               "agent_id": str(tech) if tech else "",
-              "nom_producteur": str(prod) if prod else "",  # Issue de la Page 2
-              "code_producteur": str(code_p) if code_p else "",  # Issue de la Page 2
+              "nom_producteur": str(prod) if prod else "",
+              "code_producteur": str(code_p) if code_p else "",
               "superficie": float(sup) if sup else 0.0,
-              "age_cacaoyere": (
-                  age_int  # ✅ Champ requis pour corriger l'erreur HTTP 400
-              ),
+              "age_cacaoyere": age_int,
               "module_execute": str(mod_t) if mod_t else "PDC_INTEGRAL",
-              "observations_diagnostic": (
-                  donnees_m
-              ),  # Contient TOUTES LES PAGES du début à la fin (Page 1 à Page 15 + Croquis)
+              "observations_diagnostic": donnees_m,
               "url_pdf_pdc": url_pdf_public,
               "rdue_conforme": True,
           }
@@ -507,6 +502,7 @@ with st.sidebar:
               endpoint, json=payload, headers=headers, timeout=20
           )
 
+          # Validation stricte du succès Supabase
           if response.status_code in [200, 201, 204]:
             cursor.execute(
                 "UPDATE rapports_locaux SET statut='Envoyé' WHERE id=?",
@@ -514,8 +510,10 @@ with st.sidebar:
             )
             nb_succes += 1
           else:
+            # Affichage clair de l'erreur d'insertion Supabase
             st.sidebar.error(
-                f"⚠ Erreur HTTP {response.status_code} : {response.text}"
+                f"❌ Échec Supabase (HTTP {response.status_code}):"
+                f" {response.text}"
             )
             break
 
@@ -523,11 +521,11 @@ with st.sidebar:
         conn.close()
 
         if nb_succes > 0:
-          st.sidebar.success(f"✅ {nb_succes} rapport(s) intégraux synchronisés !")
+          st.sidebar.success(f"✅ {nb_succes} rapport(s) synchronisés !")
           st.rerun()
 
       except Exception as e:
-        st.sidebar.error(f"❌ Erreur lors de l'envoi : {e}")
+        st.sidebar.error(f"❌ Erreur envoi : {e}")
     else:
       st.sidebar.info("Aucun rapport en attente.")
 
@@ -547,6 +545,18 @@ if not st.session_state.get("appareil_deverrouille", False):
         st.error("Mot de passe incorrect.")
   st.stop()
 
-# --- MODULE D'AFFICHAGE DU PDC ---
+# --- MODULE DE PRÉVISUALISATION IMPRESSION / PDC ---
+if (
+    st.session_state.get("afficher_apercu_pdf", False)
+    and st.session_state.get("pdf_bytes_pdc") is not None
+):
+  st.subheader("🖨️ Vue Impression / Aperçu du Document PDC")
+  base64_pdf = base64.b64encode(st.session_state["pdf_bytes_pdc"]).decode(
+      "utf-8"
+  )
+  pdf_display = f'<iframe src="data:application/pdf;base64,{base64_pdf}" width="100%" height="700px" type="application/pdf"></iframe>'
+  st.markdown(pdf_display, unsafe_allow_html=True)
+  st.markdown("---")
+
 st.header("🛠️ Saisie Terrain - Plan de Développement de la Cacaoyère")
 pdc.afficher()
