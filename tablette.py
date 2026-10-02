@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 import sqlite3
@@ -18,7 +19,7 @@ st.set_page_config(
     page_title="Leyla Agri - Tablette Terrain", page_icon="📱", layout="centered"
 )
 
-# --- DECLENCHEMENT VISUEL DES BALLONS (EVITE LES COUPURES) ---
+# --- DECLENCHEMENT VISUEL DES BALLONS ---
 if st.session_state.get("afficher_ballons_flag", False):
   st.balloons()
   st.session_state["afficher_ballons_flag"] = False
@@ -27,8 +28,8 @@ if st.session_state.get("afficher_ballons_flag", False):
 if "pdc_data" not in st.session_state:
   st.session_state.pdc_data = {
       "Étape 1/15 : Localisation & Identification de la Section": {},
-      "Étape 2/15 : Données de la Parcelle": {},
-      "Étape 3/15 : Données Socio-démographiques (Fiche 1)": {},
+      "Étape 2/15 : Données Socio-démographiques & Identification Producteur": {},
+      "Étape 3/15 : Données de la Parcelle & Exploitation": {},
       "Étape 4/15 : Données sur les Cultures, Équipements & Agroforesterie": {
           "🌾 Données sur les cultures et parcelles": {},
           "🛠️ Matériel agricole et équipements": {},
@@ -56,11 +57,12 @@ if "pdc_data" not in st.session_state:
           "🔍 Diagnostic Qualité du PDC": {},
           "📌 Récapitulatif Synthétique": {},
       },
-      "Étape 11/15 : Identification du Producteur (Situation de Référence)": {},
-      "Étape 12/15 : Informations Ménage & Description de l'Exploitation": {
+      "Étape 11/15 : Bilan Technique Approfondi": {},
+      "Étape 12/15 : Description de l'Exploitation & Croquis Parcelle": {
           "💳 Situation de l'épargne": {},
           "👥 Situation de la main-d'œuvre": {},
           "🏡 Description & Caractéristiques de l'Exploitation": {},
+          "📐 Croquis & Géolocalisation": {},
       },
       "Étape 13/15 : Cultures, Agroforesterie & Matériel Agricole": {
           "🌾 Diversification & Cultures de l'Exploitation": {},
@@ -82,9 +84,9 @@ if "pdc_data" not in st.session_state:
   }
 
 
-# --- FONCTIONS UTILITAIRES JSON ET SQLITE ---
+# --- FONCTIONS UTILITAIRES JSON ET CONVERSION AVANCÉE ---
 class NpEncoder(json.JSONEncoder):
-  """Convertit les types NumPy / Pandas en types natifs Python."""
+  """Convertit les types NumPy / Pandas / Octets en types natifs Python."""
 
   def default(self, obj):
     if isinstance(obj, np.integer):
@@ -95,11 +97,15 @@ class NpEncoder(json.JSONEncoder):
       return obj.tolist()
     if pd.isna(obj):
       return None
+    if isinstance(obj, bytes):
+      return base64.b64encode(obj).decode("utf-8")
+    if isinstance(obj, (datetime, pd.Timestamp)):
+      return obj.isoformat()
     return super(NpEncoder, self).default(obj)
 
 
 def nettoyer_pour_json(d):
-  """Nettoie récursivement un dictionnaire pour la sérialisation JSON."""
+  """Nettoie et convertit récursivement toutes les données pour la sérialisation JSON sans aucune perte."""
   if isinstance(d, dict):
     return {
         str(k): nettoyer_pour_json(v)
@@ -117,6 +123,9 @@ def nettoyer_pour_json(d):
   elif isinstance(d, (np.floating, float)):
     return float(d)
   elif isinstance(d, bytes):
+    # Encodage du croquis ou image binaire en base64 pour intégration JSON sans perte
+    return f"data:image/png;base64,{base64.b64encode(d).decode('utf-8')}"
+  elif pd.isna(d):
     return None
   else:
     return d
@@ -362,9 +371,11 @@ with st.sidebar:
   ):
     reponses_completes = {}
 
-    if "reponses_pdc" in st.session_state and isinstance(
-        st.session_state.reponses_pdc, dict
-    ):
+    # Fusion sécurisée de pdc_data, reponses_pdc et des variables de session
+    if isinstance(st.session_state.get("pdc_data"), dict):
+      reponses_completes["pdc_data_15_etapes"] = st.session_state.pdc_data
+
+    if isinstance(st.session_state.get("reponses_pdc"), dict):
       reponses_completes.update(st.session_state.reponses_pdc)
 
     cles_a_ignorer = [
@@ -383,17 +394,26 @@ with st.sidebar:
           and not str(k).startswith("FormSubmitter")
           and k not in cles_a_ignorer
       ):
-        if isinstance(v, (str, int, float, bool, list, dict)):
-          reponses_completes[k] = v
+        reponses_completes[k] = v
+
+    # Extraction des infos Producteur (y compris Page 2 / Étape 2)
+    page_2_data = st.session_state.get("pdc_data", {}).get(
+        "Étape 2/15 : Données Socio-démographiques & Identification Producteur",
+        {},
+    )
 
     nom_prod = (
-        st.session_state.get("nom_producteur")
-        or st.session_state.get("producteur")
+        page_2_data.get("nom_prenoms_producteur")
+        or st.session_state.get("nom_producteur")
+        or st.session_state.get("nom_prenoms_producteur")
         or st.session_state.get("nom_prod", "Inconnu")
     )
-    code_prod = st.session_state.get(
-        "code_producteur"
-    ) or st.session_state.get("code_ccc", "CCC-001")
+    code_prod = (
+        page_2_data.get("code_national_producteur")
+        or st.session_state.get("code_producteur")
+        or st.session_state.get("code_national_producteur")
+        or st.session_state.get("code_ccc", "CCC-001")
+    )
     section_zone = st.session_state.get("section") or st.session_state.get(
         "zone", "Section Divo-Sud"
     )
@@ -465,12 +485,14 @@ with st.sidebar:
         key="sb_btn_download_pdf",
     )
 
-  # SAUVEGARDE TERRAIN LOCAL
+  # SAUVEGARDE TERRAIN LOCAL (CAPTURE TOUTES LES PAGES + CROQUIS)
   st.markdown("---")
   st.markdown("## 💾 Sauvegarde Terrain")
 
   module_a_enregistrer = st.selectbox(
-      "Module à enregistrer :", ["PDC"], key="sb_select_module_enregistrement"
+      "Module à enregistrer :",
+      ["PDC_INTEGRAL"],
+      key="sb_select_module_enregistrement",
   )
 
   if st.button(
@@ -484,9 +506,14 @@ with st.sidebar:
     tech = st.session_state.get("technicien", "Agent Kouamé")
 
     reponses = st.session_state.get("reponses_pdc", {})
+    page_2_data = st.session_state.get("pdc_data", {}).get(
+        "Étape 2/15 : Données Socio-démographiques & Identification Producteur",
+        {},
+    )
 
     nom_prod = (
-        reponses.get("nom_prenoms_producteur")
+        page_2_data.get("nom_prenoms_producteur")
+        or reponses.get("nom_prenoms_producteur")
         or st.session_state.get("nom_prenoms_producteur")
         or reponses.get("nom_membre")
         or st.session_state.get("nom_producteur")
@@ -494,7 +521,8 @@ with st.sidebar:
     )
 
     code_prod = (
-        reponses.get("code_national_producteur")
+        page_2_data.get("code_national_producteur")
+        or reponses.get("code_national_producteur")
         or st.session_state.get("code_national_producteur")
         or reponses.get("code_groupe")
         or st.session_state.get("code_producteur")
@@ -503,11 +531,13 @@ with st.sidebar:
 
     superficie = (
         st.session_state.get("superficie")
+        or page_2_data.get("superficie_ha")
         or st.session_state.get("superficie_ha")
         or 0.0
     )
     age_p = str(
         st.session_state.get("age_parcelle")
+        or page_2_data.get("age_cacaoyere")
         or st.session_state.get("age_cacaoyere")
         or "0"
     )
@@ -515,15 +545,25 @@ with st.sidebar:
     st.session_state["nom_producteur"] = nom_prod
     st.session_state["code_producteur"] = code_prod
 
-    session_complete = {}
-    if isinstance(reponses, dict):
-      session_complete.update(reponses)
+    # Capture sans perte de la session globale + pdc_data (15 étapes) + croquis
+    session_complete = {
+        "metadata_agent": {
+            "cooperative": coop,
+            "section": sec,
+            "technicien": tech,
+            "date_capture": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        },
+        "pdc_data_15_etapes": st.session_state.get("pdc_data", {}),
+        "reponses_pdc": reponses if isinstance(reponses, dict) else {},
+    }
 
     cles_a_ignorer = [
         "appareil_deverrouille",
         "identifie",
         "code_agent_connecte",
         "pdf_bytes_pdc",
+        "pdc_data",
+        "reponses_pdc",
     ]
     for k, v in st.session_state.items():
       if (
@@ -532,8 +572,7 @@ with st.sidebar:
           and not str(k).startswith("FormSubmitter")
           and k not in cles_a_ignorer
       ):
-        if isinstance(v, (str, int, float, bool, list, dict)):
-          session_complete[k] = v
+        session_complete[k] = v
 
     # Génération automatique du PDF s'il n'existe pas encore
     if st.session_state.get("pdf_bytes_pdc") is None:
@@ -576,7 +615,7 @@ with st.sidebar:
               tech,
               nom_prod,
               code_prod,
-              float(superficie),
+              float(superficie) if superficie else 0.0,
               age_p,
               module_a_enregistrer,
               donnees_json_str,
@@ -599,7 +638,7 @@ with st.sidebar:
     except Exception as e:
       st.error(f"❌ Erreur lors de la sauvegarde SQLite : {e}")
 
-  # SYNCHRONISATION SUPABASE
+  # SYNCHRONISATION SUPABASE (ENVOI INFAILLIBLE)
   st.markdown("---")
   st.subheader("🔄 Synchronisation Supabase")
 
@@ -661,22 +700,28 @@ with st.sidebar:
               pdf_b,
           ) = ligne
 
+          # Extraction sécurisée de l'âge sous forme d'entier
           try:
             age_int = int("".join(filter(str.isdigit, str(age_p))))
           except ValueError:
             age_int = 0
 
-          if isinstance(donnees_m, (dict, list)):
-            donnees_str = json.dumps(
-                nettoyer_pour_json(donnees_m), cls=NpEncoder, ensure_ascii=False
-            )
+          # Conversion sécurisée du champ JSON pour PostgREST / Supabase
+          if isinstance(donnees_m, str):
+            try:
+              donnees_payload = json.loads(donnees_m)
+            except Exception:
+              donnees_payload = {"raw_data": donnees_m}
+          elif isinstance(donnees_m, (dict, list)):
+            donnees_payload = nettoyer_pour_json(donnees_m)
           else:
-            donnees_str = str(donnees_m) if donnees_m else "{}"
+            donnees_payload = {}
 
+          # Téléversement du PDF s'il existe
           url_pdf_public = None
           if pdf_b is not None:
             code_clean = (
-                str(code_p).replace(" ", "_").replace("/", "_")
+                str(code_p).replace(" ", "_").replace("/", "_").replace("\\", "_")
             )
             nom_f = f"PDC_{code_clean}_{row_id}.pdf"
             url_pdf_public = uploader_pdf_supabase(pdf_b, nom_f)
@@ -689,15 +734,17 @@ with st.sidebar:
               "code_producteur": str(code_p) if code_p else "",
               "superficie": float(sup) if sup else 0.0,
               "age_cacaoyere": age_int,
-              "module_execute": str(mod_t) if mod_t else "",
-              "observations_diagnostic": donnees_str,
+              "module_execute": str(mod_t) if mod_t else "PDC_INTEGRAL",
+              "observations_diagnostic": (
+                  donnees_payload  # Payload JSON natif sérialisé proprement par requests
+              ),
               "url_pdf_pdc": url_pdf_public,
               "rdue_conforme": True,
           }
 
           try:
             response = requests.post(
-                endpoint, json=payload, headers=headers, timeout=15
+                endpoint, json=payload, headers=headers, timeout=20
             )
 
             if response.status_code in [200, 201, 204]:
@@ -716,7 +763,7 @@ with st.sidebar:
             st.sidebar.warning("📡 Connexion réseau indisponible.")
             break
           except requests.exceptions.Timeout:
-            st.sidebar.warning("⏱️️ Délai d'attente dépassé.")
+            st.sidebar.warning("⏱ Délai d'attente dépassé.")
             break
 
         conn.commit()
