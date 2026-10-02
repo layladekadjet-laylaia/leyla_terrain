@@ -26,7 +26,7 @@ if st.session_state.get("afficher_ballons_flag", False):
 if "pdc_data" not in st.session_state:
   st.session_state.pdc_data = {
       "Étape 1/15 : Localisation & Identification de la Section": {},
-      "Étape 2/15 : Données Socio-démographiques & Identification Producteur": {},  # PAGE 2 (Situation de Référence)
+      "Étape 2/15 : Données Socio-démographiques & Identification Producteur": {},
       "Étape 3/15 : Données de la Parcelle & Exploitation": {},
       "Étape 4/15 : Données sur les Cultures, Équipements & Agroforesterie": {
           "🌾 Données sur les cultures et parcelles": {},
@@ -98,7 +98,6 @@ class NpEncoder(json.JSONEncoder):
 
 
 def nettoyer_pour_json(d):
-  """Nettoie et convertit dynamiquement toutes les données pour la sérialisation JSON sans pertes."""
   if isinstance(d, dict):
     return {
         str(k): nettoyer_pour_json(v)
@@ -116,13 +115,12 @@ def nettoyer_pour_json(d):
   elif isinstance(d, (np.floating, float)):
     return float(d)
   elif isinstance(d, bytes):
-    return None  # Les binaires bruts sont gérés par le Storage Supabase
+    return None
   else:
     return str(d) if d is not None else None
 
 
 def uploader_pdf_supabase(pdf_bytes, nom_fichier):
-  """Téléverse le PDF complet vers Supabase Storage."""
   try:
     url_supabase = st.secrets["supabase"]["url"]
     key_supabase = st.secrets["supabase"]["key"]
@@ -148,7 +146,6 @@ def uploader_pdf_supabase(pdf_bytes, nom_fichier):
     return None
 
 
-# --- INITIALISATION BASE SQLITE LOCALE ---
 def init_local_db():
   conn = sqlite3.connect("leyla_terrain.db")
   cursor = conn.cursor()
@@ -224,13 +221,11 @@ with st.sidebar:
   st.markdown("---")
   st.markdown("## 💾 Sauvegarde Intégrale Tablette")
 
-  # --- ENREGISTREMENT TOTAL DANS LA TABLETTE ---
   if st.button(
       "💾 Enregistrer TOUTE la tablette",
       type="primary",
       use_container_width=True,
   ):
-    # 1. Extraction impérative des données de la PAGE 2 (Situation de Référence)
     page_2_data = st.session_state.pdc_data.get(
         "Étape 2/15 : Données Socio-démographiques & Identification Producteur",
         {},
@@ -260,7 +255,6 @@ with st.sidebar:
         or "0"
     )
 
-    # 2. CAPTURE SANS EXCEPTION DE TOUTES LES PAGES (DU DÉBUT À LA FIN)
     capture_complete_tablette = {
         "metadata_agent": {
             "cooperative": st.session_state.get("cooperative"),
@@ -268,7 +262,7 @@ with st.sidebar:
             "technicien": st.session_state.get("technicien"),
             "date_capture": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         },
-        "page_2_identification_reference": page_2_data,  # Intégration impérative Page 2
+        "page_2_identification_reference": page_2_data,
         "donnees_15_etapes_pdc": st.session_state.get("pdc_data", {}),
         "variables_globales_session": {
             k: v
@@ -340,6 +334,18 @@ with st.sidebar:
     except Exception as e:
       st.error(f"❌ Erreur sauvegarde locale : {e}")
 
+  # --- BOUTON DE TÉLÉCHARGEMENT/GÉNÉRATION DU PDF DANS LA BARRE LATÉRALE ---
+  if st.session_state.get("pdf_bytes_pdc") is not None:
+    st.markdown("---")
+    st.markdown("## 📄 Document PDF")
+    st.download_button(
+        label="📥 Télécharger le PDF du PDC",
+        data=st.session_state["pdf_bytes_pdc"],
+        file_name=f"PDC_Complet_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf",
+        mime="application/pdf",
+        use_container_width=True,
+    )
+
   # --- SYNCHRONISATION SERVEUR CENTRAL (SUPABASE) ---
   st.markdown("---")
   st.subheader("🔄 Synchronisation Supabase")
@@ -408,18 +414,23 @@ with st.sidebar:
             nom_f = f"PDC_INTEGRAL_{code_clean}_{row_id}.pdf"
             url_pdf_public = uploader_pdf_supabase(pdf_b, nom_f)
 
-          # Payload complet envoyé au serveur central (Page 2 + Intégralité des données)
+          # Conversion sécurisée de age_parcelle en int pour respecter la contrainte Supabase
+          try:
+            age_int = int(float(age_p)) if age_p else 0
+          except ValueError:
+            age_int = 0
+
+          # PAYLOAD AVEC LA COLONNE MANDATAIRE age_cacaoyere
           payload = {
               "cooperative_id": str(coop) if coop else "",
               "section_id": str(sec) if sec else "",
               "agent_id": str(tech) if tech else "",
-              "nom_producteur": str(prod) if prod else "",  # Issue de la Page 2
-              "code_producteur": str(code_p) if code_p else "",  # Issue de la Page 2
+              "nom_producteur": str(prod) if prod else "",
+              "code_producteur": str(code_p) if code_p else "",
               "superficie": float(sup) if sup else 0.0,
+              "age_cacaoyere": age_int,  # ✅ AJOUTÉ : Résout l'erreur 23502 (NOT NULL)
               "module_execute": str(mod_t) if mod_t else "PDC_INTEGRAL",
-              "observations_diagnostic": (
-                  donnees_m
-              ),  # Contient TOUTES LES PAGES du début à la fin (Page 1 à Page 15 + Croquis)
+              "observations_diagnostic": donnees_m,
               "url_pdf_pdc": url_pdf_public,
               "rdue_conforme": True,
           }
@@ -436,7 +447,7 @@ with st.sidebar:
             nb_succes += 1
           else:
             st.sidebar.error(
-                f"⚠️️ Erreur HTTP {response.status_code} : {response.text}"
+                f"⚠ Erreur HTTP {response.status_code} : {response.text}"
             )
             break
 
