@@ -902,9 +902,14 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
 
 
 
+import sqlite3
+import pandas as pd
+import streamlit as st
 
+
+# --- FONCTION DE LECTURE BDD LOCALE ---
 def charger_donnees_par_module(nom_module):
-    """Charge et filtre uniquement les enregistrements du module actif."""
+    """Charge et filtre les enregistrements du module spécifié directement depuis SQLite."""
     try:
         conn = sqlite3.connect("leyla_terrain.db")
         query = "SELECT * FROM rapports_locaux WHERE module_execute = ?"
@@ -922,22 +927,13 @@ def charger_donnees_par_module(nom_module):
             return pd.DataFrame()
 
 
-import streamlit as st
-import pandas as pd
-
-# Import de la fonction d'accès à la BDD locale si définie dans tablette/utilitaires
-try:
-    from tablette import charger_donnees_par_module
-except ImportError:
-    def charger_donnees_par_module(nom_module):
-        return pd.DataFrame()
-
 # =========================================================================
 # INTERFACE STREAMLIT DU PDC
 # =========================================================================
 
+
 def afficher():
-    # 1. Chargement des données
+    # 1. Chargement des données brutes PDC
     df = charger_donnees_par_module("PDC")
 
     st.title("📋 PDC - Diagnostic & Plan de Développement")
