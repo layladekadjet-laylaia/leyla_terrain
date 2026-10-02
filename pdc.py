@@ -709,12 +709,10 @@ def traiter_signature_pour_pdf(sig_data):
     if isinstance(sig_data, np.ndarray):
         try:
             if sig_data.size > 0:
-                # Si l'image a un canal alpha (RGBA), vérifier qu'il y a au moins un pixel tracé
                 if sig_data.ndim == 3 and sig_data.shape[2] == 4:
                     if not np.any(sig_data[:, :, 3] > 0):
                         return None
                 
-                # Conversion en image PIL avec fond blanc (pour éviter les carrés noirs dans FPDF)
                 img_pil = Image.fromarray(sig_data.astype('uint8'), 'RGBA')
                 background = Image.new('RGBA', img_pil.size, (255, 255, 255, 255))
                 alpha_composite = Image.alpha_composite(background, img_pil).convert("RGB")
@@ -734,136 +732,146 @@ def traiter_signature_pour_pdf(sig_data):
 
 
 # =========================================================================
-# 3. GÉNÉRATEUR DU RAPPORT PDF (PDC)
+# 3. GÉNÉRATEUR DU RAPPORT PDF STRUCTURÉ EN TABLEAUX (ÉTAPES 1 À 15)
 # =========================================================================
+
+def dessiner_tableau_etape(pdf, titre_etape, champs_dict):
+    """
+    Rend une étape du formulaire sous la forme d'un tableau propre à 2 colonnes
+    (Question / Valeur) semblable à la vue tablette de l'agent.
+    """
+    if not champs_dict or not isinstance(champs_dict, dict):
+        return
+
+    # Titre de l'étape (Bandeau de section)
+    pdf.set_font("Arial", "B", 10)
+    pdf.set_fill_color(220, 230, 242) # Couleur bleu/gris léger
+    pdf.cell(190, 7, nettoyer_texte_pdf(f"  {titre_etape.upper()}"), border=1, ln=True, fill=True)
+    
+    # En-tête des colonnes du tableau
+    pdf.set_font("Arial", "B", 9)
+    pdf.set_fill_color(240, 240, 240)
+    pdf.cell(85, 6, nettoyer_texte_pdf(" Étape / Champ"), border=1, align="L", fill=True)
+    pdf.cell(105, 6, nettoyer_texte_pdf(" Valeur / Saisie Terrain"), border=1, ln=True, align="L", fill=True)
+
+    # Contenu du tableau
+    pdf.set_font("Arial", "", 9)
+    for champ, valeur in champs_dict.items():
+        if champ == "signataires":
+            continue
+
+        # Formatage propre du libellé et de la valeur
+        nom_champ = str(champ).replace("_", " ").capitalize()
+        
+        if isinstance(valeur, (dict, list)):
+            val_str = json.dumps(valeur, ensure_ascii=False)
+        else:
+            val_str = str(valeur) if valeur is not None else "-"
+
+        # Impression sous forme de ligne de tableau
+        pdf.cell(85, 6, nettoyer_texte_pdf(f" {nom_champ}"), border=1)
+        pdf.cell(105, 6, nettoyer_texte_pdf(f" {val_str}"), border=1, ln=True)
+
+    pdf.ln(4) # Espace entre deux étapes / tableaux
+
 
 def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf = FPDF()
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
     
-    # En-tête principal
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, nettoyer_texte_pdf("PLAN DE DÉVELOPPEMENT DE CONSEIL (PDC)"), ln=True, align="C")
-    pdf.ln(3)
+    # --- EN-TÊTE PRINCIPAL ---
+    pdf.set_font("Arial", "B", 15)
+    pdf.cell(0, 10, nettoyer_texte_pdf("RAPPORT DE DIAGNOSTIC & PLAN DE DÉVELOPPEMENT (PDC)"), ln=True, align="C")
+    pdf.ln(2)
     
-    # Bloc Identité
+    # --- BLOC FICHE IDENTITÉ PRODUCTEUR ---
     pdf.set_font("Arial", "B", 10)
     nom_prod = data.get('nom_producteur') or data.get('producteur') or 'Inconnu'
     code_ccc = data.get('code_ccc') or data.get('code_producteur') or 'N/A'
     zone = data.get('zone') or data.get('section') or 'N/A'
     score = data.get('score_faisabilite', 'N/A')
     
-    pdf.cell(0, 6, nettoyer_texte_pdf(f"Producteur : {nom_prod}"), ln=True)
-    pdf.cell(0, 6, nettoyer_texte_pdf(f"Code CCC : {code_ccc}"), ln=True)
-    pdf.cell(0, 6, nettoyer_texte_pdf(f"Zone d'intervention : {zone}"), ln=True)
-    pdf.cell(0, 6, nettoyer_texte_pdf(f"Score de Faisabilité : {score} / 100"), ln=True)
+    pdf.cell(95, 6, nettoyer_texte_pdf(f"Producteur : {nom_prod}"), border=0)
+    pdf.cell(95, 6, nettoyer_texte_pdf(f"Code CCC : {code_ccc}"), ln=True)
+    pdf.cell(95, 6, nettoyer_texte_pdf(f"Zone d'intervention : {zone}"), border=0)
+    pdf.cell(95, 6, nettoyer_texte_pdf(f"Score de Faisabilité : {score} / 100"), ln=True)
     pdf.ln(3)
     
-    # Séparateur visuel
     pdf.set_draw_color(180, 180, 180)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(5)
     
-    # --- SECTION 1 : SYNTHÈSE DES DONNÉES EN SESSION ---
-    pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, nettoyer_texte_pdf("1. SYNTHÈSE DES DONNÉES DU FORMULAIRE EN SESSION :"), ln=True)
-    pdf.ln(2)
-    
+    # --- RENDER DES TABLEAUX ÉTAPE PAR ÉTAPE (ÉTAPES 1 À 15) ---
     reponses = data.get("reponses", {})
+    
+    # Vérification : si les réponses sont structurées par étapes (ex: "Etape 1", "Etape 2"...)
     if isinstance(reponses, dict) and reponses:
-        for cle, val in reponses.items():
-            if cle == "signataires":
-                continue
-
-            nom_cle = nettoyer_texte_pdf(str(cle).replace("_", " ").capitalize())
-            
-            if isinstance(val, list):
-                if len(val) > 0:
-                    pdf.set_font("Arial", "B", 10)
-                    pdf.cell(0, 6, nettoyer_texte_pdf(f"- {nom_cle} ({len(val)} élément(s)) :"), ln=True)
-                    pdf.set_font("Arial", size=9)
-                    for i, item in enumerate(val, 1):
-                        details = ", ".join([f"{k}: {v}" for k, v in item.items()]) if isinstance(item, dict) else str(item)
-                        pdf.write(5, nettoyer_texte_pdf(f"   * [{i}] {details}\n"))
-            elif isinstance(val, dict):
-                if len(val) > 0:
-                    pdf.set_font("Arial", "B", 10)
-                    pdf.cell(0, 6, nettoyer_texte_pdf(f"- {nom_cle} :"), ln=True)
-                    pdf.set_font("Arial", size=9)
-                    for k_sub, v_sub in val.items():
-                        pdf.write(5, nettoyer_texte_pdf(f"   * {k_sub}: {v_sub}\n"))
-            else:
-                str_val = str(val).strip()
-                if str_val != "":
-                    pdf.set_font("Arial", size=9)
-                    pdf.write(5, nettoyer_texte_pdf(f"- {nom_cle} : {str_val}\n"))
+        etapes_trouvees = [k for k in reponses.keys() if "etape" in k.lower() or "étape" in k.lower()]
+        
+        if etapes_trouvees:
+            # Si les étapes sont explicites sous forme de sous-dictionnaires
+            for etape_key in sorted(etapes_trouvees):
+                contenu_etape = reponses.get(etape_key, {})
+                dessiner_tableau_etape(pdf, etape_key, contenu_etape)
+        else:
+            # Si les données de la session sont à un seul niveau, on génère un grand tableau synthétique
+            dessiner_tableau_etape(pdf, "Synthese des Saisies du Formulaire", reponses)
     else:
-        pdf.set_font("Arial", size=10)
-        pdf.cell(0, 6, nettoyer_texte_pdf("Aucune donnée de formulaire directe."), ln=True)
+        pdf.set_font("Arial", "I", 10)
+        pdf.cell(0, 6, nettoyer_texte_pdf("Aucune donnée enregistrée pour les étapes."), ln=True)
 
-    pdf.ln(5)
-
-    # --- SECTION 2 : RAPPORTS SQLITE LOCAUX ---
+    # --- HISTORIQUE ET RAPPORTS DES MODULES / DIAGNOSTICS TERRAIN ---
     historique = data.get("historique_modules", [])
     if historique:
-        pdf.set_draw_color(180, 180, 180)
-        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-        pdf.ln(5)
-        
+        pdf.ln(3)
         pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, nettoyer_texte_pdf("2. RAPPORTS TERRAIN & DIAGNOSTICS ENREGISTRÉS :"), ln=True)
+        pdf.cell(0, 8, nettoyer_texte_pdf("DIAGNOSTICS & MODULES TERRAIN ENREGISTRÉS :"), ln=True)
         pdf.ln(2)
 
         for idx, rap in enumerate(historique, 1):
-            mod_nom = rap.get("module", "Module")
+            mod_nom = rap.get("module", f"Module {idx}")
             d_date = rap.get("date", "")
             details = rap.get("details", {})
 
-            pdf.set_font("Arial", "B", 10)
-            pdf.cell(0, 6, nettoyer_texte_pdf(f"Fiche #{idx} - {mod_nom} ({d_date}) :"), ln=True)
-            pdf.set_font("Arial", size=9)
-
+            titre_module = f"Diagnostic {idx} : {mod_nom} ({d_date})"
             if isinstance(details, dict):
-                for k_d, v_d in details.items():
-                    k_clean = str(k_d).replace("_", " ").capitalize()
-                    v_str = json.dumps(v_d, ensure_ascii=False) if isinstance(v_d, (dict, list)) else str(v_d)
-                    pdf.write(5, nettoyer_texte_pdf(f"   * {k_clean} : {v_str}\n"))
-            else:
-                pdf.write(5, nettoyer_texte_pdf(f"   * Contenu : {details}\n"))
-            pdf.ln(2)
+                dessiner_tableau_etape(pdf, titre_module, details)
 
-    # --- SECTION 3 : VALIDATION ET SIGNATURES MANUSCRITES ---
+    # --- SECTION : VALIDATION ET SIGNATURES MANUSCRITES ---
     signataires = reponses.get("signataires", {}) if isinstance(reponses, dict) else {}
+    if not signataires and "signataires" in data:
+        signataires = data.get("signataires", {})
+
     if signataires:
         pdf.ln(5)
         pdf.set_draw_color(180, 180, 180)
         pdf.line(10, pdf.get_y(), 200, pdf.get_y())
         pdf.ln(5)
 
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, nettoyer_texte_pdf("3. VALIDATION ET SIGNATURES :"), ln=True)
+        pdf.set_font("Arial", "B", 11)
+        pdf.cell(0, 7, nettoyer_texte_pdf("VALIDATION ET SIGNATURES"), ln=True)
         pdf.ln(2)
 
         date_val = signataires.get("date_validation", "")
         if date_val:
             pdf.set_font("Arial", "I", 9)
-            pdf.cell(0, 5, nettoyer_texte_pdf(f"Document validé le : {date_val}"), ln=True)
+            pdf.cell(0, 5, nettoyer_texte_pdf(f"Document validé sur tablette le : {date_val}"), ln=True)
             pdf.ln(3)
 
-        # Positions fixes pour le placement côte à côte
+        # Placement côte à côte des signatures
         y_start_signatures = pdf.get_y()
 
-        # --- Colonne Gauche : Producteur ---
+        # Producteur
         pdf.set_xy(10, y_start_signatures)
         pdf.set_font("Arial", "B", 10)
         prod_nom = signataires.get("producteur_nom", "Producteur")
         pdf.cell(90, 6, nettoyer_texte_pdf(f"Producteur : {prod_nom}"), ln=True)
-        y_after_prod_title = pdf.get_y()
+        y_after_prod = pdf.get_y()
 
         path_sig_prod = traiter_signature_pour_pdf(signataires.get("producteur_signature"))
         if path_sig_prod:
-            pdf.image(path_sig_prod, x=10, y=y_after_prod_title + 2, w=55)
+            pdf.image(path_sig_prod, x=10, y=y_after_prod + 2, w=55)
             if os.path.exists(path_sig_prod) and path_sig_prod.endswith(".png"):
                 try:
                     os.remove(path_sig_prod)
@@ -873,16 +881,16 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
             pdf.set_font("Arial", "I", 8)
             pdf.cell(90, 5, nettoyer_texte_pdf("[Signature non fournie]"), ln=True)
 
-        # --- Colonne Droite : Technicien ---
+        # Technicien
         pdf.set_xy(110, y_start_signatures)
         pdf.set_font("Arial", "B", 10)
         tech_nom = signataires.get("technicien_nom", "Technicien")
         pdf.cell(90, 6, nettoyer_texte_pdf(f"Technicien : {tech_nom}"), ln=True)
-        y_after_tech_title = pdf.get_y()
+        y_after_tech = pdf.get_y()
 
         path_sig_tech = traiter_signature_pour_pdf(signataires.get("technicien_signature"))
         if path_sig_tech:
-            pdf.image(path_sig_tech, x=110, y=y_after_tech_title + 2, w=55)
+            pdf.image(path_sig_tech, x=110, y=y_after_tech + 2, w=55)
             if os.path.exists(path_sig_tech) and path_sig_tech.endswith(".png"):
                 try:
                     os.remove(path_sig_tech)
@@ -892,14 +900,12 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
             pdf.set_font("Arial", "I", 8)
             pdf.cell(90, 5, nettoyer_texte_pdf("[Signature non fournie]"), ln=True)
 
-        # Ajustement du pointeur Y sous le bloc signature (hauteur max ~ 30mm)
         pdf.set_y(y_start_signatures + 35)
 
     pdf_buffer = pdf.output(dest='S')
     if isinstance(pdf_buffer, str):
         return pdf_buffer.encode('latin-1', 'replace')
     return bytes(pdf_buffer)
-
 
 
 import sqlite3
