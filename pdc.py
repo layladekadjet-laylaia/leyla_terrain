@@ -665,7 +665,6 @@ def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_loc
 import os
 import tempfile
 import json
-import sqlite3
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -673,13 +672,12 @@ from PIL import Image
 from fpdf import FPDF
 
 # =========================================================================
-# 1. UTILS ET NETTOYAGE DU TEXTE POUR FPDF (LATIN-1)
+# 1. UTILS ET NETTOYAGE DU TEXTE POUR FPDF
 # =========================================================================
 
 def nettoyer_texte_pdf(chaine: str) -> str:
     """
-    Nettoie les caractères UTF-8 non pris en charge par l'encodage latin-1 de FPDF.
-    Remplace les puces complexes et les emojis par des équivalents ASCII.
+    Nettoie les caractères UTF-8 non pris en charge par l'encodage latin-1 de FPDF standard.
     """
     if chaine is None:
         return ""
@@ -694,26 +692,26 @@ def nettoyer_texte_pdf(chaine: str) -> str:
 
 
 # =========================================================================
-# 2. FONCTIONS DE GESTION DES SIGNATURES POUR LE PDF
+# 2. FONCTION DE TRAITEMENT DES IMAGES ET SIGNATURES
 # =========================================================================
 
-def traiter_signature_pour_pdf(sig_data):
+def traiter_image_pour_pdf(img_data):
     """
-    Convertit la matrice d'image (NumPy RGBA) ou un chemin existant en fichier PNG temporaire 
-    avec fond blanc aplati utilisable proprement par FPDF.
+    Convertit une matrice NumPy, un objet PIL Image, des octets (bytes) ou un chemin
+    en un fichier image temporaire valide sur le disque pour FPDF.
     """
-    if sig_data is None:
+    if img_data is None:
         return None
 
-    # CAS 1 : Matrice d'image NumPy (issue de canvas_obj.image_data)
-    if isinstance(sig_data, np.ndarray):
+    # CAS 1 : Matrice NumPy (ex: canvas_obj.image_data)
+    if isinstance(img_data, np.ndarray):
         try:
-            if sig_data.size > 0:
-                if sig_data.ndim == 3 and sig_data.shape[2] == 4:
-                    if not np.any(sig_data[:, :, 3] > 0):
-                        return None
+            if img_data.size > 0:
+                if img_data.ndim == 3 and img_data.shape[2] == 4:
+                    if not np.any(img_data[:, :, 3] > 0):
+                        return None # Image vide / transparente
                 
-                img_pil = Image.fromarray(sig_data.astype('uint8'), 'RGBA')
+                img_pil = Image.fromarray(img_data.astype('uint8'), 'RGBA')
                 background = Image.new('RGBA', img_pil.size, (255, 255, 255, 255))
                 alpha_composite = Image.alpha_composite(background, img_pil).convert("RGB")
                 
@@ -724,56 +722,63 @@ def traiter_signature_pour_pdf(sig_data):
         except Exception:
             return None
 
-    # CAS 2 : Chemin vers un fichier image existant sur le disque
-    elif isinstance(sig_data, str) and os.path.exists(sig_data):
-        return sig_data
+    # CAS 2 : Octets bruts (bytes PNG/JPEG - ex: croquis généré)
+    elif isinstance(img_data, bytes):
+        try:
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            temp_file.write(img_data)
+            temp_file.close()
+            return temp_file.name
+        except Exception:
+            return None
+
+    # CAS 3 : Fichier existant sur le disque
+    elif isinstance(img_data, str) and os.path.exists(img_data):
+        return img_data
 
     return None
 
 
 # =========================================================================
-# 3. GÉNÉRATEUR DU RAPPORT PDF STRUCTURÉ EN TABLEAUX (ÉTAPES 1 À 15)
+# 3. RENDU DES TABLEAUX DÉTAILLÉS
 # =========================================================================
 
 def dessiner_tableau_etape(pdf, titre_etape, champs_dict):
-    """
-    Rend une étape du formulaire sous la forme d'un tableau propre à 2 colonnes
-    (Question / Valeur) semblable à la vue tablette de l'agent.
-    """
     if not champs_dict or not isinstance(champs_dict, dict):
         return
 
-    # Titre de l'étape (Bandeau de section)
+    # Bandeau Titre
     pdf.set_font("Arial", "B", 10)
-    pdf.set_fill_color(220, 230, 242) # Couleur bleu/gris léger
+    pdf.set_fill_color(220, 230, 242)
     pdf.cell(190, 7, nettoyer_texte_pdf(f"  {titre_etape.upper()}"), border=1, ln=True, fill=True)
     
-    # En-tête des colonnes du tableau
+    # En-tête Colonnes
     pdf.set_font("Arial", "B", 9)
     pdf.set_fill_color(240, 240, 240)
-    pdf.cell(85, 6, nettoyer_texte_pdf(" Étape / Champ"), border=1, align="L", fill=True)
-    pdf.cell(105, 6, nettoyer_texte_pdf(" Valeur / Saisie Terrain"), border=1, ln=True, align="L", fill=True)
+    pdf.cell(85, 6, nettoyer_texte_pdf(" Étape / Champ"), border=1, fill=True)
+    pdf.cell(105, 6, nettoyer_texte_pdf(" Valeur / Saisie Terrain"), border=1, ln=True, fill=True)
 
-    # Contenu du tableau
+    # Lignes
     pdf.set_font("Arial", "", 9)
     for champ, valeur in champs_dict.items():
-        if champ == "signataires":
+        if champ in ["signataires", "croquis_image"]:
             continue
 
-        # Formatage propre du libellé et de la valeur
         nom_champ = str(champ).replace("_", " ").capitalize()
-        
         if isinstance(valeur, (dict, list)):
             val_str = json.dumps(valeur, ensure_ascii=False)
         else:
             val_str = str(valeur) if valeur is not None else "-"
 
-        # Impression sous forme de ligne de tableau
         pdf.cell(85, 6, nettoyer_texte_pdf(f" {nom_champ}"), border=1)
         pdf.cell(105, 6, nettoyer_texte_pdf(f" {val_str}"), border=1, ln=True)
 
-    pdf.ln(4) # Espace entre deux étapes / tableaux
+    pdf.ln(4)
 
+
+# =========================================================================
+# 4. GÉNÉRATEUR PRINCIPAL DU PDF
+# =========================================================================
 
 def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf = FPDF()
@@ -781,11 +786,11 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf.set_auto_page_break(auto=True, margin=15)
     
     # --- EN-TÊTE PRINCIPAL ---
-    pdf.set_font("Arial", "B", 15)
+    pdf.set_font("Arial", "B", 14)
     pdf.cell(0, 10, nettoyer_texte_pdf("RAPPORT DE DIAGNOSTIC & PLAN DE DÉVELOPPEMENT (PDC)"), ln=True, align="C")
     pdf.ln(2)
     
-    # --- BLOC FICHE IDENTITÉ PRODUCTEUR ---
+    # --- FICHE PRODUCTEUR ---
     pdf.set_font("Arial", "B", 10)
     nom_prod = data.get('nom_producteur') or data.get('producteur') or 'Inconnu'
     code_ccc = data.get('code_ccc') or data.get('code_producteur') or 'N/A'
@@ -802,43 +807,36 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(5)
     
-    # --- RENDER DES TABLEAUX ÉTAPE PAR ÉTAPE (ÉTAPES 1 À 15) ---
+    # --- FORMULAIRES / ÉTAPES ---
     reponses = data.get("reponses", {})
-    
-    # Vérification : si les réponses sont structurées par étapes (ex: "Etape 1", "Etape 2"...)
     if isinstance(reponses, dict) and reponses:
         etapes_trouvees = [k for k in reponses.keys() if "etape" in k.lower() or "étape" in k.lower()]
-        
         if etapes_trouvees:
-            # Si les étapes sont explicites sous forme de sous-dictionnaires
             for etape_key in sorted(etapes_trouvees):
-                contenu_etape = reponses.get(etape_key, {})
-                dessiner_tableau_etape(pdf, etape_key, contenu_etape)
+                dessiner_tableau_etape(pdf, etape_key, reponses.get(etape_key, {}))
         else:
-            # Si les données de la session sont à un seul niveau, on génère un grand tableau synthétique
-            dessiner_tableau_etape(pdf, "Synthese des Saisies du Formulaire", reponses)
-    else:
-        pdf.set_font("Arial", "I", 10)
-        pdf.cell(0, 6, nettoyer_texte_pdf("Aucune donnée enregistrée pour les étapes."), ln=True)
+            dessiner_tableau_etape(pdf, "Synthèse des Saisies du Formulaire", reponses)
 
-    # --- HISTORIQUE ET RAPPORTS DES MODULES / DIAGNOSTICS TERRAIN ---
-    historique = data.get("historique_modules", [])
-    if historique:
-        pdf.ln(3)
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, nettoyer_texte_pdf("DIAGNOSTICS & MODULES TERRAIN ENREGISTRÉS :"), ln=True)
-        pdf.ln(2)
+    # --- INTÉGRATION DU CROQUIS (IMAGE) ---
+    croquis_data = data.get("croquis_genere") or data.get("croquis_image")
+    if croquis_data:
+        path_croquis = traiter_image_pour_pdf(croquis_data)
+        if path_croquis:
+            pdf.ln(3)
+            pdf.set_font("Arial", "B", 11)
+            pdf.cell(0, 7, nettoyer_texte_pdf("CROQUIS DE PARCELLE ET GÉOLOCALISATION"), ln=True)
+            pdf.ln(2)
+            # Affichage de l'image du croquis (Largeur 130mm par exemple)
+            pdf.image(path_croquis, x=35, y=pdf.get_y(), w=130)
+            pdf.ln(85) # Espace réservé pour la hauteur du croquis
+            
+            if path_croquis.endswith(".png") and "tmp" in path_croquis:
+                try:
+                    os.remove(path_croquis)
+                except Exception:
+                    pass
 
-        for idx, rap in enumerate(historique, 1):
-            mod_nom = rap.get("module", f"Module {idx}")
-            d_date = rap.get("date", "")
-            details = rap.get("details", {})
-
-            titre_module = f"Diagnostic {idx} : {mod_nom} ({d_date})"
-            if isinstance(details, dict):
-                dessiner_tableau_etape(pdf, titre_module, details)
-
-    # --- SECTION : VALIDATION ET SIGNATURES MANUSCRITES ---
+    # --- VALIDATION ET SIGNATURES ---
     signataires = reponses.get("signataires", {}) if isinstance(reponses, dict) else {}
     if not signataires and "signataires" in data:
         signataires = data.get("signataires", {})
@@ -853,26 +851,19 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
         pdf.cell(0, 7, nettoyer_texte_pdf("VALIDATION ET SIGNATURES"), ln=True)
         pdf.ln(2)
 
-        date_val = signataires.get("date_validation", "")
-        if date_val:
-            pdf.set_font("Arial", "I", 9)
-            pdf.cell(0, 5, nettoyer_texte_pdf(f"Document validé sur tablette le : {date_val}"), ln=True)
-            pdf.ln(3)
-
-        # Placement côte à côte des signatures
-        y_start_signatures = pdf.get_y()
+        y_start = pdf.get_y()
 
         # Producteur
-        pdf.set_xy(10, y_start_signatures)
+        pdf.set_xy(10, y_start)
         pdf.set_font("Arial", "B", 10)
         prod_nom = signataires.get("producteur_nom", "Producteur")
         pdf.cell(90, 6, nettoyer_texte_pdf(f"Producteur : {prod_nom}"), ln=True)
-        y_after_prod = pdf.get_y()
+        y_prod_img = pdf.get_y()
 
-        path_sig_prod = traiter_signature_pour_pdf(signataires.get("producteur_signature"))
+        path_sig_prod = traiter_image_pour_pdf(signataires.get("producteur_signature"))
         if path_sig_prod:
-            pdf.image(path_sig_prod, x=10, y=y_after_prod + 2, w=55)
-            if os.path.exists(path_sig_prod) and path_sig_prod.endswith(".png"):
+            pdf.image(path_sig_prod, x=10, y=y_prod_img + 2, w=50)
+            if "tmp" in path_sig_prod:
                 try:
                     os.remove(path_sig_prod)
                 except Exception:
@@ -882,16 +873,16 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
             pdf.cell(90, 5, nettoyer_texte_pdf("[Signature non fournie]"), ln=True)
 
         # Technicien
-        pdf.set_xy(110, y_start_signatures)
+        pdf.set_xy(110, y_start)
         pdf.set_font("Arial", "B", 10)
         tech_nom = signataires.get("technicien_nom", "Technicien")
         pdf.cell(90, 6, nettoyer_texte_pdf(f"Technicien : {tech_nom}"), ln=True)
-        y_after_tech = pdf.get_y()
+        y_tech_img = pdf.get_y()
 
-        path_sig_tech = traiter_signature_pour_pdf(signataires.get("technicien_signature"))
+        path_sig_tech = traiter_image_pour_pdf(signataires.get("technicien_signature"))
         if path_sig_tech:
-            pdf.image(path_sig_tech, x=110, y=y_after_tech + 2, w=55)
-            if os.path.exists(path_sig_tech) and path_sig_tech.endswith(".png"):
+            pdf.image(path_sig_tech, x=110, y=y_tech_img + 2, w=50)
+            if "tmp" in path_sig_tech:
                 try:
                     os.remove(path_sig_tech)
                 except Exception:
@@ -900,12 +891,26 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
             pdf.set_font("Arial", "I", 8)
             pdf.cell(90, 5, nettoyer_texte_pdf("[Signature non fournie]"), ln=True)
 
-        pdf.set_y(y_start_signatures + 35)
+    # --- RETOUR DU BUFFER BINAIRE PROPRE POUR STREAMLIT ---
+    out = pdf.output()
+    if isinstance(out, str):
+        return out.encode('latin-1')
+    return bytes(out)
 
-    pdf_buffer = pdf.output(dest='S')
-    if isinstance(pdf_buffer, str):
-        return pdf_buffer.encode('latin-1', 'replace')
-    return bytes(pdf_buffer)
+
+# =========================================================================
+# 5. INTÉGRATION STREAMLIT (BOUTON DE TÉLÉCHARGEMENT)
+# =========================================================================
+
+# Dans votre interface Streamlit :
+# pdf_bytes = generer_pdf_pdc_fonction(data_session)
+# st.download_button(
+#     label="📄 Télécharger le Rapport PDC (PDF)",
+#     data=pdf_bytes,
+#     file_name="Rapport_PDC.pdf",
+#     mime="application/pdf"
+# )
+
 
 
 import sqlite3
