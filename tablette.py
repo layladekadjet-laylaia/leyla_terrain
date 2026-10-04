@@ -131,7 +131,7 @@ def nettoyer_pour_json(d):
     return d
 
 
-# --- UPLOAD SUPABASE STORAGE ---
+# --- UPLOAD SUPABASE STORAGE (VERSION OPTIMISÉE) ---
 def uploader_pdf_supabase(pdf_bytes, nom_fichier):
   """Téléverse le fichier PDF vers le bucket Supabase Storage et retourne son URL publique."""
   try:
@@ -145,7 +145,7 @@ def uploader_pdf_supabase(pdf_bytes, nom_fichier):
         "apikey": key_supabase,
         "Authorization": f"Bearer {key_supabase}",
         "Content-Type": "application/pdf",
-        "x-upsert": "true",
+        "x-upsert": "true",  # Assure que le remplacement du fichier fonctionne bien
     }
 
     response = requests.post(
@@ -166,6 +166,7 @@ def uploader_pdf_supabase(pdf_bytes, nom_fichier):
   except Exception as e:
     st.sidebar.error(f"❌ Erreur lors de l'envoi du PDF vers Supabase : {e}")
     return None
+
 
 
 # --- VUE IMPRESSION ---
