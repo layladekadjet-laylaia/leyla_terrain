@@ -661,16 +661,6 @@ def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_loc
         raise e
 
 
-
-import os
-import tempfile
-import json
-import numpy as np
-import pandas as pd
-import streamlit as st
-from PIL import Image
-from fpdf import FPDF
-
 # =========================================================================
 # 1. UTILS ET NETTOYAGE DU TEXTE POUR FPDF
 # =========================================================================
