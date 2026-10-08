@@ -902,16 +902,36 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(4)
     
-    # --- FORMULAIRES / ÉTAPES ---
+     # --- FORMULAIRES / ÉTAPES (CORRIGÉ & FLEXIBLE) ---
+    # 1. On cherche d'abord dans les sous-clés habituelles
     reponses = data.get("reponses", {})
-    if isinstance(reponses, dict) and reponses:
+    pdc_etapes = {}
+
+    if isinstance(reponses, dict):
         pdc_etapes = reponses.get("pdc_data_15_etapes", {})
-        if isinstance(pdc_etapes, dict) and pdc_etapes:
-            for etape_titre, etape_contenu in pdc_etapes.items():
-                if isinstance(etape_contenu, dict) and etape_contenu:
-                    dessiner_tableau_etape(pdf, etape_titre, etape_contenu)
+
+    # 2. Si non trouvé, on cherche directement à la racine du dictionnaire data
+    if not pdc_etapes and isinstance(data, dict):
+        if "pdc_data_15_etapes" in data:
+            pdc_etapes = data["pdc_data_15_etapes"]
         else:
-            dessiner_tableau_etape(pdf, "Synthèse des Saisies du Formulaire", reponses)
+            # Recherche de n'importe quelle clé commençant par "ETAPE" ou "ETAPE 1"
+            pdc_etapes = {k: v for k, v in data.items() if str(k).upper().startswith("ETAPE")}
+
+    # 3. Rendu des tableaux d'étapes si trouvés
+    if pdc_etapes and isinstance(pdc_etapes, dict):
+        for etape_titre, etape_contenu in pdc_etapes.items():
+            if isinstance(etape_contenu, dict) and etape_contenu:
+                dessiner_tableau_etape(pdf, etape_titre, etape_contenu)
+    # 4. Secours : si toujours rien, on essaye de dessiner reponses ou data direct
+    elif reponses and isinstance(reponses, dict):
+        dessiner_tableau_etape(pdf, "Synthèse des Saisies du Formulaire", reponses)
+    else:
+        # Recherche globale de tous les dictionnaires isolés
+        champs_directs = {k: v for k, v in data.items() if k not in ["croquis_genere", "croquis_image", "signataires", "reponses"]}
+        if champs_directs:
+            dessiner_tableau_etape(pdf, "Données Générales du PDC", champs_directs)
+
 
     # --- INTÉGRATION DU CROQUIS ---
     croquis_data = data.get("croquis_genere") or data.get("croquis_image") or reponses.get("croquis_genere")
