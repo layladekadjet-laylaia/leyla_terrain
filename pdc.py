@@ -673,7 +673,7 @@ from fpdf import FPDF
 
 # =========================================================================
 # 1. UTILS ET NETTOYAGE DU TEXTE POUR FPDF (ENCODAGE LATIN-1 SÉCURISÉ)
-# =========================================================================
+#ju =========================================================================
 
 def nettoyer_texte_pdf(chaine: str) -> str:
     """
@@ -764,8 +764,60 @@ def traiter_image_pour_pdf(img_data):
 # =========================================================================
 # 3. RENDU DES TABLEAUX DÉTAILLÉS (RÉSOLU : SÉCURISÉ ET VISUELLEMENT PROPRE)
 # =========================================================================
+def formater_valeur_pour_pdf(valeur) -> str:
+    """
+    Transforme les structures de données complexes (dict, list, etc.)
+    en texte lisible pour un rapport PDF, en évitant les rendements bruts JSON {}.
+    """
+    if valeur is None:
+        return "-"
+    
+    # 1. Gestion des Dictionnaires
+    if isinstance(valeur, dict):
+        if not valeur:
+            return "Non renseigné"
+        
+        elements = []
+        for k, v in valeur.items():
+            # Ignorer les clés système ou lourdes
+            if k in ["signataires", "croquis_image", "croquis_genere"]:
+                continue
+            if v is not None and str(v).strip() not in ["", "{}"]:
+                cle_propre = str(k).replace("_", " ").capitalize()
+                val_propre = formater_valeur_pour_pdf(v) # Formatage récursif si sous-dict
+                elements.append(f"{cle_propre} : {val_propre}")
+        
+        return " | ".join(elements) if elements else "Non renseigné"
+
+    # 2. Gestion des Listes
+    elif isinstance(valeur, list):
+        if not valeur:
+            return "Non renseigné"
+        
+        elements = []
+        for elem in valeur:
+            if isinstance(elem, dict):
+                elements.append(f"({formater_valeur_pour_pdf(elem)})")
+            elif elem is not None and str(elem).strip() != "":
+                elements.append(str(elem))
+                
+        return ", ".join(elements) if elements else "Non renseigné"
+
+    # 3. Fichiers binaires / Images Base64
+    elif isinstance(valeur, bytes) or (isinstance(valeur, str) and valeur.startswith("data:image")):
+        return "[Fichier Binaire / Image]"
+
+    # 4. Chaînes et Types Simples
+    else:
+        val_str = str(valeur).strip()
+        return val_str if val_str not in ["", "{}"] else "-"
+
 
 def dessiner_tableau_etape(pdf, titre_etape, champs_dict):
+    """
+    Rend un tableau d'étape dans FPDF avec formatage propre des données
+    et gestion dynamique de la hauteur des cellules.
+    """
     if not champs_dict or not isinstance(champs_dict, dict):
         return
 
@@ -781,26 +833,22 @@ def dessiner_tableau_etape(pdf, titre_etape, champs_dict):
     pdf.cell(70, 6, nettoyer_texte_pdf(" Étape / Champ"), border=1, fill=True)
     pdf.cell(120, 6, nettoyer_texte_pdf(" Valeur / Saisie Terrain"), border=1, ln=True, fill=True)
 
-    # Lignes dynamiques sans tronquage
+    # Lignes dynamiques
     for champ, valeur in champs_dict.items():
         if champ in ["signataires", "croquis_image", "croquis_genere"]:
             continue
 
-        # Saut de page automatique préventif
+        # Saut de page automatique préventif avant de tracer la ligne
         if pdf.get_y() > 250:
             pdf.add_page()
 
         nom_champ = str(champ).replace("_", " ").capitalize()
         
-        if isinstance(valeur, (dict, list)):
-            val_str = json.dumps(valeur, ensure_ascii=False)
-        elif isinstance(valeur, bytes) or (isinstance(valeur, str) and valeur.startswith("data:image")):
-            val_str = "[Fichier Binaire / Image]"
-        else:
-            val_str = str(valeur) if (valeur is not None and str(valeur).strip() != "") else "-"
+        # Formatage intelligent de la valeur
+        val_str = formater_valeur_pour_pdf(valeur)
 
-        nom_champ_clean = nettoyer_texte_pdf(nom_champ)
-        val_str_clean = nettoyer_texte_pdf(val_str)
+        nom_champ_clean = nettoyer_texte_pdf(f" {nom_champ}")
+        val_str_clean = nettoyer_texte_pdf(f" {val_str}")
 
         x_start = pdf.get_x()
         y_initial = pdf.get_y()
@@ -816,7 +864,7 @@ def dessiner_tableau_etape(pdf, titre_etape, champs_dict):
         pdf.multi_cell(120, 5, val_str_clean, border=1)
         h_right = pdf.get_y() - y_initial
 
-        # Calage sur la ligne suivante
+        # Calage sur la plus haute cellule
         h_max = max(h_left, h_right)
         pdf.set_xy(x_start, y_initial + h_max)
 
