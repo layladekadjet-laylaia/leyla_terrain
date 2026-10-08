@@ -4404,27 +4404,26 @@ def afficher():
 
         st.markdown("---")
 
-        # =========================================================
-        # 15.3 RECOMMANDATIONS ET CONCLUSION
-        # =========================================================
-        st.markdown("### 💡 3. Recommandations du Conseiller Agricole")
-        recom_def = (
-            "1. Prioriser les travaux d'assainissement sanitaire (taille des"
-            " loranthacées) dès le T1.\n2. Sécuriser les plants d'arbres d'ombrage"
-            " auprès des pépinières agréées par le Conseil Café-Cacao.\n3. Veiller à"
-            " la scolarisation effective des enfants du ménage conformément aux"
-            " engagements sociaux du PDC.\n4. Faire un point trimestriel avec le"
-            " conseiller de la coopérative pour valider le chronogramme T1 à T4."
-        )
-        recommandations_finales = st.text_area(
-            "Recommandations stratégiques à l'attention du producteur",
-            value=st.session_state.get("recommandations_finales_pdc", recom_def),
-            height=120,
-            key="txt_recom_finales",
-        )
+ # =========================================================
+# 15.3 RECOMMANDATIONS ET CONCLUSION
+# =========================================================
+st.markdown("### 💡 3. Recommandations du Conseiller Agricole")
+recom_def = (
+    "1. Prioriser les travaux d'assainissement sanitaire (taille des"
+    " loranthacées) dès le T1.\n2. Sécuriser les plants d'arbres d'ombrage"
+    " auprès des pépinières agréées par le Conseil Café-Cacao.\n3. Veiller à"
+    " la scolarisation effective des enfants du ménage conformément aux"
+    " engagements sociaux du PDC.\n4. Faire un point trimestriel avec le"
+    " conseiller de la coopérative pour valider le chronogramme T1 à T4."
+)
+recommandations_finales = st.text_area(
+    "Recommandations stratégiques à l'attention du producteur",
+    value=st.session_state.get("recommandations_finales_pdc", recom_def),
+    height=120,
+    key="txt_recom_finales",
+)
 
-        st.markdown("---")
-
+st.markdown("---")
 
 # =========================================================
 # 15.4 SIGNATURES TACTILES DES PARTIES
@@ -4491,18 +4490,15 @@ def extraire_image_signature(canvas_obj):
     if canvas_obj is None:
         return None
     try:
-        # Vérification 1 : Presence d'objets dessinés dans le JSON du canvas
         if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
             objects = canvas_obj.json_data.get("objects", [])
             if len(objects) > 0 and hasattr(canvas_obj, "image_data"):
                 if isinstance(canvas_obj.image_data, np.ndarray) and canvas_obj.image_data.size > 0:
                     return canvas_obj.image_data
 
-        # Vérification 2 : Détection directe de pixels non blancs/transparents
         if hasattr(canvas_obj, "image_data") and canvas_obj.image_data is not None:
             img_array = canvas_obj.image_data
             if isinstance(img_array, np.ndarray) and img_array.size > 0:
-                # Canal Alpha > 0 ou couleur différente du blanc pur (255, 255, 255)
                 if np.any(img_array[:, :, 3] > 0) and np.any(img_array[:, :, :3] < 250):
                     return img_array
     except Exception:
@@ -4516,8 +4512,6 @@ def extraire_image_signature(canvas_obj):
 img_sig_prod = extraire_image_signature(canvas_producteur)
 img_sig_tech = extraire_image_signature(canvas_technicien)
 
-# On met à jour le session_state UNIQUEMENT si une signature valide est détectée
-# Cela évite qu'un rechargement à vide n'écrase une signature précédemment tracée
 if img_sig_prod is not None:
     st.session_state["sig_prod_temp"] = img_sig_prod
 
@@ -4547,11 +4541,9 @@ with col_btn2:
         if "reponses_pdc" not in st.session_state:
             st.session_state.reponses_pdc = {}
 
-        # Récupération prioritaire depuis la mémoire temporaire persistant au rechargement
         sig_producteur_finale = st.session_state.get("sig_prod_temp", img_sig_prod)
         sig_technicien_finale = st.session_state.get("sig_tech_temp", img_sig_tech)
 
-        # Sauvegarde des autres champs
         if "recommandations_finales" in locals():
             st.session_state["recommandations_finales_pdc"] = recommandations_finales
             st.session_state.reponses_pdc["recommandations_finales"] = recommandations_finales
@@ -4561,7 +4553,6 @@ with col_btn2:
         if "criteres" in locals():
             st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
 
-        # Enregistrement structuré des signataires
         st.session_state.reponses_pdc["signataires"] = {
             "producteur_nom": nom_producteur,
             "producteur_signature": sig_producteur_finale,
@@ -4572,8 +4563,8 @@ with col_btn2:
 
         st.session_state["pdc_finalise"] = True
 
-        # Diagnostic visuel de confirmation
         if sig_producteur_finale is not None or sig_technicien_finale is not None:
             st.success("✅ PDC finalisé avec succès ! Signatures bien enregistrées.")
         else:
             st.warning("⚠️ Le document a été validé, mais aucune signature n'a été détectée dans le tracé.")
+
