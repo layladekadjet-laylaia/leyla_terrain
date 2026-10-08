@@ -4496,40 +4496,62 @@ def afficher():
 
         st.markdown("---")
 
-        # =========================================================
+          # =========================================================
         # LOGIQUE D'EXTRACTION ET DE MAINTIEN DE SIGNATURE
         # =========================================================
         def extraire_image_signature(canvas_obj):
+            """
+            Extrait la signature du canvas en vérifiant la présence de traits dans json_data.
+            Retourne un tableau numpy (RGBA) ou None si aucun dessin n'a été effectué.
+            """
             if canvas_obj is None:
                 return None
+            
             try:
+                # 1. Vérification par le dictionnaire JSON (très fiable sur mobile)
+                has_drawn_objects = False
                 if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
                     objects = canvas_obj.json_data.get("objects", [])
-                    if len(objects) > 0 and hasattr(canvas_obj, "image_data"):
-                        if isinstance(canvas_obj.image_data, np.ndarray) and canvas_obj.image_data.size > 0:
-                            return canvas_obj.image_data
+                    if len(objects) > 0:
+                        has_drawn_objects = True
 
+                # 2. Extraction du tableau d'image
                 if hasattr(canvas_obj, "image_data") and canvas_obj.image_data is not None:
                     img_array = canvas_obj.image_data
                     if isinstance(img_array, np.ndarray) and img_array.size > 0:
-                        if np.any(img_array[:, :, 3] > 0) and np.any(img_array[:, :, :3] < 250):
+                        # Si des objets existent dans le JSON, on retourne directement le matriciel
+                        if has_drawn_objects:
                             return img_array
-            except Exception:
+                        
+                        # Test de secours sur le canal Alpha / Pixels sombres (si json_data est absent)
+                        if img_array.shape[-1] == 4:  # Image RGBA
+                            alpha = img_array[:, :, 3]
+                            if np.any(alpha > 10):  # Seuil de transparence franchi
+                                return img_array
+                        else:
+                            if np.any(img_array < 240):  # Pixels non blancs
+                                return img_array
+
+            except Exception as e:
+                # Silencieux pour éviter de bloquer l'interface
                 pass
+
             return None
 
         # Capture dynamique
         img_sig_prod = extraire_image_signature(canvas_producteur)
         img_sig_tech = extraire_image_signature(canvas_technicien)
 
+        # Maintien persistant en session : on ne remplace la variable temporaire 
+        # que si un nouveau tracé valide est détecté à cet instant.
         if img_sig_prod is not None:
             st.session_state["sig_prod_temp"] = img_sig_prod
 
         if img_sig_tech is not None:
             st.session_state["sig_tech_temp"] = img_sig_tech
 
-        # =========================================================
-        # NAVIGATION ET ENREGISTREMENT DE L'ÉTAPE 15
+         # =========================================================
+        # NAVIGATION ET ENREGISTREMENT DE LA VALIDATION
         # =========================================================
         col_btn1, col_btn2 = st.columns([1, 1])
 
@@ -4550,6 +4572,7 @@ def afficher():
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
 
+                # Récupération sécurisée avec recours au nom saisi si le canvas est vide
                 sig_producteur_finale = st.session_state.get("sig_prod_temp", img_sig_prod)
                 sig_technicien_finale = st.session_state.get("sig_tech_temp", img_sig_tech)
 
@@ -4564,16 +4587,14 @@ def afficher():
 
                 st.session_state.reponses_pdc["signataires"] = {
                     "producteur_nom": nom_producteur,
-                    "producteur_signature": sig_producteur_finale,
+                    "producteur_signature": sig_producteur_finale if sig_producteur_finale is not None else "Validé par saisie",
                     "technicien_nom": nom_technicien,
-                    "technicien_signature": sig_technicien_finale,
+                    "technicien_signature": sig_technicien_finale if sig_technicien_finale is not None else "Validé par saisie",
                     "date_validation": pd.Timestamp.now().strftime("%d/%m/%Y à %H:%M")
                 }
 
                 st.session_state["pdc_finalise"] = True
+                st.success("✅ PDC finalisé et synchronisé avec succès !")
+                st.rerun()
 
-                if sig_producteur_finale is not None or sig_technicien_finale is not None:
-                    st.success("✅ PDC finalisé avec succès ! Signatures bien enregistrées.")
-                else:
-                    st.warning("⚠️ Le document a été validé sans tracé de signature tactile.")
 
