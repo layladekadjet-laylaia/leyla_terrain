@@ -86,7 +86,6 @@ if "pdc_data" not in st.session_state:
 
 # --- FONCTIONS UTILITAIRES JSON ET CONVERSION AVANCÉE ---
 class NpEncoder(json.JSONEncoder):
-  """Convertit les types NumPy / Pandas / Octets en types natifs Python."""
 
   def default(self, obj):
     if isinstance(obj, np.integer):
@@ -105,7 +104,6 @@ class NpEncoder(json.JSONEncoder):
 
 
 def nettoyer_pour_json(d):
-  """Nettoie et convertit récursivement toutes les données pour la sérialisation JSON sans aucune perte."""
   if isinstance(d, dict):
     return {
         str(k): nettoyer_pour_json(v)
@@ -123,7 +121,6 @@ def nettoyer_pour_json(d):
   elif isinstance(d, (np.floating, float)):
     return float(d)
   elif isinstance(d, bytes):
-    # Encodage du croquis ou image binaire en base64 pour intégration JSON sans perte
     return f"data:image/png;base64,{base64.b64encode(d).decode('utf-8')}"
   elif pd.isna(d):
     return None
@@ -133,7 +130,6 @@ def nettoyer_pour_json(d):
 
 # --- UPLOAD SUPABASE STORAGE ---
 def uploader_pdf_supabase(pdf_bytes, nom_fichier):
-  """Téléverse le fichier PDF vers le bucket Supabase Storage et retourne son URL publique."""
   try:
     url_supabase = st.secrets["supabase"]["url"]
     key_supabase = st.secrets["supabase"]["key"]
@@ -222,7 +218,7 @@ def afficher_vue_impression_dynamique():
       if isinstance(valeur, dict):
         st.markdown(f"### {nom_champ}")
         for sub_k, sub_v in valeur.items():
-          st.write(f"- **{sub_k} :** {sub_v}")
+          st.markdown(f"- **{sub_k} :** {sub_v}")
       elif isinstance(valeur, pd.DataFrame):
         if not valeur.empty:
           st.markdown(f"### {nom_champ}")
@@ -230,20 +226,19 @@ def afficher_vue_impression_dynamique():
       elif isinstance(valeur, list):
         if len(valeur) > 0:
           st.markdown(f"### {nom_champ}")
-          if isinstance(valeur[0], dict):
-            st.table(valeur)
-          else:
-            for item in valeur:
-              st.write(f"- {item}")
+          for idx, item in enumerate(valeur, 1):
+            if isinstance(item, dict):
+              st.markdown(f"**Élément {idx} :**")
+              for sub_k, sub_v in item.items():
+                st.markdown(f"- *{sub_k}* : {sub_v}")
+            else:
+              st.markdown(f"- {item}")
       else:
         if valeur != "" and valeur is not None:
-          st.write(f"**{nom_champ} :** {valeur}")
+          st.markdown(f"**{nom_champ} :** {valeur}")
       st.divider()
   else:
-    st.warning(
-        "⚠️ Aucune donnée n'a été détectée dans la session active. Assure-toi"
-        " d'avoir validé les formulaires des étapes."
-    )
+    st.warning("⚠️ Aucune donnée n'a été détectée dans la session active.")
 
 
 # --- SÉCURITÉ ET SESSION ---
@@ -286,7 +281,6 @@ def init_local_db():
     cursor.execute("ALTER TABLE rapports_locaux ADD COLUMN pdf_blob BLOB")
   except sqlite3.OperationalError:
     pass
-
   conn.commit()
   conn.close()
 
@@ -302,19 +296,13 @@ if not st.session_state.get("identifie", False):
   st.subheader("🔒 Profil d'identification du Technicien")
   with st.form("form_identification"):
     cooperative = st.text_input(
-        "Identification de la Coopérative",
-        value="",
-        placeholder="Ex: SCACO, SOCABA, COOP-CA...",
+        "Identification de la Coopérative", placeholder="Ex: SCACO, SOCABA..."
     )
     section = st.text_input(
-        "Identification de la Section",
-        value="",
-        placeholder="Ex: Section Divo-Sud, Lakota, Soubré...",
+        "Identification de la Section", placeholder="Ex: Section Divo-Sud..."
     )
     technicien = st.text_input(
-        "Nom, Prénom & Identifiant",
-        value="",
-        placeholder="Ex: Agent Kouamé Konan - ID 0001",
+        "Nom, Prénom & Identifiant", placeholder="Ex: Agent Kouamé - ID 0001"
     )
 
     btn_valider_profil = st.form_submit_button(
@@ -329,7 +317,6 @@ if not st.session_state.get("identifie", False):
         st.rerun()
       else:
         st.error("Veuillez remplir tous les champs d'identification.")
-
   st.stop()
 
 # --- BARRE LATÉRALE ---
@@ -362,7 +349,6 @@ with st.sidebar:
   st.markdown("---")
   st.markdown("## 📄 Actions PDC")
 
-  # GENERATION PDF FINAL
   if st.button(
       "🎓 Générer le PDF Final",
       key="sb_btn_generer_pdf",
@@ -370,8 +356,6 @@ with st.sidebar:
       use_container_width=True,
   ):
     reponses_completes = {}
-
-    # Fusion sécurisée de pdc_data, reponses_pdc et des variables de session
     if isinstance(st.session_state.get("pdc_data"), dict):
       reponses_completes["pdc_data_15_etapes"] = st.session_state.pdc_data
 
@@ -386,7 +370,6 @@ with st.sidebar:
         "etape_pdc",
         "reponses_pdc",
     ]
-
     for k, v in st.session_state.items():
       if (
           not str(k).startswith("btn_")
@@ -396,57 +379,22 @@ with st.sidebar:
       ):
         reponses_completes[k] = v
 
-    # Extraction des infos Producteur (y compris Page 2 / Étape 2)
     page_2_data = st.session_state.get("pdc_data", {}).get(
         "Étape 2/15 : Données Socio-démographiques & Identification Producteur",
         {},
     )
-
     nom_prod = (
         page_2_data.get("nom_prenoms_producteur")
         or st.session_state.get("nom_producteur")
-        or st.session_state.get("nom_prenoms_producteur")
-        or st.session_state.get("nom_prod", "Inconnu")
+        or "Inconnu"
     )
     code_prod = (
         page_2_data.get("code_national_producteur")
         or st.session_state.get("code_producteur")
-        or st.session_state.get("code_national_producteur")
-        or st.session_state.get("code_ccc", "CCC-001")
+        or "CCC-001"
     )
-    section_zone = st.session_state.get("section") or st.session_state.get(
-        "zone", "Section Divo-Sud"
-    )
-    score_final = (
-        st.session_state.get("score_pdc")
-        or st.session_state.get("score_faisabilite")
-        or st.session_state.get("score", 0)
-    )
-
-    rapports_sqlite = []
-    try:
-      conn = sqlite3.connect("leyla_terrain.db")
-      cursor = conn.cursor()
-      cursor.execute("""
-                SELECT module_execute, donnees_module, date_saisie 
-                FROM rapports_locaux 
-                ORDER BY id DESC
-            """)
-      lignes = cursor.fetchall()
-      conn.close()
-
-      for mod_exe, d_json, d_saisie in lignes:
-        try:
-          data_parsed = (
-              json.loads(d_json) if isinstance(d_json, str) else d_json
-          )
-        except Exception:
-          data_parsed = str(d_json)
-        rapports_sqlite.append(
-            {"module": mod_exe, "date": d_saisie, "details": data_parsed}
-        )
-    except Exception as e:
-      st.warning(f"Note SQLite : {e}")
+    section_zone = st.session_state.get("section", "Section Divo-Sud")
+    score_final = st.session_state.get("score_pdc", 0)
 
     payload_pdf = {
         "nom_producteur": nom_prod,
@@ -454,7 +402,6 @@ with st.sidebar:
         "zone": section_zone,
         "score_faisabilite": score_final,
         "reponses": reponses_completes,
-        "historique_modules": rapports_sqlite,
         "mode_impression": mode_impression,
     }
 
@@ -462,12 +409,11 @@ with st.sidebar:
       pdf_data = pdc.generer_pdf_pdc_fonction(payload_pdf)
       st.session_state["pdf_bytes_pdc"] = pdf_data
       st.session_state["afficher_ballons_flag"] = True
-      st.success("✅ PDF complet généré !")
+      st.success("✅ PDF complet généré avec succès !")
       st.rerun()
     except Exception as e:
       st.error(f"❌ Erreur PDF : {e}")
 
-  # TELECHARGER LE PDF
   if st.session_state.get("pdf_bytes_pdc") is not None:
     code_p = str(st.session_state.get("code_producteur", "CCC-001")).replace(
         " ", "_"
@@ -475,7 +421,6 @@ with st.sidebar:
     nom_p = str(st.session_state.get("nom_producteur", "Inconnu")).replace(
         " ", "_"
     )
-
     st.download_button(
         label="📥 Télécharger le PDF",
         data=st.session_state["pdf_bytes_pdc"],
@@ -485,26 +430,21 @@ with st.sidebar:
         key="sb_btn_download_pdf",
     )
 
-  # SAUVEGARDE TERRAIN LOCAL (CAPTURE TOUTES LES PAGES + CROQUIS)
   st.markdown("---")
   st.markdown("## 💾 Sauvegarde Terrain")
-
   module_a_enregistrer = st.selectbox(
-      "Module à enregistrer :",
-      ["PDC_INTEGRAL"],
-      key="sb_select_module_enregistrement",
+      "Module à enregistrer :", ["PDC_INTEGRAL"], key="sb_select_module"
   )
 
   if st.button(
       "💾 Enregistrer dans la tablette",
       type="secondary",
-      key="sb_btn_sauvegarder_sqlite",
+      key="sb_btn_sauvegarder",
       use_container_width=True,
   ):
     coop = st.session_state.get("cooperative", "SCACO")
     sec = st.session_state.get("section", "Section Divo-Sud")
     tech = st.session_state.get("technicien", "Agent Kouamé")
-
     reponses = st.session_state.get("reponses_pdc", {})
     page_2_data = st.session_state.get("pdc_data", {}).get(
         "Étape 2/15 : Données Socio-démographiques & Identification Producteur",
@@ -513,39 +453,17 @@ with st.sidebar:
 
     nom_prod = (
         page_2_data.get("nom_prenoms_producteur")
-        or reponses.get("nom_prenoms_producteur")
-        or st.session_state.get("nom_prenoms_producteur")
-        or reponses.get("nom_membre")
         or st.session_state.get("nom_producteur")
         or "Producteur Inconnu"
     )
-
     code_prod = (
         page_2_data.get("code_national_producteur")
-        or reponses.get("code_national_producteur")
-        or st.session_state.get("code_national_producteur")
-        or reponses.get("code_groupe")
         or st.session_state.get("code_producteur")
         or "CCC-000"
     )
+    superficie = st.session_state.get("superficie", 0.0)
+    age_p = str(st.session_state.get("age_parcelle", "0"))
 
-    superficie = (
-        st.session_state.get("superficie")
-        or page_2_data.get("superficie_ha")
-        or st.session_state.get("superficie_ha")
-        or 0.0
-    )
-    age_p = str(
-        st.session_state.get("age_parcelle")
-        or page_2_data.get("age_cacaoyere")
-        or st.session_state.get("age_cacaoyere")
-        or "0"
-    )
-
-    st.session_state["nom_producteur"] = nom_prod
-    st.session_state["code_producteur"] = code_prod
-
-    # Capture sans perte de la session globale + pdc_data (15 étapes) + croquis
     session_complete = {
         "metadata_agent": {
             "cooperative": coop,
@@ -557,41 +475,6 @@ with st.sidebar:
         "reponses_pdc": reponses if isinstance(reponses, dict) else {},
     }
 
-    cles_a_ignorer = [
-        "appareil_deverrouille",
-        "identifie",
-        "code_agent_connecte",
-        "pdf_bytes_pdc",
-        "pdc_data",
-        "reponses_pdc",
-    ]
-    for k, v in st.session_state.items():
-      if (
-          not str(k).startswith("btn_")
-          and not str(k).startswith("sb_")
-          and not str(k).startswith("FormSubmitter")
-          and k not in cles_a_ignorer
-      ):
-        session_complete[k] = v
-
-    # Génération automatique du PDF s'il n'existe pas encore
-    if st.session_state.get("pdf_bytes_pdc") is None:
-      try:
-        payload_auto_pdf = {
-            "nom_producteur": nom_prod,
-            "code_ccc": code_prod,
-            "zone": sec,
-            "score_faisabilite": st.session_state.get("score_pdc", 0),
-            "reponses": session_complete,
-            "historique_modules": [],
-            "mode_impression": mode_impression,
-        }
-        st.session_state["pdf_bytes_pdc"] = pdc.generer_pdf_pdc_fonction(
-            payload_auto_pdf
-        )
-      except Exception:
-        pass
-
     donnees_json_str = json.dumps(
         nettoyer_pour_json(session_complete), cls=NpEncoder, ensure_ascii=False
     )
@@ -601,7 +484,6 @@ with st.sidebar:
     try:
       conn = sqlite3.connect("leyla_terrain.db")
       cursor = conn.cursor()
-
       cursor.execute(
           """
                 INSERT INTO rapports_locaux (
@@ -623,176 +505,23 @@ with st.sidebar:
               date_saisie,
           ),
       )
-
       conn.commit()
       conn.close()
-
       st.session_state["afficher_ballons_flag"] = True
-      st.success(
-          f"💾 Fiche enregistrée pour [{module_a_enregistrer}] :"
-          f" **{nom_prod}** ({code_prod})"
-      )
+      st.success(f"💾 Fiche enregistrée avec succès pour **{nom_prod}**")
       time.sleep(0.5)
       st.rerun()
-
     except Exception as e:
-      st.error(f"❌ Erreur lors de la sauvegarde SQLite : {e}")
-
-  # SYNCHRONISATION SUPABASE (ENVOI INFAILLIBLE)
-  st.markdown("---")
-  st.subheader("🔄 Synchronisation Supabase")
-
-  try:
-    conn = sqlite3.connect("leyla_terrain.db")
-    cursor = conn.cursor()
-    cursor.execute(
-        "SELECT COUNT(*) FROM rapports_locaux WHERE statut='En attente'"
-    )
-    nombre_attente = cursor.fetchone()[0]
-    conn.close()
-  except Exception:
-    nombre_attente = 0
-
-  st.write(f"📦 Rapports en attente : **{nombre_attente}**")
-
-  if st.button(
-      "🚀 SYNCHRONISER MAINTENANT",
-      use_container_width=True,
-      key="sb_btn_synchro_supabase",
-  ):
-    if nombre_attente > 0:
-      try:
-        url_supabase = st.secrets["supabase"]["url"]
-        key_supabase = st.secrets["supabase"]["key"]
-
-        headers = {
-            "apikey": key_supabase,
-            "Authorization": f"Bearer {key_supabase}",
-            "Content-Type": "application/json",
-            "Prefer": "return=minimal",
-        }
-        endpoint = f"{url_supabase}/rest/v1/producteurs_parcelles"
-
-        conn = sqlite3.connect("leyla_terrain.db")
-        cursor = conn.cursor()
-        cursor.execute("""
-                    SELECT id, cooperative, section, technicien, producteur, code_producteur, 
-                           superficie, age_parcelle, module_execute, donnees_module, pdf_blob 
-                    FROM rapports_locaux 
-                    WHERE statut='En attente'
-                """)
-        lignes = cursor.fetchall()
-
-        nb_succes = 0
-
-        for ligne in lignes:
-          (
-              row_id,
-              coop,
-              sec,
-              tech,
-              prod,
-              code_p,
-              sup,
-              age_p,
-              mod_t,
-              donnees_m,
-              pdf_b,
-          ) = ligne
-
-          # Extraction sécurisée de l'âge sous forme d'entier
-          try:
-            age_int = int("".join(filter(str.isdigit, str(age_p))))
-          except ValueError:
-            age_int = 0
-
-          # Conversion sécurisée du champ JSON pour PostgREST / Supabase
-          if isinstance(donnees_m, str):
-            try:
-              donnees_payload = json.loads(donnees_m)
-            except Exception:
-              donnees_payload = {"raw_data": donnees_m}
-          elif isinstance(donnees_m, (dict, list)):
-            donnees_payload = nettoyer_pour_json(donnees_m)
-          else:
-            donnees_payload = {}
-
-          # Téléversement du PDF s'il existe
-          url_pdf_public = None
-          if pdf_b is not None:
-            code_clean = (
-                str(code_p).replace(" ", "_").replace("/", "_").replace("\\", "_")
-            )
-            nom_f = f"PDC_{code_clean}_{row_id}.pdf"
-            url_pdf_public = uploader_pdf_supabase(pdf_b, nom_f)
-
-          payload = {
-              "cooperative_id": str(coop) if coop else "",
-              "section_id": str(sec) if sec else "",
-              "agent_id": str(tech) if tech else "",
-              "nom_producteur": str(prod) if prod else "",
-              "code_producteur": str(code_p) if code_p else "",
-              "superficie": float(sup) if sup else 0.0,
-              "age_cacaoyere": age_int,
-              "module_execute": str(mod_t) if mod_t else "PDC_INTEGRAL",
-              "observations_diagnostic": (
-                  donnees_payload  # Payload JSON natif sérialisé proprement par requests
-              ),
-              "url_pdf_pdc": url_pdf_public,
-              "rdue_conforme": True,
-          }
-
-          try:
-            response = requests.post(
-                endpoint, json=payload, headers=headers, timeout=20
-            )
-
-            if response.status_code in [200, 201, 204]:
-              cursor.execute(
-                  "UPDATE rapports_locaux SET statut='Envoyé' WHERE id=?",
-                  (row_id,),
-              )
-              nb_succes += 1
-            else:
-              st.sidebar.error(
-                  f"⚠️ Erreur HTTP {response.status_code} : {response.text}"
-              )
-              break
-
-          except requests.exceptions.ConnectionError:
-            st.sidebar.warning("📡 Connexion réseau indisponible.")
-            break
-          except requests.exceptions.Timeout:
-            st.sidebar.warning("⏱ Délai d'attente dépassé.")
-            break
-
-        conn.commit()
-        conn.close()
-
-        if nb_succes > 0:
-          st.sidebar.success(f"✅ {nb_succes} rapport(s) synchronisé(s) !")
-          st.rerun()
-
-      except Exception as e:
-        st.sidebar.error(f"❌ Erreur de transmission : {e}")
-    else:
-      st.sidebar.info("Aucun rapport en attente.")
+      st.error(f"❌ Erreur SQLite : {e}")
 
 # --- 2. ACCÈS SÉCURISÉ TECHNICIEN ---
 MOT_DE_PASSE_VALIDE = "leyla2.6"
 
 if not st.session_state.get("appareil_deverrouille", False):
   st.header("🔒 Accès Sécurisé Technicien")
-  st.caption(
-      "Veuillez saisir votre mot de passe pour déverrouiller l'application"
-      " Leyla et accéder au module PDC."
-  )
-
   with st.form("form_login_technicien"):
     code_agent = st.text_input(
-        "Code Agent / Technicien",
-        placeholder="Ex: Agent Kouame",
-        key="input_code_agent",
+        "Code Agent / Technicien", key="input_code_agent"
     )
     mot_de_passe = st.text_input(
         "Mot de passe *", type="password", key="input_mdp_technicien"
@@ -805,14 +534,10 @@ if not st.session_state.get("appareil_deverrouille", False):
     if mot_de_passe == MOT_DE_PASSE_VALIDE:
       st.session_state.appareil_deverrouille = True
       st.session_state.code_agent_connecte = code_agent
-      st.success(f"✅ Déverrouillage réussi. Bienvenue Agent {code_agent} !")
+      st.success(f"✅ Déverrouillage réussi !")
       st.rerun()
     else:
-      st.error("❌ Mot de passe incorrect. Accès refusé.")
-
-  st.warning(
-      "⚠️ L'application est verrouillée. Entrez le mot de passe pour continuer."
-  )
+      st.error("❌ Mot de passe incorrect.")
   st.stop()
 
 # --- 3. EXÉCUTION DU MODULE UNIQUE PDC / IMPRESSION ---
@@ -824,6 +549,4 @@ else:
       "👤 Session Agent :"
       f" **{st.session_state.get('code_agent_connecte', 'Inconnu')}**"
   )
-
-  # Affichage unique du module PDC
   pdc.afficher()
