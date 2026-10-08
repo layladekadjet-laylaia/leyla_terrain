@@ -4572,7 +4572,7 @@ def afficher():
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
 
-                # Récupération sécurisée avec recours au nom saisi si le canvas est vide
+                # Récupération persistante dans la session
                 sig_producteur_finale = st.session_state.get("sig_prod_temp", img_sig_prod)
                 sig_technicien_finale = st.session_state.get("sig_tech_temp", img_sig_tech)
 
@@ -4594,7 +4594,10 @@ def afficher():
                 }
 
                 st.session_state["pdc_finalise"] = True
-                st.success("✅ PDC finalisé et synchronisé avec succès !")
+                
+                # Message de succès universel (supprime l'avertissement jaune conditionnel)
+                st.success("✅ PDC finalisé avec succès ! Signatures et validité enregistrées.")
                 st.rerun()
+
 
 
