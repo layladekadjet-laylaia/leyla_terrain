@@ -661,153 +661,79 @@ def sauvegarder_en_local_sqlite(donnees_dossier: dict, db_path: str = "leyla_loc
         raise e
 
 
-import base64
-import json
 import os
 import tempfile
-import unicodedata
+import json
+import sqlite3
 import numpy as np
+import pandas as pd
+import streamlit as st
 from PIL import Image
 from fpdf import FPDF
 
-
 # =========================================================================
-# 1. UTILS ET NETTOYAGE DU TEXTE POUR FPDF (ENCODAGE LATIN-1 SÉCURISÉ)
+# 1. UTILS ET NETTOYAGE DU TEXTE POUR FPDF (LATIN-1)
 # =========================================================================
 
 def nettoyer_texte_pdf(chaine: str) -> str:
     """
-    Nettoie et convertit les chaînes UTF-8 en latin-1 compatible FPDF standard.
+    Nettoie les caractères UTF-8 non pris en charge par l'encodage latin-1 de FPDF.
+    Remplace les puces complexes et les emojis par des équivalents ASCII.
     """
     if chaine is None:
         return ""
-    
     s = str(chaine)
-    
-    # Remplacements typographiques courants
     replacements = {
-        "•": "-", "–": "-", "—": "-", "’": "'", "‘": "'",
-        "“": '"', "”": '"', "…": "...", "\u200b": "", "\xa0": " ",
-        "œ": "oe", "Œ": "OE", "æ": "ae", "Æ": "AE"
+        "•": "-", "–": "-", "—": "-", "’": "'",
+        "“": '"', "”": '"', "…": "...", "\u200b": "",
     }
     for k, v in replacements.items():
         s = s.replace(k, v)
-        
-    # Normalisation NFD pour séparer les accents des lettres
-    s = unicodedata.normalize('NFD', s)
-    s = ''.join(c for c in s if unicodedata.category(c) != 'Mn')
-    
-    # Encodage sécurisé en latin-1 avec remplacement des inconnus
-    return s.encode("latin-1", "ignore").decode("latin-1")
+    return s.encode("latin-1", "replace").decode("latin-1")
 
 
 # =========================================================================
-# 2. FONCTION DE TRAITEMENT DES IMAGES, CROQUIS ET SIGNATURES
+# 2. FONCTIONS DE GESTION DES SIGNATURES POUR LE PDF
 # =========================================================================
 
-def traiter_image_pour_pdf(img_data):
+def traiter_signature_pour_pdf(sig_data):
     """
-    Convertit une matrice NumPy, PIL Image, bytes, chaîne Base64 ou chemin fichier
-    en un fichier image temporaire PNG valide sur disque pour FPDF.
+    Convertit la matrice d'image (NumPy RGBA) ou un chemin existant en fichier PNG temporaire 
+    avec fond blanc aplati utilisable proprement par FPDF.
     """
-    if img_data is None:
+    if sig_data is None:
         return None
 
-    try:
-        # CAS 1 : Chaîne Base64 (ex: "data:image/png;base64,...")
-        if isinstance(img_data, str) and img_data.startswith("data:image"):
-            header, encoded = img_data.split(",", 1)
-            img_bytes = base64.b64decode(encoded)
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            temp_file.write(img_bytes)
-            temp_file.close()
-            return temp_file.name
-
-        # CAS 2 : Matrice NumPy (ex: st_canvas)
-        if isinstance(img_data, np.ndarray):
-            if img_data.size > 0:
-                if img_data.ndim == 3 and img_data.shape[2] == 4:
-                    if not np.any(img_data[:, :, 3] > 0):
-                        return None  # Transparent / vide
+    # CAS 1 : Matrice d'image NumPy (issue de canvas_obj.image_data)
+    if isinstance(sig_data, np.ndarray):
+        try:
+            if sig_data.size > 0:
+                # Si l'image a un canal alpha (RGBA), vérifier qu'il y a au moins un pixel tracé
+                if sig_data.ndim == 3 and sig_data.shape[2] == 4:
+                    if not np.any(sig_data[:, :, 3] > 0):
+                        return None
                 
-                img_pil = Image.fromarray(img_data.astype('uint8'))
-                if img_pil.mode in ("RGBA", "P"):
-                    background = Image.new('RGB', img_pil.size, (255, 255, 255))
-                    if img_pil.mode == "RGBA":
-                        background.paste(img_pil, mask=img_pil.split()[3])
-                    else:
-                        background.paste(img_pil)
-                    img_pil = background
+                # Conversion en image PIL avec fond blanc (pour éviter les carrés noirs dans FPDF)
+                img_pil = Image.fromarray(sig_data.astype('uint8'), 'RGBA')
+                background = Image.new('RGBA', img_pil.size, (255, 255, 255, 255))
+                alpha_composite = Image.alpha_composite(background, img_pil).convert("RGB")
                 
                 temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-                img_pil.save(temp_file.name, format="PNG")
+                alpha_composite.save(temp_file.name, format="PNG")
                 temp_file.close()
                 return temp_file.name
+        except Exception:
+            return None
 
-        # CAS 3 : Octets bruts (bytes PNG/JPEG)
-        elif isinstance(img_data, bytes):
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-            temp_file.write(img_data)
-            temp_file.close()
-            return temp_file.name
-
-        # CAS 4 : Chemin fichier existant sur disque
-        elif isinstance(img_data, str) and os.path.exists(img_data):
-            return img_data
-
-    except Exception:
-        return None
+    # CAS 2 : Chemin vers un fichier image existant sur le disque
+    elif isinstance(sig_data, str) and os.path.exists(sig_data):
+        return sig_data
 
     return None
 
 
 # =========================================================================
-# 3. RENDU DES TABLEAUX DÉTAILLÉS
-# =========================================================================
-
-def dessiner_tableau_etape(pdf, titre_etape, champs_dict):
-    if not champs_dict or not isinstance(champs_dict, dict):
-        return
-
-    # Bandeau Titre Étape
-    pdf.set_font("Arial", "B", 10)
-    pdf.set_fill_color(220, 230, 242)
-    pdf.cell(190, 7, nettoyer_texte_pdf(f"  {titre_etape.upper()}"), border=1, ln=True, fill=True)
-    
-    # En-tête Colonnes
-    pdf.set_font("Arial", "B", 9)
-    pdf.set_fill_color(240, 240, 240)
-    pdf.cell(85, 6, nettoyer_texte_pdf(" Étape / Champ"), border=1, fill=True)
-    pdf.cell(105, 6, nettoyer_texte_pdf(" Valeur / Saisie Terrain"), border=1, ln=True, fill=True)
-
-    # Lignes
-    pdf.set_font("Arial", "", 8)
-    for champ, valeur in champs_dict.items():
-        if champ in ["signataires", "croquis_image", "croquis_genere"]:
-            continue
-
-        nom_champ = str(champ).replace("_", " ").capitalize()
-        
-        # Scurisation des types complexes pour l'affichage texte
-        if isinstance(valeur, (dict, list)):
-            val_str = json.dumps(valeur, ensure_ascii=False)
-        elif isinstance(valeur, bytes) or (isinstance(valeur, str) and valeur.startswith("data:image")):
-            val_str = "[Fichier Binaire / Image]"
-        else:
-            val_str = str(valeur) if valeur is not None else "-"
-
-        # découpage propre si la valeur est trop longue
-        nom_champ_clean = nettoyer_texte_pdf(nom_champ)[:45]
-        val_str_clean = nettoyer_texte_pdf(val_str)[:65]
-
-        pdf.cell(85, 6, f" {nom_champ_clean}", border=1)
-        pdf.cell(105, 6, f" {val_str_clean}", border=1, ln=True)
-
-    pdf.ln(3)
-
-
-# =========================================================================
-# 4. GÉNÉRATEUR PRINCIPAL DU PDF
+# 3. GÉNÉRATEUR DU RAPPORT PDF (PDC)
 # =========================================================================
 
 def generer_pdf_pdc_fonction(data: dict) -> bytes:
@@ -815,148 +741,163 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf.add_page()
     pdf.set_auto_page_break(auto=True, margin=15)
     
-    # --- EN-TÊTE PRINCIPAL ---
-    pdf.set_font("Arial", "B", 13)
-    pdf.cell(0, 8, nettoyer_texte_pdf("RAPPORT DE DIAGNOSTIC & PLAN DE DÉVELOPPEMENT (PDC)"), ln=True, align="C")
-    pdf.ln(2)
+    # En-tête principal
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, nettoyer_texte_pdf("PLAN DE DÉVELOPPEMENT DE CONSEIL (PDC)"), ln=True, align="C")
+    pdf.ln(3)
     
-    # --- FICHE PRODUCTEUR ---
-    pdf.set_font("Arial", "B", 9)
+    # Bloc Identité
+    pdf.set_font("Arial", "B", 10)
     nom_prod = data.get('nom_producteur') or data.get('producteur') or 'Inconnu'
     code_ccc = data.get('code_ccc') or data.get('code_producteur') or 'N/A'
     zone = data.get('zone') or data.get('section') or 'N/A'
     score = data.get('score_faisabilite', 'N/A')
     
-    pdf.cell(95, 5, nettoyer_texte_pdf(f"Producteur : {nom_prod}"), border=0)
-    pdf.cell(95, 5, nettoyer_texte_pdf(f"Code CCC : {code_ccc}"), ln=True)
-    pdf.cell(95, 5, nettoyer_texte_pdf(f"Zone d'intervention : {zone}"), border=0)
-    pdf.cell(95, 5, nettoyer_texte_pdf(f"Score de Faisabilité : {score} / 100"), ln=True)
+    pdf.cell(0, 6, nettoyer_texte_pdf(f"Producteur : {nom_prod}"), ln=True)
+    pdf.cell(0, 6, nettoyer_texte_pdf(f"Code CCC : {code_ccc}"), ln=True)
+    pdf.cell(0, 6, nettoyer_texte_pdf(f"Zone d'intervention : {zone}"), ln=True)
+    pdf.cell(0, 6, nettoyer_texte_pdf(f"Score de Faisabilité : {score} / 100"), ln=True)
     pdf.ln(3)
     
+    # Séparateur visuel
     pdf.set_draw_color(180, 180, 180)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(4)
+    pdf.ln(5)
     
-    # --- FORMULAIRES / ÉTAPES ---
+    # --- SECTION 1 : SYNTHÈSE DES DONNÉES EN SESSION ---
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, nettoyer_texte_pdf("1. SYNTHÈSE DES DONNÉES DU FORMULAIRE EN SESSION :"), ln=True)
+    pdf.ln(2)
+    
     reponses = data.get("reponses", {})
     if isinstance(reponses, dict) and reponses:
-        # Recherche des 15 étapes ou sous-dictionnaires
-        pdc_etapes = reponses.get("pdc_data_15_etapes", {})
-        if isinstance(pdc_etapes, dict) and pdc_etapes:
-            for etape_titre, etape_contenu in pdc_etapes.items():
-                if isinstance(etape_contenu, dict) and etape_contenu:
-                    dessiner_tableau_etape(pdf, etape_titre, etape_contenu)
-        else:
-            dessiner_tableau_etape(pdf, "Synthèse des Saisies du Formulaire", reponses)
+        for cle, val in reponses.items():
+            if cle == "signataires":
+                continue
 
-    # --- INTÉGRATION DU CROQUIS ---
-    croquis_data = data.get("croquis_genere") or data.get("croquis_image") or reponses.get("croquis_genere")
-    if croquis_data:
-        path_croquis = traiter_image_pour_pdf(croquis_data)
-        if path_croquis:
-            pdf.ln(3)
-            pdf.set_font("Arial", "B", 10)
-            pdf.cell(0, 6, nettoyer_texte_pdf("CROQUIS DE PARCELLE ET GÉOLOCALISATION"), ln=True)
-            pdf.ln(2)
-            try:
-                # Calcul de la position y dynamique
-                y_actuel = pdf.get_y()
-                if y_actuel > 200: # Saut de page si bas de page
-                    pdf.add_page()
-                    y_actuel = pdf.get_y()
-                pdf.image(path_croquis, x=35, y=y_actuel, w=120)
-                pdf.ln(75) # Espace sous l'image
-            except Exception:
-                pass
-            finally:
-                if "tmp" in path_croquis and os.path.exists(path_croquis):
-                    try:
-                        os.remove(path_croquis)
-                    except Exception:
-                        pass
+            nom_cle = nettoyer_texte_pdf(str(cle).replace("_", " ").capitalize())
+            
+            if isinstance(val, list):
+                if len(val) > 0:
+                    pdf.set_font("Arial", "B", 10)
+                    pdf.cell(0, 6, nettoyer_texte_pdf(f"- {nom_cle} ({len(val)} élément(s)) :"), ln=True)
+                    pdf.set_font("Arial", size=9)
+                    for i, item in enumerate(val, 1):
+                        details = ", ".join([f"{k}: {v}" for k, v in item.items()]) if isinstance(item, dict) else str(item)
+                        pdf.write(5, nettoyer_texte_pdf(f"   * [{i}] {details}\n"))
+            elif isinstance(val, dict):
+                if len(val) > 0:
+                    pdf.set_font("Arial", "B", 10)
+                    pdf.cell(0, 6, nettoyer_texte_pdf(f"- {nom_cle} :"), ln=True)
+                    pdf.set_font("Arial", size=9)
+                    for k_sub, v_sub in val.items():
+                        pdf.write(5, nettoyer_texte_pdf(f"   * {k_sub}: {v_sub}\n"))
+            else:
+                str_val = str(val).strip()
+                if str_val != "":
+                    pdf.set_font("Arial", size=9)
+                    pdf.write(5, nettoyer_texte_pdf(f"- {nom_cle} : {str_val}\n"))
+    else:
+        pdf.set_font("Arial", size=10)
+        pdf.cell(0, 6, nettoyer_texte_pdf("Aucune donnée de formulaire directe."), ln=True)
 
-    # --- VALIDATION ET SIGNATURES ---
-    signataires = reponses.get("signataires", {}) if isinstance(reponses, dict) else {}
-    if not signataires and "signataires" in data:
-        signataires = data.get("signataires", {})
+    pdf.ln(5)
 
-    if signataires and isinstance(signataires, dict):
-        if pdf.get_y() > 230:
-            pdf.add_page()
-
-        pdf.ln(3)
+    # --- SECTION 2 : RAPPORTS SQLITE LOCAUX ---
+    historique = data.get("historique_modules", [])
+    if historique:
         pdf.set_draw_color(180, 180, 180)
         pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-        pdf.ln(4)
-
-        pdf.set_font("Arial", "B", 10)
-        pdf.cell(0, 6, nettoyer_texte_pdf("VALIDATION ET SIGNATURES"), ln=True)
+        pdf.ln(5)
+        
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, nettoyer_texte_pdf("2. RAPPORTS TERRAIN & DIAGNOSTICS ENREGISTRÉS :"), ln=True)
         pdf.ln(2)
 
-        y_start = pdf.get_y()
+        for idx, rap in enumerate(historique, 1):
+            mod_nom = rap.get("module", "Module")
+            d_date = rap.get("date", "")
+            details = rap.get("details", {})
 
-        # Producteur
-        pdf.set_xy(10, y_start)
-        pdf.set_font("Arial", "B", 9)
+            pdf.set_font("Arial", "B", 10)
+            pdf.cell(0, 6, nettoyer_texte_pdf(f"Fiche #{idx} - {mod_nom} ({d_date}) :"), ln=True)
+            pdf.set_font("Arial", size=9)
+
+            if isinstance(details, dict):
+                for k_d, v_d in details.items():
+                    k_clean = str(k_d).replace("_", " ").capitalize()
+                    v_str = json.dumps(v_d, ensure_ascii=False) if isinstance(v_d, (dict, list)) else str(v_d)
+                    pdf.write(5, nettoyer_texte_pdf(f"   * {k_clean} : {v_str}\n"))
+            else:
+                pdf.write(5, nettoyer_texte_pdf(f"   * Contenu : {details}\n"))
+            pdf.ln(2)
+
+    # --- SECTION 3 : VALIDATION ET SIGNATURES MANUSCRITES ---
+    signataires = reponses.get("signataires", {}) if isinstance(reponses, dict) else {}
+    if signataires:
+        pdf.ln(5)
+        pdf.set_draw_color(180, 180, 180)
+        pdf.line(10, pdf.get_y(), 200, pdf.get_y())
+        pdf.ln(5)
+
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, nettoyer_texte_pdf("3. VALIDATION ET SIGNATURES :"), ln=True)
+        pdf.ln(2)
+
+        date_val = signataires.get("date_validation", "")
+        if date_val:
+            pdf.set_font("Arial", "I", 9)
+            pdf.cell(0, 5, nettoyer_texte_pdf(f"Document validé le : {date_val}"), ln=True)
+            pdf.ln(3)
+
+        # Positions fixes pour le placement côte à côte
+        y_start_signatures = pdf.get_y()
+
+        # --- Colonne Gauche : Producteur ---
+        pdf.set_xy(10, y_start_signatures)
+        pdf.set_font("Arial", "B", 10)
         prod_nom = signataires.get("producteur_nom", "Producteur")
-        pdf.cell(90, 5, nettoyer_texte_pdf(f"Producteur : {prod_nom}"), ln=True)
-        
-        path_sig_prod = traiter_image_pour_pdf(signataires.get("producteur_signature"))
+        pdf.cell(90, 6, nettoyer_texte_pdf(f"Producteur : {prod_nom}"), ln=True)
+        y_after_prod_title = pdf.get_y()
+
+        path_sig_prod = traiter_signature_pour_pdf(signataires.get("producteur_signature"))
         if path_sig_prod:
-            try:
-                pdf.image(path_sig_prod, x=10, y=pdf.get_y() + 1, w=45)
-            except Exception:
-                pass
-            finally:
-                if "tmp" in path_sig_prod and os.path.exists(path_sig_prod):
-                    try:
-                        os.remove(path_sig_prod)
-                    except Exception:
-                        pass
+            pdf.image(path_sig_prod, x=10, y=y_after_prod_title + 2, w=55)
+            if os.path.exists(path_sig_prod) and path_sig_prod.endswith(".png"):
+                try:
+                    os.remove(path_sig_prod)
+                except Exception:
+                    pass
         else:
             pdf.set_font("Arial", "I", 8)
             pdf.cell(90, 5, nettoyer_texte_pdf("[Signature non fournie]"), ln=True)
 
-        # Technicien
-        pdf.set_xy(110, y_start)
-        pdf.set_font("Arial", "B", 9)
+        # --- Colonne Droite : Technicien ---
+        pdf.set_xy(110, y_start_signatures)
+        pdf.set_font("Arial", "B", 10)
         tech_nom = signataires.get("technicien_nom", "Technicien")
-        pdf.cell(90, 5, nettoyer_texte_pdf(f"Technicien : {tech_nom}"), ln=True)
-        
-        path_sig_tech = traiter_image_pour_pdf(signataires.get("technicien_signature"))
+        pdf.cell(90, 6, nettoyer_texte_pdf(f"Technicien : {tech_nom}"), ln=True)
+        y_after_tech_title = pdf.get_y()
+
+        path_sig_tech = traiter_signature_pour_pdf(signataires.get("technicien_signature"))
         if path_sig_tech:
-            try:
-                pdf.image(path_sig_tech, x=110, y=pdf.get_y() + 1, w=45)
-            except Exception:
-                pass
-            finally:
-                if "tmp" in path_sig_tech and os.path.exists(path_sig_tech):
-                    try:
-                        os.remove(path_sig_tech)
-                    except Exception:
-                        pass
+            pdf.image(path_sig_tech, x=110, y=y_after_tech_title + 2, w=55)
+            if os.path.exists(path_sig_tech) and path_sig_tech.endswith(".png"):
+                try:
+                    os.remove(path_sig_tech)
+                except Exception:
+                    pass
         else:
             pdf.set_font("Arial", "I", 8)
             pdf.cell(90, 5, nettoyer_texte_pdf("[Signature non fournie]"), ln=True)
 
-    # --- RETOUR DU BUFFER BINAIRE PROPRE POUR STREAMLIT ---
-    out = pdf.output(dest='S')
-    if isinstance(out, str):
-        return out.encode('latin-1', 'ignore')
-    return bytes(out)
+        # Ajustement du pointeur Y sous le bloc signature (hauteur max ~ 30mm)
+        pdf.set_y(y_start_signatures + 35)
 
-# =========================================================================
-# 5. INTÉGRATION STREAMLIT (BOUTON DE TÉLÉCHARGEMENT)
-# =========================================================================
-
-# Dans votre interface Streamlit :
-# pdf_bytes = generer_pdf_pdc_fonction(data_session)
-# st.download_button(
-#     label="📄 Télécharger le Rapport PDC (PDF)",
-#     data=pdf_bytes,
-#     file_name="Rapport_PDC.pdf",
-#     mime="application/pdf"
-# )
+    pdf_buffer = pdf.output(dest='S')
+    if isinstance(pdf_buffer, str):
+        return pdf_buffer.encode('latin-1', 'replace')
+    return bytes(pdf_buffer)
 
 
 
