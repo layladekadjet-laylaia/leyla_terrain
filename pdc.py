@@ -4404,167 +4404,158 @@ def afficher():
 
         st.markdown("---")
 
- # =========================================================
-# 15.3 RECOMMANDATIONS ET CONCLUSION
-# =========================================================
-st.markdown("### 💡 3. Recommandations du Conseiller Agricole")
-recom_def = (
-    "1. Prioriser les travaux d'assainissement sanitaire (taille des"
-    " loranthacées) dès le T1.\n2. Sécuriser les plants d'arbres d'ombrage"
-    " auprès des pépinières agréées par le Conseil Café-Cacao.\n3. Veiller à"
-    " la scolarisation effective des enfants du ménage conformément aux"
-    " engagements sociaux du PDC.\n4. Faire un point trimestriel avec le"
-    " conseiller de la coopérative pour valider le chronogramme T1 à T4."
-)
-recommandations_finales = st.text_area(
-    "Recommandations stratégiques à l'attention du producteur",
-    value=st.session_state.get("recommandations_finales_pdc", recom_def),
-    height=120,
-    key="txt_recom_finales",
-)
+        # =========================================================
+        # 15.3 RECOMMANDATIONS ET CONCLUSION
+        # =========================================================
+        st.markdown("### 💡 3. Recommandations du Conseiller Agricole")
+        recom_def = (
+            "1. Prioriser les travaux d'assainissement sanitaire (taille des"
+            " loranthacées) dès le T1.\n2. Sécuriser les plants d'arbres d'ombrage"
+            " auprès des pépinières agréées par le Conseil Café-Cacao.\n3. Veiller à"
+            " la scolarisation effective des enfants du ménage conformément aux"
+            " engagements sociaux du PDC.\n4. Faire un point trimestriel avec le"
+            " conseiller de la coopérative pour valider le chronogramme T1 à T4."
+        )
+        recommandations_finales = st.text_area(
+            "Recommandations stratégiques à l'attention du producteur",
+            value=st.session_state.get("recommandations_finales_pdc", recom_def),
+            height=120,
+            key="txt_recom_finales",
+        )
 
-st.markdown("---")
+        st.markdown("---")
 
-# =========================================================
-# 15.4 SIGNATURES TACTILES DES PARTIES
-# =========================================================
-st.markdown("### ✍️ 4. Validation & Signatures Tactiles")
-st.caption("Signez directement avec le doigt ou un stylet sur les cadres ci-dessous.")
+        # =========================================================
+        # 15.4 SIGNATURES TACTILES DES PARTIES
+        # =========================================================
+        st.markdown("### ✍️ 4. Validation & Signatures Tactiles")
+        st.caption("Signez directement avec le doigt ou un stylet sur les cadres ci-dessous.")
 
-st.info(
-    "📜 **Engagement :** Je soussigné(e) confirme avoir pris connaissance "
-    "du diagnostic de mon exploitation et valide le plan d'action quinquennal établi."
-)
+        st.info(
+            "📜 **Engagement :** Je soussigné(e) confirme avoir pris connaissance "
+            "du diagnostic de mon exploitation et valide le plan d'action quinquennal établi."
+        )
 
-col_sig_prod, col_sig_cons = st.columns([1, 1])
+        col_sig_prod, col_sig_cons = st.columns([1, 1])
 
-with col_sig_prod:
-    st.markdown("#### 🖊️ Signature du Producteur")
-    nom_producteur = st.text_input(
-        "Nom du Producteur",
-        value=st.session_state.get("nom_producteur_pdc", "Nom et Prénom"),
-        key="input_nom_producteur_sig"
-    )
-    st.caption("Tracez la signature du producteur :")
-    canvas_producteur = st_canvas(
-        fill_color="rgba(255, 255, 255, 0)",
-        stroke_width=3,
-        stroke_color="#000000",
-        background_color="#FFFFFF",
-        height=160,
-        width=300,
-        drawing_mode="freedraw",
-        key="canvas_prod",
-    )
+        with col_sig_prod:
+            st.markdown("#### 🖊️ Signature du Producteur")
+            nom_producteur = st.text_input(
+                "Nom du Producteur",
+                value=st.session_state.get("nom_producteur_pdc", "Nom et Prénom"),
+                key="input_nom_producteur_sig"
+            )
+            st.caption("Tracez la signature du producteur :")
+            canvas_producteur = st_canvas(
+                fill_color="rgba(255, 255, 255, 0)",
+                stroke_width=3,
+                stroke_color="#000000",
+                background_color="#FFFFFF",
+                height=160,
+                width=300,
+                drawing_mode="freedraw",
+                key="canvas_prod",
+            )
 
-with col_sig_cons:
-    st.markdown("#### 🖊️ Signature du Technicien")
-    nom_technicien = st.text_input(
-        "Nom du Technicien",
-        value=st.session_state.get("nom_conseiller_pdc", ""),
-        placeholder="Ex: Kouassi Yao",
-        key="input_nom_technicien_sig"
-    )
-    st.caption("Tracez la signature du technicien :")
-    canvas_technicien = st_canvas(
-        fill_color="rgba(255, 255, 255, 0)",
-        stroke_width=3,
-        stroke_color="#084081",
-        background_color="#FFFFFF",
-        height=160,
-        width=300,
-        drawing_mode="freedraw",
-        key="canvas_cons",
-    )
+        with col_sig_cons:
+            st.markdown("#### 🖊️ Signature du Technicien")
+            nom_technicien = st.text_input(
+                "Nom du Technicien",
+                value=st.session_state.get("nom_conseiller_pdc", ""),
+                placeholder="Ex: Kouassi Yao",
+                key="input_nom_technicien_sig"
+            )
+            st.caption("Tracez la signature du technicien :")
+            canvas_technicien = st_canvas(
+                fill_color="rgba(255, 255, 255, 0)",
+                stroke_width=3,
+                stroke_color="#084081",
+                background_color="#FFFFFF",
+                height=160,
+                width=300,
+                drawing_mode="freedraw",
+                key="canvas_cons",
+            )
 
-st.markdown("---")
+        st.markdown("---")
 
+        # =========================================================
+        # LOGIQUE D'EXTRACTION ET DE MINTIEN DE SIGNATURE
+        # =========================================================
+        def extraire_image_signature(canvas_obj):
+            if canvas_obj is None:
+                return None
+            try:
+                if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
+                    objects = canvas_obj.json_data.get("objects", [])
+                    if len(objects) > 0 and hasattr(canvas_obj, "image_data"):
+                        if isinstance(canvas_obj.image_data, np.ndarray) and canvas_obj.image_data.size > 0:
+                            return canvas_obj.image_data
 
-# =========================================================
-# 1. FONCTION DE DÉTECTION ET EXTRACTION DE SIGNATURE
-# =========================================================
-def extraire_image_signature(canvas_obj):
-    """
-    Extrait la matrice NumPy RGBA si un tracé effectif a été réalisé.
-    """
-    if canvas_obj is None:
-        return None
-    try:
-        if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
-            objects = canvas_obj.json_data.get("objects", [])
-            if len(objects) > 0 and hasattr(canvas_obj, "image_data"):
-                if isinstance(canvas_obj.image_data, np.ndarray) and canvas_obj.image_data.size > 0:
-                    return canvas_obj.image_data
+                if hasattr(canvas_obj, "image_data") and canvas_obj.image_data is not None:
+                    img_array = canvas_obj.image_data
+                    if isinstance(img_array, np.ndarray) and img_array.size > 0:
+                        if np.any(img_array[:, :, 3] > 0) and np.any(img_array[:, :, :3] < 250):
+                            return img_array
+            except Exception:
+                pass
+            return None
 
-        if hasattr(canvas_obj, "image_data") and canvas_obj.image_data is not None:
-            img_array = canvas_obj.image_data
-            if isinstance(img_array, np.ndarray) and img_array.size > 0:
-                if np.any(img_array[:, :, 3] > 0) and np.any(img_array[:, :, :3] < 250):
-                    return img_array
-    except Exception:
-        pass
-    return None
+        # Capture dynamique
+        img_sig_prod = extraire_image_signature(canvas_producteur)
+        img_sig_tech = extraire_image_signature(canvas_technicien)
 
+        if img_sig_prod is not None:
+            st.session_state["sig_prod_temp"] = img_sig_prod
 
-# =========================================================
-# 2. CAPTURE EN CONTINU (Maintien des signatures enregistrées)
-# =========================================================
-img_sig_prod = extraire_image_signature(canvas_producteur)
-img_sig_tech = extraire_image_signature(canvas_technicien)
+        if img_sig_tech is not None:
+            st.session_state["sig_tech_temp"] = img_sig_tech
 
-if img_sig_prod is not None:
-    st.session_state["sig_prod_temp"] = img_sig_prod
+        # =========================================================
+        # NAVIGATION ET ENREGISTREMENT DE L'ÉTAPE 15
+        # =========================================================
+        col_btn1, col_btn2 = st.columns([1, 1])
 
-if img_sig_tech is not None:
-    st.session_state["sig_tech_temp"] = img_sig_tech
+        with col_btn1:
+            if st.button("⬅️ Retour", key="btn_retour_etape15", use_container_width=True):
+                if "recommandations_finales" in locals():
+                    st.session_state["recommandations_finales_pdc"] = recommandations_finales
+                st.session_state.etape_pdc = 14
+                st.rerun()
 
+        with col_btn2:
+            if st.button(
+                "💾 Valider & Finaliser le PDC",
+                key="btn_valider_pdc_final",
+                type="primary",
+                use_container_width=True,
+            ):
+                if "reponses_pdc" not in st.session_state:
+                    st.session_state.reponses_pdc = {}
 
-# =========================================================
-# 3. NAVIGATION ET ENREGISTREMENT DE L'ÉTAPE 15
-# =========================================================
-col_btn1, col_btn2 = st.columns([1, 1])
+                sig_producteur_finale = st.session_state.get("sig_prod_temp", img_sig_prod)
+                sig_technicien_finale = st.session_state.get("sig_tech_temp", img_sig_tech)
 
-with col_btn1:
-    if st.button("⬅️ Retour", key="btn_retour_etape15", use_container_width=True):
-        if "recommandations_finales" in locals():
-            st.session_state["recommandations_finales_pdc"] = recommandations_finales
-        st.session_state.etape_pdc = 14
-        st.rerun()
+                if "recommandations_finales" in locals():
+                    st.session_state["recommandations_finales_pdc"] = recommandations_finales
+                    st.session_state.reponses_pdc["recommandations_finales"] = recommandations_finales
+                
+                if "score" in locals():
+                    st.session_state.reponses_pdc["score_faisabilite"] = score
+                if "criteres" in locals():
+                    st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
 
-with col_btn2:
-    if st.button(
-        "💾 Valider & Finaliser le PDC",
-        key="btn_valider_pdc_final",
-        type="primary",
-        use_container_width=True,
-    ):
-        if "reponses_pdc" not in st.session_state:
-            st.session_state.reponses_pdc = {}
+                st.session_state.reponses_pdc["signataires"] = {
+                    "producteur_nom": nom_producteur,
+                    "producteur_signature": sig_producteur_finale,
+                    "technicien_nom": nom_technicien,
+                    "technicien_signature": sig_technicien_finale,
+                    "date_validation": pd.Timestamp.now().strftime("%d/%m/%Y à %H:%M")
+                }
 
-        sig_producteur_finale = st.session_state.get("sig_prod_temp", img_sig_prod)
-        sig_technicien_finale = st.session_state.get("sig_tech_temp", img_sig_tech)
+                st.session_state["pdc_finalise"] = True
 
-        if "recommandations_finales" in locals():
-            st.session_state["recommandations_finales_pdc"] = recommandations_finales
-            st.session_state.reponses_pdc["recommandations_finales"] = recommandations_finales
-        
-        if "score" in locals():
-            st.session_state.reponses_pdc["score_faisabilite"] = score
-        if "criteres" in locals():
-            st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
-
-        st.session_state.reponses_pdc["signataires"] = {
-            "producteur_nom": nom_producteur,
-            "producteur_signature": sig_producteur_finale,
-            "technicien_nom": nom_technicien,
-            "technicien_signature": sig_technicien_finale,
-            "date_validation": pd.Timestamp.now().strftime("%d/%m/%Y à %H:%M")
-        }
-
-        st.session_state["pdc_finalise"] = True
-
-        if sig_producteur_finale is not None or sig_technicien_finale is not None:
-            st.success("✅ PDC finalisé avec succès ! Signatures bien enregistrées.")
-        else:
-            st.warning("⚠️ Le document a été validé, mais aucune signature n'a été détectée dans le tracé.")
-
+                if sig_producteur_finale is not None or sig_technicien_finale is not None:
+                    st.success("✅ PDC finalisé avec succès ! Signatures bien enregistrées.")
+                else:
+                    st.warning("⚠️ Le document a été validé, mais aucune signature n'a été détectée dans le tracé.")
