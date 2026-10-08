@@ -714,7 +714,7 @@ def dessiner_tableau_etape(pdf: FPDF, titre_etape: str, champs_dict: dict):
         if champ in ["signataires", "croquis_image", "croquis_genere"]:
             continue
 
-        # Si le champ contient un sous-dictionnaire (ex: étape imbriquée)
+        # Si le champ contient un sous-dictionnaire
         if isinstance(valeur, dict):
             dessiner_tableau_etape(pdf, str(champ), valeur)
             continue
@@ -738,27 +738,30 @@ def dessiner_tableau_etape(pdf: FPDF, titre_etape: str, champs_dict: dict):
         val_str_clean = nettoyer_texte_pdf(val_str)
 
         # Vérification du saut de page automatique
-        if pdf.get_y() > 260:
+        if pdf.get_y() > 250:
             pdf.add_page()
 
+        x_start = 10
         y_initial = pdf.get_y()
 
-        # Colonne Nom du champ (Largeur : 65 mm)
+        # Colonne Nom du champ (Largeur : 55 mm)
+        pdf.set_xy(x_start, y_initial)
         pdf.set_font("Arial", "B", 8)
-        pdf.multi_cell(65, 5, nom_champ_clean, border=1)
+        pdf.multi_cell(55, 5, nom_champ_clean, border=1)
         hauteur_nom = pdf.get_y() - y_initial
 
-        # Colonne Valeur (Largeur : 125 mm)
-        pdf.set_xy(10 + 65, y_initial)
+        # Colonne Valeur (Largeur : 135 mm -> Total = 190 mm)
+        pdf.set_xy(x_start + 55, y_initial)
         pdf.set_font("Arial", "", 8)
-        pdf.multi_cell(125, 5, val_str_clean, border=1)
+        pdf.multi_cell(135, 5, val_str_clean, border=1)
         hauteur_valeur = pdf.get_y() - y_initial
 
         # Calage de la ligne suivante sur la plus grande des deux hauteurs
         hauteur_max = max(hauteur_nom, hauteur_valeur)
-        pdf.set_y(y_initial + hauteur_max)
+        pdf.set_xy(x_start, y_initial + hauteur_max)
 
     pdf.ln(2)
+
 
 
 # =========================================================================
