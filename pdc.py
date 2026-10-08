@@ -693,7 +693,76 @@ def nettoyer_texte_pdf(chaine: str) -> str:
 
 
 # =========================================================================
-# 2. FONCTIONS DE GESTION DES SIGNATURES POUR LE PDF
+# 2. FONCTION DE DESSIN FORMATÉ DES ÉTAPES DU PDC
+# =========================================================================
+
+def dessiner_tableau_etape(pdf: FPDF, titre_etape: str, champs_dict: dict):
+    """
+    Parcourt dynamiquement les éléments d'une étape du PDC pour les afficher
+    dans un tableau structuré et lisible sans chevauchement de texte.
+    """
+    if not champs_dict or not isinstance(champs_dict, dict):
+        return
+
+    # En-tête de section / Étape
+    pdf.set_font("Arial", "B", 10)
+    pdf.set_fill_color(220, 230, 242)
+    titre_clean = nettoyer_texte_pdf(f"  {titre_etape.replace('_', ' ').upper()}")
+    pdf.cell(190, 7, titre_clean, border=1, ln=True, fill=True)
+
+    for champ, valeur in champs_dict.items():
+        if champ in ["signataires", "croquis_image", "croquis_genere"]:
+            continue
+
+        # Si le champ contient un sous-dictionnaire (ex: étape imbriquée)
+        if isinstance(valeur, dict):
+            dessiner_tableau_etape(pdf, str(champ), valeur)
+            continue
+
+        # Formatage du nom de champ
+        nom_champ = str(champ).replace("_", " ").capitalize()
+        nom_champ_clean = nettoyer_texte_pdf(nom_champ)
+
+        # Formatage des valeurs
+        if isinstance(valeur, list):
+            items_str = []
+            for item in valeur:
+                if isinstance(item, dict):
+                    items_str.append(", ".join([f"{k}: {v}" for k, v in item.items()]))
+                else:
+                    items_str.append(str(item))
+            val_str = " | ".join(items_str)
+        else:
+            val_str = str(valeur) if (valeur is not None and str(valeur).strip() != "") else "-"
+
+        val_str_clean = nettoyer_texte_pdf(val_str)
+
+        # Vérification du saut de page automatique
+        if pdf.get_y() > 260:
+            pdf.add_page()
+
+        y_initial = pdf.get_y()
+
+        # Colonne Nom du champ (Largeur : 65 mm)
+        pdf.set_font("Arial", "B", 8)
+        pdf.multi_cell(65, 5, nom_champ_clean, border=1)
+        hauteur_nom = pdf.get_y() - y_initial
+
+        # Colonne Valeur (Largeur : 125 mm)
+        pdf.set_xy(10 + 65, y_initial)
+        pdf.set_font("Arial", "", 8)
+        pdf.multi_cell(125, 5, val_str_clean, border=1)
+        hauteur_valeur = pdf.get_y() - y_initial
+
+        # Calage de la ligne suivante sur la plus grande des deux hauteurs
+        hauteur_max = max(hauteur_nom, hauteur_valeur)
+        pdf.set_y(y_initial + hauteur_max)
+
+    pdf.ln(2)
+
+
+# =========================================================================
+# 3. FONCTIONS DE GESTION DES SIGNATURES POUR LE PDF
 # =========================================================================
 
 def traiter_signature_pour_pdf(sig_data):
@@ -708,12 +777,10 @@ def traiter_signature_pour_pdf(sig_data):
     if isinstance(sig_data, np.ndarray):
         try:
             if sig_data.size > 0:
-                # Si l'image a un canal alpha (RGBA), vérifier qu'il y a au moins un pixel tracé
                 if sig_data.ndim == 3 and sig_data.shape[2] == 4:
                     if not np.any(sig_data[:, :, 3] > 0):
                         return None
                 
-                # Conversion en image PIL avec fond blanc (pour éviter les carrés noirs dans FPDF)
                 img_pil = Image.fromarray(sig_data.astype('uint8'), 'RGBA')
                 background = Image.new('RGBA', img_pil.size, (255, 255, 255, 255))
                 alpha_composite = Image.alpha_composite(background, img_pil).convert("RGB")
@@ -733,7 +800,7 @@ def traiter_signature_pour_pdf(sig_data):
 
 
 # =========================================================================
-# 3. GÉNÉRATEUR DU RAPPORT PDF (PDC)
+# 4. GÉNÉRATEUR DU RAPPORT PDF (PDC)
 # =========================================================================
 
 def generer_pdf_pdc_fonction(data: dict) -> bytes:
@@ -764,9 +831,9 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(5)
     
-    # --- SECTION 1 : SYNTHÈSE DES DONNÉES EN SESSION ---
+    # --- SECTION 1 : SYNTHÈSE DES DONNÉES DU PDC ---
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, nettoyer_texte_pdf("1. SYNTHÈSE DES DONNÉES DU FORMULAIRE EN SESSION :"), ln=True)
+    pdf.cell(0, 8, nettoyer_texte_pdf("1. SYNTHÈSE DES DONNÉES DU FORMULAIRE :"), ln=True)
     pdf.ln(2)
     
     reponses = data.get("reponses", {})
@@ -775,28 +842,25 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
             if cle == "signataires":
                 continue
 
-            nom_cle = nettoyer_texte_pdf(str(cle).replace("_", " ").capitalize())
-            
-            if isinstance(val, list):
+            # Si on tombe sur les 15 étapes sous forme de dictionnaire structuré
+            if isinstance(val, dict):
+                dessiner_tableau_etape(pdf, str(cle), val)
+            elif isinstance(val, list):
                 if len(val) > 0:
                     pdf.set_font("Arial", "B", 10)
-                    pdf.cell(0, 6, nettoyer_texte_pdf(f"- {nom_cle} ({len(val)} élément(s)) :"), ln=True)
-                    pdf.set_font("Arial", size=9)
+                    pdf.cell(0, 6, nettoyer_texte_pdf(f"- {str(cle).replace('_', ' ').capitalize()} ({len(val)} élément(s)) :"), ln=True)
                     for i, item in enumerate(val, 1):
-                        details = ", ".join([f"{k}: {v}" for k, v in item.items()]) if isinstance(item, dict) else str(item)
-                        pdf.write(5, nettoyer_texte_pdf(f"   * [{i}] {details}\n"))
-            elif isinstance(val, dict):
-                if len(val) > 0:
-                    pdf.set_font("Arial", "B", 10)
-                    pdf.cell(0, 6, nettoyer_texte_pdf(f"- {nom_cle} :"), ln=True)
-                    pdf.set_font("Arial", size=9)
-                    for k_sub, v_sub in val.items():
-                        pdf.write(5, nettoyer_texte_pdf(f"   * {k_sub}: {v_sub}\n"))
+                        if isinstance(item, dict):
+                            dessiner_tableau_etape(pdf, f"Élément #{i}", item)
+                        else:
+                            pdf.set_font("Arial", size=9)
+                            pdf.multi_cell(0, 5, nettoyer_texte_pdf(f"   * [{i}] {item}"))
             else:
                 str_val = str(val).strip()
                 if str_val != "":
                     pdf.set_font("Arial", size=9)
-                    pdf.write(5, nettoyer_texte_pdf(f"- {nom_cle} : {str_val}\n"))
+                    nom_cle = str(cle).replace("_", " ").capitalize()
+                    pdf.multi_cell(0, 5, nettoyer_texte_pdf(f"- {nom_cle} : {str_val}"))
     else:
         pdf.set_font("Arial", size=10)
         pdf.cell(0, 6, nettoyer_texte_pdf("Aucune donnée de formulaire directe."), ln=True)
@@ -819,17 +883,13 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
             d_date = rap.get("date", "")
             details = rap.get("details", {})
 
-            pdf.set_font("Arial", "B", 10)
-            pdf.cell(0, 6, nettoyer_texte_pdf(f"Fiche #{idx} - {mod_nom} ({d_date}) :"), ln=True)
-            pdf.set_font("Arial", size=9)
-
             if isinstance(details, dict):
-                for k_d, v_d in details.items():
-                    k_clean = str(k_d).replace("_", " ").capitalize()
-                    v_str = json.dumps(v_d, ensure_ascii=False) if isinstance(v_d, (dict, list)) else str(v_d)
-                    pdf.write(5, nettoyer_texte_pdf(f"   * {k_clean} : {v_str}\n"))
+                dessiner_tableau_etape(pdf, f"Fiche #{idx} - {mod_nom} ({d_date})", details)
             else:
-                pdf.write(5, nettoyer_texte_pdf(f"   * Contenu : {details}\n"))
+                pdf.set_font("Arial", "B", 10)
+                pdf.cell(0, 6, nettoyer_texte_pdf(f"Fiche #{idx} - {mod_nom} ({d_date}) :"), ln=True)
+                pdf.set_font("Arial", size=9)
+                pdf.multi_cell(0, 5, nettoyer_texte_pdf(f"   * Contenu : {details}"))
             pdf.ln(2)
 
     # --- SECTION 3 : VALIDATION ET SIGNATURES MANUSCRITES ---
@@ -852,6 +912,11 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
 
         # Positions fixes pour le placement côte à côte
         y_start_signatures = pdf.get_y()
+
+        # Check pour éviter le chevauchement avec le bas de page pour les signatures
+        if y_start_signatures > 230:
+            pdf.add_page()
+            y_start_signatures = pdf.get_y()
 
         # --- Colonne Gauche : Producteur ---
         pdf.set_xy(10, y_start_signatures)
@@ -891,13 +956,14 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
             pdf.set_font("Arial", "I", 8)
             pdf.cell(90, 5, nettoyer_texte_pdf("[Signature non fournie]"), ln=True)
 
-        # Ajustement du pointeur Y sous le bloc signature (hauteur max ~ 30mm)
+        # Ajustement du pointeur Y sous le bloc signature
         pdf.set_y(y_start_signatures + 35)
 
     pdf_buffer = pdf.output(dest='S')
     if isinstance(pdf_buffer, str):
         return pdf_buffer.encode('latin-1', 'replace')
     return bytes(pdf_buffer)
+
 
 
 
