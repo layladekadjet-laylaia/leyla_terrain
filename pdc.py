@@ -701,71 +701,61 @@ def nettoyer_texte_pdf(chaine: str) -> str:
 # 2. FONCTION DE DESSIN FORMATÉ DES ÉTAPES DU PDC
 # =========================================================================
 
-def dessiner_tableau_etape(pdf: FPDF, titre_etape: str, champs_dict: dict):
-    """
-    Parcourt dynamiquement les éléments d'une étape du PDC pour les afficher
-    dans un tableau structuré et lisible sans chevauchement de texte.
-    """
+def dessiner_tableau_etape(pdf, titre_etape, champs_dict):
     if not champs_dict or not isinstance(champs_dict, dict):
         return
 
-    # En-tête de section / Étape
+    # Bandeau Titre Étape
     pdf.set_font("Arial", "B", 10)
     pdf.set_fill_color(220, 230, 242)
     titre_clean = nettoyer_texte_pdf(f"  {titre_etape.replace('_', ' ').upper()}")
     pdf.cell(190, 7, titre_clean, border=1, ln=True, fill=True)
+    
+    # En-tête Colonnes
+    pdf.set_font("Arial", "B", 9)
+    pdf.set_fill_color(240, 240, 240)
+    pdf.cell(70, 6, nettoyer_texte_pdf(" Champ"), border=1, fill=True)
+    pdf.cell(120, 6, nettoyer_texte_pdf(" Valeur / Saisie Terrain"), border=1, ln=True, fill=True)
 
+    # Lignes
     for champ, valeur in champs_dict.items():
         if champ in ["signataires", "croquis_image", "croquis_genere"]:
             continue
 
-        # Si le champ contient un sous-dictionnaire
-        if isinstance(valeur, dict):
-            dessiner_tableau_etape(pdf, str(champ), valeur)
-            continue
-
-        # Formatage du nom de champ
-        nom_champ = str(champ).replace("_", " ").capitalize()
-        nom_champ_clean = nettoyer_texte_pdf(nom_champ)
-
-        # Formatage des valeurs
-        if isinstance(valeur, list):
-            items_str = []
-            for item in valeur:
-                if isinstance(item, dict):
-                    items_str.append(", ".join([f"{k}: {v}" for k, v in item.items()]))
-                else:
-                    items_str.append(str(item))
-            val_str = " | ".join(items_str)
-        else:
-            val_str = str(valeur) if (valeur is not None and str(valeur).strip() != "") else "-"
-
-        val_str_clean = nettoyer_texte_pdf(val_str)
-
-        # Vérification du saut de page automatique
+        # Saut de page automatique si trop bas sur la feuille
         if pdf.get_y() > 250:
             pdf.add_page()
 
-        x_start = 10
+        nom_champ = str(champ).replace("_", " ").capitalize()
+        
+        if isinstance(valeur, (dict, list)):
+            val_str = json.dumps(valeur, ensure_ascii=False)
+        elif isinstance(valeur, bytes) or (isinstance(valeur, str) and valeur.startswith("data:image")):
+            val_str = "[Fichier Binaire / Image]"
+        else:
+            val_str = str(valeur) if (valeur is not None and str(valeur).strip() != "") else "-"
+
+        nom_champ_clean = nettoyer_texte_pdf(nom_champ)
+        val_str_clean = nettoyer_texte_pdf(val_str)
+
+        # Calcul dynamique des hauteurs avec multi_cell sécurisé (70mm + 120mm = 190mm)
+        x_start = pdf.get_x()
         y_initial = pdf.get_y()
 
-        # Colonne Nom du champ (Largeur : 55 mm)
-        pdf.set_xy(x_start, y_initial)
         pdf.set_font("Arial", "B", 8)
-        pdf.multi_cell(55, 5, nom_champ_clean, border=1)
-        hauteur_nom = pdf.get_y() - y_initial
+        pdf.multi_cell(70, 5, nom_champ_clean, border=1)
+        h_left = pdf.get_y() - y_initial
 
-        # Colonne Valeur (Largeur : 135 mm -> Total = 190 mm)
-        pdf.set_xy(x_start + 55, y_initial)
+        pdf.set_xy(x_start + 70, y_initial)
         pdf.set_font("Arial", "", 8)
-        pdf.multi_cell(135, 5, val_str_clean, border=1)
-        hauteur_valeur = pdf.get_y() - y_initial
+        pdf.multi_cell(120, 5, val_str_clean, border=1)
+        h_right = pdf.get_y() - y_initial
 
-        # Calage de la ligne suivante sur la plus grande des deux hauteurs
-        hauteur_max = max(hauteur_nom, hauteur_valeur)
-        pdf.set_xy(x_start, y_initial + hauteur_max)
+        # Calage sur la plus grande hauteur de la ligne
+        h_max = max(h_left, h_right)
+        pdf.set_xy(x_start, y_initial + h_max)
 
-    pdf.ln(2)
+    pdf.ln(3)
 
 
 # =========================================================================
