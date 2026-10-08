@@ -4428,8 +4428,8 @@ def afficher():
         # =========================================================
         # 15.4 SIGNATURES TACTILES DES PARTIES
         # =========================================================
-        st.markdown("### ✍️ 4. Validation & Signatures Tactiles")
-        st.caption("Signez directement avec le doigt ou un stylet sur les cadres ci-dessous.")
+        st.markdown("### ✍️ 4. Validation & Signatures")
+        st.caption("Signez directement ci-dessous ou renseignez la validation.")
 
         st.info(
             "📜 **Engagement :** Je soussigné(e) confirme avoir pris connaissance "
@@ -4438,6 +4438,13 @@ def afficher():
 
         col_sig_prod, col_sig_cons = st.columns([1, 1])
 
+        # Import sécurisé de st_canvas
+        try:
+            from streamlit_drawable_canvas import st_canvas
+            canvas_disponible = True
+        except ImportError:
+            canvas_disponible = False
+
         with col_sig_prod:
             st.markdown("#### 🖊️ Signature du Producteur")
             nom_producteur = st.text_input(
@@ -4445,17 +4452,22 @@ def afficher():
                 value=st.session_state.get("nom_producteur_pdc", "Nom et Prénom"),
                 key="input_nom_producteur_sig"
             )
-            st.caption("Tracez la signature du producteur :")
-            canvas_producteur = st_canvas(
-                fill_color="rgba(255, 255, 255, 0)",
-                stroke_width=3,
-                stroke_color="#000000",
-                background_color="#FFFFFF",
-                height=160,
-                width=300,
-                drawing_mode="freedraw",
-                key="canvas_prod",
-            )
+            
+            canvas_producteur = None
+            if canvas_disponible:
+                st.caption("Tracez la signature du producteur :")
+                canvas_producteur = st_canvas(
+                    fill_color="rgba(255, 255, 255, 0)",
+                    stroke_width=2,
+                    stroke_color="#000000",
+                    background_color="#FFFFFF",
+                    height=140,
+                    width=260, # Un peu plus étroit pour l'affichage mobile
+                    drawing_mode="freedraw",
+                    key="canvas_prod",
+                )
+            else:
+                st.warning("Module tactile non chargé (mode texte activé).")
 
         with col_sig_cons:
             st.markdown("#### 🖊️ Signature du Technicien")
@@ -4465,22 +4477,27 @@ def afficher():
                 placeholder="Ex: Kouassi Yao",
                 key="input_nom_technicien_sig"
             )
-            st.caption("Tracez la signature du technicien :")
-            canvas_technicien = st_canvas(
-                fill_color="rgba(255, 255, 255, 0)",
-                stroke_width=3,
-                stroke_color="#084081",
-                background_color="#FFFFFF",
-                height=160,
-                width=300,
-                drawing_mode="freedraw",
-                key="canvas_cons",
-            )
+            
+            canvas_technicien = None
+            if canvas_disponible:
+                st.caption("Tracez la signature du technicien :")
+                canvas_technicien = st_canvas(
+                    fill_color="rgba(255, 255, 255, 0)",
+                    stroke_width=2,
+                    stroke_color="#084081",
+                    background_color="#FFFFFF",
+                    height=140,
+                    width=260,
+                    drawing_mode="freedraw",
+                    key="canvas_cons",
+                )
+            else:
+                st.warning("Module tactile non chargé (mode texte activé).")
 
         st.markdown("---")
 
         # =========================================================
-        # LOGIQUE D'EXTRACTION ET DE MINTIEN DE SIGNATURE
+        # LOGIQUE D'EXTRACTION ET DE MAINTIEN DE SIGNATURE
         # =========================================================
         def extraire_image_signature(canvas_obj):
             if canvas_obj is None:
@@ -4558,4 +4575,5 @@ def afficher():
                 if sig_producteur_finale is not None or sig_technicien_finale is not None:
                     st.success("✅ PDC finalisé avec succès ! Signatures bien enregistrées.")
                 else:
-                    st.warning("⚠️ Le document a été validé, mais aucune signature n'a été détectée dans le tracé.")
+                    st.warning("⚠️ Le document a été validé sans tracé de signature tactile.")
+
