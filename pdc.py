@@ -4377,10 +4377,6 @@ def afficher():
 
         st.markdown("---")
 
-import streamlit as st
-import numpy as np
-import pandas as pd
-from streamlit_drawable_canvas import st_canvas
 
 # =========================================================
 # 15.4 SIGNATURES TACTILES DES PARTIES
