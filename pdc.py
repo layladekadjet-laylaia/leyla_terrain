@@ -4464,7 +4464,6 @@ def afficher():
 
         col_sig_prod, col_sig_cons = st.columns([1, 1])
 
-        # Import sécurisé de st_canvas
         try:
             from streamlit_drawable_canvas import st_canvas
             canvas_disponible = True
@@ -4488,7 +4487,7 @@ def afficher():
                     stroke_color="#000000",
                     background_color="#FFFFFF",
                     height=140,
-                    width=260, # Un peu plus étroit pour l'affichage mobile
+                    width=260,
                     drawing_mode="freedraw",
                     key="canvas_prod",
                 )
@@ -4499,7 +4498,7 @@ def afficher():
             st.markdown("#### 🖊️ Signature du Technicien")
             nom_technicien = st.text_input(
                 "Nom du Technicien",
-                value=st.session_state.get("nom_conseiller_pdc", ""),
+                value=st.session_state.get("nom_conseiller_pdc", st.session_state.get("technicien", "")),
                 placeholder="Ex: Kouassi Yao",
                 key="input_nom_technicien_sig"
             )
@@ -4522,61 +4521,49 @@ def afficher():
 
         st.markdown("---")
 
-          # =========================================================
-        # LOGIQUE D'EXTRACTION ET DE MAINTIEN DE SIGNATURE
         # =========================================================
-        def extraire_image_signature(canvas_obj):
-            """
-            Extrait la signature du canvas en vérifiant la présence de traits dans json_data.
-            Retourne un tableau numpy (RGBA) ou None si aucun dessin n'a été effectué.
-            """
-            if canvas_obj is None:
-                return None
-            
-            try:
-                # 1. Vérification par le dictionnaire JSON (très fiable sur mobile)
-                has_drawn_objects = False
-                if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
-                    objects = canvas_obj.json_data.get("objects", [])
-                    if len(objects) > 0:
-                        has_drawn_objects = True
+        # CAPTURE CONTINUE DES SIGNATURES (EN TEMPS RÉEL)
+        # =========================================================
+        def extraire_et_sauvegarder_signature(canvas_obj, cle_session):
+            if canvas_obj is not None:
+                try:
+                    has_drawn = False
+                    if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
+                        if len(canvas_obj.json_data.get("objects", [])) > 0:
+                            has_drawn = True
 
-                # 2. Extraction du tableau d'image
-                if hasattr(canvas_obj, "image_data") and canvas_obj.image_data is not None:
-                    img_array = canvas_obj.image_data
-                    if isinstance(img_array, np.ndarray) and img_array.size > 0:
-                        # Si des objets existent dans le JSON, on retourne directement le matriciel
-                        if has_drawn_objects:
-                            return img_array
-                        
-                        # Test de secours sur le canal Alpha / Pixels sombres (si json_data est absent)
-                        if img_array.shape[-1] == 4:  # Image RGBA
-                            alpha = img_array[:, :, 3]
-                            if np.any(alpha > 10):  # Seuil de transparence franchi
-                                return img_array
-                        else:
-                            if np.any(img_array < 240):  # Pixels non blancs
-                                return img_array
+                    if hasattr(canvas_obj, "image_data") and canvas_obj.image_data is not None:
+                        img_array = canvas_obj.image_data
+                        if isinstance(img_array, np.ndarray) and img_array.size > 0:
+                            if has_drawn:
+                                st.session_state[cle_session] = img_array
+                            elif img_array.shape[-1] == 4 and np.any(img_array[:, :, 3] > 10):
+                                st.session_state[cle_session] = img_array
+                            elif np.any(img_array < 240):
+                                st.session_state[cle_session] = img_array
+                except Exception:
+                    pass
 
-            except Exception as e:
-                # Silencieux pour éviter de bloquer l'interface
-                pass
+        # Sauvegarde immédiate dans la session dès qu'un trait est tracé
+        extraire_et_sauvegarder_signature(canvas_producteur, "sig_prod_temp")
+        extraire_et_sauvegarder_signature(canvas_technicien, "sig_tech_temp")
 
-            return None
+        # Indicateur visuel pour rassurer l'agent sur le terrain
+        col_ind1, col_ind2 = st.columns(2)
+        with col_ind1:
+            if st.session_state.get("sig_prod_temp") is not None:
+                st.success("✓ Signature producteur enregistrée")
+            else:
+                st.info("En attente de la signature producteur")
+        with col_ind2:
+            if st.session_state.get("sig_tech_temp") is not None:
+                st.success("✓ Signature technicien enregistrée")
+            else:
+                st.info("En attente de la signature technicien")
 
-        # Capture dynamique
-        img_sig_prod = extraire_image_signature(canvas_producteur)
-        img_sig_tech = extraire_image_signature(canvas_technicien)
+        st.markdown("---")
 
-        # Maintien persistant en session : on ne remplace la variable temporaire 
-        # que si un nouveau tracé valide est détecté à cet instant.
-        if img_sig_prod is not None:
-            st.session_state["sig_prod_temp"] = img_sig_prod
-
-        if img_sig_tech is not None:
-            st.session_state["sig_tech_temp"] = img_sig_tech
-
-         # =========================================================
+        # =========================================================
         # NAVIGATION ET ENREGISTREMENT DE LA VALIDATION
         # =========================================================
         col_btn1, col_btn2 = st.columns([1, 1])
@@ -4598,9 +4585,9 @@ def afficher():
                 if "reponses_pdc" not in st.session_state:
                     st.session_state.reponses_pdc = {}
 
-                # Récupération persistante dans la session
-                sig_producteur_finale = st.session_state.get("sig_prod_temp", img_sig_prod)
-                sig_technicien_finale = st.session_state.get("sig_tech_temp", img_sig_tech)
+                # Récupération sécurisée depuis la session persistante
+                sig_producteur_finale = st.session_state.get("sig_prod_temp")
+                sig_technicien_finale = st.session_state.get("sig_tech_temp")
 
                 if "recommandations_finales" in locals():
                     st.session_state["recommandations_finales_pdc"] = recommandations_finales
@@ -4621,9 +4608,7 @@ def afficher():
 
                 st.session_state["pdc_finalise"] = True
                 
-                # Message de succès universel (supprime l'avertissement jaune conditionnel)
+                # Déclenchement des ballons de succès globaux de l'application
+                st.session_state["afficher_ballons_flag"] = True
                 st.success("✅ PDC finalisé avec succès ! Signatures et validité enregistrées.")
                 st.rerun()
-
-
-
