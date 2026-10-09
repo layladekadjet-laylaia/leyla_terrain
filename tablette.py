@@ -1,5 +1,6 @@
 import base64
 import json
+import math
 import os
 import sqlite3
 import time
@@ -92,6 +93,8 @@ class NpEncoder(json.JSONEncoder):
     if isinstance(obj, np.integer):
       return int(obj)
     if isinstance(obj, np.floating):
+      if math.isnan(obj) or math.isinf(obj):
+        return None
       return float(obj)
     if isinstance(obj, np.ndarray):
       return obj.tolist()
@@ -105,7 +108,7 @@ class NpEncoder(json.JSONEncoder):
 
 
 def nettoyer_pour_json(d):
-  """Nettoie et convertit récursivement toutes les données pour la sérialisation JSON sans aucune perte."""
+  """Nettoie et convertit récursivement toutes les données pour la sérialisation JSON en éliminant les NaN/inf."""
   if isinstance(d, dict):
     return {
         str(k): nettoyer_pour_json(v)
@@ -121,13 +124,19 @@ def nettoyer_pour_json(d):
   elif isinstance(d, (np.integer, int)):
     return int(d)
   elif isinstance(d, (np.floating, float)):
+    if math.isnan(d) or math.isinf(d):
+      return None
     return float(d)
   elif isinstance(d, bytes):
-    # Encodage du croquis ou image binaire en base64 pour intégration JSON sans perte
     return f"data:image/png;base64,{base64.b64encode(d).decode('utf-8')}"
   elif pd.isna(d):
     return None
   else:
+    try:
+      if isinstance(d, float) and (math.isnan(d) or math.isinf(d)):
+        return None
+    except Exception:
+      pass
     return d
 
 
