@@ -902,7 +902,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(4)
     
-     # --- FORMULAIRES / ÉTAPES (CORRIGÉ & FLEXIBLE) ---
+    # --- FORMULAIRES / ÉTAPES (CORRIGÉ & FLEXIBLE) ---
     # 1. On cherche d'abord dans les sous-clés habituelles
     reponses = data.get("reponses", {})
     pdc_etapes = {}
@@ -931,6 +931,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
         champs_directs = {k: v for k, v in data.items() if k not in ["croquis_genere", "croquis_image", "signataires", "reponses"]}
         if champs_directs:
             dessiner_tableau_etape(pdf, "Données Générales du PDC", champs_directs)
+
 
 
     # --- INTÉGRATION DU CROQUIS ---
