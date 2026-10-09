@@ -1,4 +1,4 @@
-import streamlit as st
+cimport streamlit as st
 import os
 import time
 import numpy as np
@@ -697,7 +697,7 @@ def nettoyer_texte_pdf(chaine: str) -> str:
 
 
 # =========================================================================
-# 2. CONVERSION ET TRAITEMENT DES IMAGES
+# 2. CONVERSION ET TRAITEMENT DES IMAGES (SÉCURISÉ NUMPY)
 # =========================================================================
 
 def traiter_image_pour_pdf(img_data):
@@ -706,7 +706,29 @@ def traiter_image_pour_pdf(img_data):
         return None
 
     try:
-        # Base64
+        # Gestion sécurisée des tableaux NumPy
+        if isinstance(img_data, np.ndarray):
+            if img_data.size == 0:
+                return None
+            if img_data.ndim == 3 and img_data.shape[2] == 4:
+                if not np.any(img_data[:, :, 3] > 0):
+                    return None
+            
+            img_pil = Image.fromarray(img_data.astype('uint8'))
+            if img_pil.mode in ("RGBA", "P"):
+                background = Image.new('RGB', img_pil.size, (255, 255, 255))
+                if img_pil.mode == "RGBA":
+                    background.paste(img_pil, mask=img_pil.split()[3])
+                else:
+                    background.paste(img_pil)
+                img_pil = background
+            
+            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+            img_pil.save(temp_file.name, format="PNG")
+            temp_file.close()
+            return temp_file.name
+
+        # Chaîne Base64
         if isinstance(img_data, str) and img_data.startswith("data:image"):
             header, encoded = img_data.split(",", 1)
             img_bytes = base64.b64decode(encoded)
@@ -714,27 +736,6 @@ def traiter_image_pour_pdf(img_data):
             temp_file.write(img_bytes)
             temp_file.close()
             return temp_file.name
-
-        # Matrice NumPy (st_canvas)
-        if isinstance(img_data, np.ndarray):
-            if img_data.size > 0:
-                if img_data.ndim == 3 and img_data.shape[2] == 4:
-                    if not np.any(img_data[:, :, 3] > 0):
-                        return None  # Canvas vide
-                
-                img_pil = Image.fromarray(img_data.astype('uint8'))
-                if img_pil.mode in ("RGBA", "P"):
-                    background = Image.new('RGB', img_pil.size, (255, 255, 255))
-                    if img_pil.mode == "RGBA":
-                        background.paste(img_pil, mask=img_pil.split()[3])
-                    else:
-                        background.paste(img_pil)
-                    img_pil = background
-                
-                temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
-                img_pil.save(temp_file.name, format="PNG")
-                temp_file.close()
-                return temp_file.name
 
         # Octets bruts (bytes)
         elif isinstance(img_data, bytes):
@@ -754,48 +755,48 @@ def traiter_image_pour_pdf(img_data):
 
 
 # =========================================================================
-# 3. FORMATAGE DU TEXTE ET RENDU DES TABLEAUX
+# 3. FORMATAGE SÉCURISÉ DES VALEURS
 # =========================================================================
 
+Est Vide = lambda x: x is None or x == "" or x == {} or x == [] or (isinstance(x, np.ndarray) and x.size == 0)
+
 def formater_valeur_lisible(valeur) -> str:
-    """Transforme les structures complexes (dict, list) en texte propre."""
-    if valeur is None or valeur == {} or valeur == []:
+    """Transforme les structures complexes en texte propre sans erreur NumPy."""
+    if Est_Vide(valeur):
         return "-"
     if isinstance(valeur, dict):
-        elems = [f"{k}: {formater_valeur_lisible(v)}" for k, v in valeur.items() if v not in [None, "", {}, []]]
+        elems = [f"{k}: {formater_valeur_lisible(v)}" for k, v in valeur.items() if not Est_Vide(v)]
         return " | ".join(elems) if elems else "-"
     elif isinstance(valeur, list):
-        elems = [formater_valeur_lisible(x) for x in valeur if x not in [None, "", {}, []]]
+        elems = [formater_valeur_lisible(x) for x in valeur if not Est_Vide(x)]
         return ", ".join(elems) if elems else "-"
     elif isinstance(valeur, bytes) or (isinstance(valeur, str) and valeur.startswith("data:image")):
         return "[Image / Croquis Binaire]"
+    elif isinstance(valeur, np.ndarray):
+        return "[Matrice Données]"
     else:
         v_str = str(valeur).strip()
         return v_str if v_str not in ["", "{}"] else "-"
 
 
 def dessiner_section_pdf(pdf, titre_etape, valeur_contenu):
-    """Dessine un tableau ou un bloc récapitulatif pour n'importe quelle donnée réelle."""
-    if valeur_contenu in [None, "", {}, []]:
+    """Dessine un tableau ou un bloc récapitulatif pour les données réelles."""
+    if Est_Vide(valeur_contenu):
         return
 
-    # Si c'est un dictionnaire de sous-données
     if isinstance(valeur_contenu, dict):
-        # Filtrer pour vérifier s'il y a du contenu réel
-        champs_valides = {k: v for k, v in valeur_contenu.items() if v not in [None, "", {}, []] and k not in ["croquis_image", "croquis_genere", "signataires"]}
+        champs_valides = {k: v for k, v in valeur_contenu.items() if not Est_Vide(v) and k not in ["croquis_image", "croquis_genere", "signataires"]}
         if not champs_valides:
             return
 
         if pdf.get_y() > 240:
             pdf.add_page()
 
-        # Bandeau de section
         pdf.set_font("Arial", "B", 10)
         pdf.set_fill_color(220, 230, 242)
         titre_clean = nettoyer_texte_pdf(f"  {titre_etape.replace('_', ' ').upper()}")
         pdf.cell(190, 7, titre_clean, border=1, ln=True, fill=True)
 
-        # En-tête
         pdf.set_font("Arial", "B", 9)
         pdf.set_fill_color(240, 240, 240)
         pdf.cell(70, 6, nettoyer_texte_pdf(" Étape / Champ"), border=1, fill=True)
@@ -829,13 +830,11 @@ def dessiner_section_pdf(pdf, titre_etape, valeur_contenu):
 
         pdf.ln(3)
 
-    # Si c'est une liste de fiches (ex: Tableau cultures, Tableau equipements, Tableau arbres)
     elif isinstance(valeur_contenu, list):
         for idx, elem in enumerate(valeur_contenu):
             if isinstance(elem, dict):
                 dessiner_section_pdf(pdf, f"{titre_etape} #{idx + 1}", elem)
 
-    # Si c'est une valeur simple
     else:
         if pdf.get_y() > 250:
             pdf.add_page()
@@ -878,7 +877,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     
     # --- PARCOURS EXHAUSTIF DES DONNÉES DE SESSION ---
     reponses = data.get("reponses", {})
-    if not reponses and isinstance(data, dict):
+    if Est_Vide(reponses) and isinstance(data, dict):
         reponses = data
 
     cles_a_ignorer = [
@@ -887,7 +886,6 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
         "croquis_genere", "croquis_image", "signataires", "pdc_data", "pdc_data_15_etapes"
     ]
 
-    # 1. Parcours de toutes les données enregistrées directement dans la session
     for cle, valeur in reponses.items():
         if cle in cles_a_ignorer or str(cle).startswith("btn_") or str(cle).startswith("sb_") or str(cle).startswith("FormSubmitter"):
             continue
@@ -896,7 +894,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
 
     # --- INTÉGRATION DU CROQUIS ---
     croquis_data = data.get("croquis_genere") or data.get("croquis_image") or (reponses.get("croquis_genere") if isinstance(reponses, dict) else None)
-    if croquis_data:
+    if not Est_Vide(croquis_data):
         path_croquis = traiter_image_pour_pdf(croquis_data)
         if path_croquis:
             if pdf.get_y() > 180:
@@ -924,13 +922,12 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     if not signataires and "signataires" in data:
         signataires = data.get("signataires", {})
 
-    # Récupération de l'image (dans le dict signataires ou le tampon de session)
     sig_p_img = signataires.get("producteur_signature")
-    if (sig_p_img is None or sig_p_img == "Validé par saisie") and hasattr(st, "session_state"):
+    if (Est_Vide(sig_p_img) or sig_p_img == "Validé par saisie") and hasattr(st, "session_state"):
         sig_p_img = st.session_state.get("sig_prod_temp")
 
     sig_t_img = signataires.get("technicien_signature")
-    if (sig_t_img is None or sig_t_img == "Validé par saisie") and hasattr(st, "session_state"):
+    if (Est_Vide(sig_t_img) or sig_t_img == "Validé par saisie") and hasattr(st, "session_state"):
         sig_t_img = st.session_state.get("sig_tech_temp")
 
     if pdf.get_y() > 230:
@@ -989,13 +986,12 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                     pass
     else:
         pdf.set_font("Arial", "I", 8)
-        pdf.cell(90, 5, nettoyer_texte_pdf("[Validé par saisie]"), ln=True)
+        pdf.cell(90, 5, nettoyer_texte_pdf("[Validé sans tracé]"), ln=True)
 
     out = pdf.output(dest='S')
     if isinstance(out, str):
         return out.encode('latin-1', 'ignore')
     return bytes(out)
-
 
 
 
