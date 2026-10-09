@@ -697,7 +697,7 @@ def nettoyer_texte_pdf(chaine: str) -> str:
 
 
 # =========================================================================
-# 2. CONVERSION ET TRAITEMENT DES IMAGES (SÉCURISÉ NUMPY)
+# 2. CONVERSION ET TRAITEMENT DES IMAGES
 # =========================================================================
 
 def traiter_image_pour_pdf(img_data):
@@ -706,7 +706,6 @@ def traiter_image_pour_pdf(img_data):
         return None
 
     try:
-        # Gestion sécurisée des tableaux NumPy
         if isinstance(img_data, np.ndarray):
             if img_data.size == 0:
                 return None
@@ -728,7 +727,6 @@ def traiter_image_pour_pdf(img_data):
             temp_file.close()
             return temp_file.name
 
-        # Chaîne Base64
         if isinstance(img_data, str) and img_data.startswith("data:image"):
             header, encoded = img_data.split(",", 1)
             img_bytes = base64.b64decode(encoded)
@@ -737,14 +735,12 @@ def traiter_image_pour_pdf(img_data):
             temp_file.close()
             return temp_file.name
 
-        # Octets bruts (bytes)
         elif isinstance(img_data, bytes):
             temp_file = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
             temp_file.write(img_data)
             temp_file.close()
             return temp_file.name
 
-        # Fichier disque
         elif isinstance(img_data, str) and os.path.exists(img_data):
             return img_data
 
@@ -759,7 +755,7 @@ def traiter_image_pour_pdf(img_data):
 # =========================================================================
 
 def est_vide(x):
-    """Vérifie si une valeur est vide de manière sécurisée (évite les erreurs NumPy)."""
+    """Vérifie si une valeur est vide de manière sécurisée."""
     if x is None:
         return True
     if isinstance(x, np.ndarray):
@@ -770,8 +766,9 @@ def est_vide(x):
         return True
     return False
 
+
 def formater_valeur_lisible(valeur) -> str:
-    """Transforme les structures complexes en texte propre sans erreur NumPy."""
+    """Transforme les structures complexes en texte propre."""
     if est_vide(valeur):
         return "-"
     if isinstance(valeur, dict):
@@ -887,7 +884,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     
     # --- PARCOURS EXHAUSTIF DES DONNÉES DE SESSION ---
     reponses = data.get("reponses", {})
-    if Est_Vide(reponses) and isinstance(data, dict):
+    if est_vide(reponses) and isinstance(data, dict):
         reponses = data
 
     cles_a_ignorer = [
@@ -904,7 +901,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
 
     # --- INTÉGRATION DU CROQUIS ---
     croquis_data = data.get("croquis_genere") or data.get("croquis_image") or (reponses.get("croquis_genere") if isinstance(reponses, dict) else None)
-    if not Est_Vide(croquis_data):
+    if not est_vide(croquis_data):
         path_croquis = traiter_image_pour_pdf(croquis_data)
         if path_croquis:
             if pdf.get_y() > 180:
@@ -933,11 +930,11 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
         signataires = data.get("signataires", {})
 
     sig_p_img = signataires.get("producteur_signature")
-    if (Est_Vide(sig_p_img) or sig_p_img == "Validé par saisie") and hasattr(st, "session_state"):
+    if (est_vide(sig_p_img) or sig_p_img == "Validé par saisie") and hasattr(st, "session_state"):
         sig_p_img = st.session_state.get("sig_prod_temp")
 
     sig_t_img = signataires.get("technicien_signature")
-    if (Est_Vide(sig_t_img) or sig_t_img == "Validé par saisie") and hasattr(st, "session_state"):
+    if (est_vide(sig_t_img) or sig_t_img == "Validé par saisie") and hasattr(st, "session_state"):
         sig_t_img = st.session_state.get("sig_tech_temp")
 
     if pdf.get_y() > 230:
@@ -1002,7 +999,6 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     if isinstance(out, str):
         return out.encode('latin-1', 'ignore')
     return bytes(out)
-
 
 
 
