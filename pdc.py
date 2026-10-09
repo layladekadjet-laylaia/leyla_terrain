@@ -758,17 +758,27 @@ def traiter_image_pour_pdf(img_data):
 # 3. FORMATAGE SÉCURISÉ DES VALEURS
 # =========================================================================
 
-Est Vide = lambda x: x is None or x == "" or x == {} or x == [] or (isinstance(x, np.ndarray) and x.size == 0)
+def est_vide(x):
+    """Vérifie si une valeur est vide de manière sécurisée (évite les erreurs NumPy)."""
+    if x is None:
+        return True
+    if isinstance(x, np.ndarray):
+        return x.size == 0
+    if isinstance(x, (str, list, dict)) and len(x) == 0:
+        return True
+    if str(x).strip() in ["", "{}"]:
+        return True
+    return False
 
 def formater_valeur_lisible(valeur) -> str:
     """Transforme les structures complexes en texte propre sans erreur NumPy."""
-    if Est_Vide(valeur):
+    if est_vide(valeur):
         return "-"
     if isinstance(valeur, dict):
-        elems = [f"{k}: {formater_valeur_lisible(v)}" for k, v in valeur.items() if not Est_Vide(v)]
+        elems = [f"{k}: {formater_valeur_lisible(v)}" for k, v in valeur.items() if not est_vide(v)]
         return " | ".join(elems) if elems else "-"
     elif isinstance(valeur, list):
-        elems = [formater_valeur_lisible(x) for x in valeur if not Est_Vide(x)]
+        elems = [formater_valeur_lisible(x) for x in valeur if not est_vide(x)]
         return ", ".join(elems) if elems else "-"
     elif isinstance(valeur, bytes) or (isinstance(valeur, str) and valeur.startswith("data:image")):
         return "[Image / Croquis Binaire]"
@@ -781,11 +791,11 @@ def formater_valeur_lisible(valeur) -> str:
 
 def dessiner_section_pdf(pdf, titre_etape, valeur_contenu):
     """Dessine un tableau ou un bloc récapitulatif pour les données réelles."""
-    if Est_Vide(valeur_contenu):
+    if est_vide(valeur_contenu):
         return
 
     if isinstance(valeur_contenu, dict):
-        champs_valides = {k: v for k, v in valeur_contenu.items() if not Est_Vide(v) and k not in ["croquis_image", "croquis_genere", "signataires"]}
+        champs_valides = {k: v for k, v in valeur_contenu.items() if not est_vide(v) and k not in ["croquis_image", "croquis_genere", "signataires"]}
         if not champs_valides:
             return
 
