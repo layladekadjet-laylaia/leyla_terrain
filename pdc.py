@@ -755,7 +755,7 @@ def traiter_image_pour_pdf(img_data):
 # =========================================================================
 
 def est_vide(x):
-    """Vérifie si une valeur est considérée comme vide."""
+    """Vérifie si une valeur est considérée comme vide de manière sécurisée."""
     if x is None:
         return True
     if isinstance(x, np.ndarray):
@@ -787,11 +787,11 @@ def formater_valeur_lisible(valeur) -> str:
 
 
 def dessiner_tableau_dynamique(pdf, titre_section, contenu):
-    """Dessine un tableau structuré (clé / valeur ou tableau de lignes) pour correspondre au rapport complet."""
+    """Dessine un tableau structuré (clé / valeur ou tableau de lignes)."""
     if est_vide(contenu):
         return
 
-    # Si le contenu est une liste de dictionnaires (ex: Tableau cultures, équipements, arbres)
+    # Si le contenu est une liste de dictionnaires (ex: cultures, équipements, arbres)
     if isinstance(contenu, list):
         lignes_valides = [item for item in contenu if not est_vide(item)]
         if not lignes_valides:
@@ -800,13 +800,11 @@ def dessiner_tableau_dynamique(pdf, titre_section, contenu):
         if pdf.get_y() > 230:
             pdf.add_page()
 
-        # Titre de la section
         pdf.set_font("Arial", "B", 10)
         pdf.set_fill_color(220, 230, 242)
         pdf.cell(190, 7, nettoyer_texte_pdf(f"  {titre_section.upper()}"), border=1, ln=True, fill=True)
 
-        # Extraction des en-têtes basés sur les clés du premier dictionnaire
-         premier_elem = lignes_valides[0]
+        premier_elem = lignes_valides[0]
         if isinstance(premier_elem, dict):
             cles = [k for k in premier_elem.keys() if k not in ["croquis_image", "croquis_genere", "signataires"]]
             if cles:
@@ -877,7 +875,6 @@ def dessiner_tableau_dynamique(pdf, titre_section, contenu):
 
         pdf.ln(3)
 
-    # Valeur simple
     else:
         if pdf.get_y() > 250:
             pdf.add_page()
@@ -888,7 +885,7 @@ def dessiner_tableau_dynamique(pdf, titre_section, contenu):
 
 
 # =========================================================================
-# 4. GÉNÉRATEUR PRINCIPAL DU PDF (RAPPORT COMPLET)
+# 4. GÉNÉRATEUR PRINCIPAL DU PDF
 # =========================================================================
 
 def generer_pdf_pdc_fonction(data: dict) -> bytes:
@@ -903,7 +900,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf.cell(0, 5, nettoyer_texte_pdf("Aperçu global récapitulatif pour impression PDF - Mode Terrain"), ln=True, align="C")
     pdf.ln(3)
     
-    # --- INFORMATIONS GLOBALES DE SESSION ---
+    # --- INFORMATIONS GLOBALES ---
     pdf.set_font("Arial", "B", 9)
     reponses = data.get("reponses", {})
     if est_vide(reponses) and isinstance(data, dict):
@@ -924,7 +921,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(5)
     
-    # --- PARCOURS EXHAUSTIF DES DONNÉES DE SESSION (SIMILAIRE À LA VUE WEB) ---
+    # --- PARCOURS EXHAUSTIF DES DONNÉES DE SESSION ---
     cles_a_ignorer = [
         "appareil_deverrouille", "identifie", "code_agent_connecte", 
         "pdf_bytes_pdc", "etape_pdc", "historique_modules", 
@@ -937,7 +934,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
         
         dessiner_tableau_dynamique(pdf, str(cle), valeur)
 
-    # --- INTÉGRATION DU CROQUIS DE PARCELLE ---
+    # --- INTÉGRATION DU CROQUIS ---
     croquis_data = data.get("croquis_genere") or data.get("croquis_image") or (reponses.get("croquis_genere") if isinstance(reponses, dict) else None)
     if not est_vide(croquis_data):
         path_croquis = traiter_image_pour_pdf(croquis_data)
@@ -1031,7 +1028,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                     pass
     else:
         pdf.set_font("Arial", "I", 8)
-        pdf.cell(90, 5, nettoyer_newToken = "[Validé sans tracé]"), ln=True)
+        pdf.cell(90, 5, nettoyer_texte_pdf("[Validé sans tracé]"), ln=True)
 
     out = pdf.output(dest='S')
     if isinstance(out, str):
