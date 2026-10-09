@@ -849,89 +849,61 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     
     # --- EN-TÊTE PRINCIPAL ---
     pdf.set_font("Arial", "B", 13)
-    pdf.cell(0, 8, nettoyer_texte_pdf("RAPPORT DE DIAGNOSTIC & PLAN DE DÉVELOPPEMENT (PDC)"), ln=True, align="C")
+    pdf.cell(0, 8, nettoyer_texte_pdf("PLAN DE DÉVELOPPEMENT DE CONSEIL (PDC) - RAPPORT COMPLET"), ln=True, align="C")
     pdf.ln(2)
     
-    # --- FICHE PRODUCTEUR ---
-    pdf.set_font("Arial", "B", 9)
-    nom_prod = data.get('nom_producteur') or data.get('producteur') or 'Yao jean'
-    code_ccc = data.get('code_ccc') or data.get('code_producteur') or 'CCC-000'
-    zone = data.get('zone') or data.get('section') or 'grand zatry'
-    score = data.get('score_faisabilite', '65')
-    
-    pdf.cell(95, 5, nettoyer_texte_pdf(f"Producteur : {nom_prod}"), border=0)
-    pdf.cell(95, 5, nettoyer_texte_pdf(f"Code CCC : {code_ccc}"), ln=True)
-    pdf.cell(95, 5, nettoyer_texte_pdf(f"Zone d'intervention : {zone}"), border=0)
-    pdf.cell(95, 5, nettoyer_texte_pdf(f"Score de Faisabilité : {score} / 100"), ln=True)
-    pdf.ln(3)
-    
-    pdf.set_draw_color(180, 180, 180)
-    pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(4)
-    
-    # --- PARCOURS UNIVERSEL DES FORMULAIRES ---
+    # --- LECTURE UNIVERSELLE DE TOUTES LES CLÉS DE SESSION ---
     reponses = data.get("reponses", {})
-    
-    # 1. Analyse si pdc_data_15_etapes est présent
-    pdc_etapes = {}
-    if isinstance(reponses, dict) and "pdc_data_15_etapes" in reponses:
-        pdc_etapes = reponses.get("pdc_data_15_etapes", {})
-    elif "pdc_data_15_etapes" in data:
-        pdc_etapes = data.get("pdc_data_15_etapes", {})
+    if not reponses and isinstance(data, dict):
+        reponses = data
 
-    if pdc_etapes and isinstance(pdc_etapes, dict):
-        for etape_titre, etape_contenu in pdc_etapes.items():
-            if isinstance(etape_contenu, dict) and etape_contenu:
-                dessiner_tableau_etape(pdf, etape_titre, etape_contenu)
-    
-    # 2. Secours : Parcours de toutes les autres clés plates de la session
-    if isinstance(reponses, dict):
-        for k, v in reponses.items():
-            if k in ["pdc_data_15_etapes", "signataires", "croquis_genere", "croquis_image", "historique_modules"]:
-                continue
-            if isinstance(v, dict) and v:
-                dessiner_tableau_etape(pdf, str(k), v)
+    cles_a_ignorer = [
+        "appareil_deverrouille", "identifie", "code_agent_connecte", 
+        "pdf_bytes_pdc", "etape_pdc", "historique_modules", 
+        "croquis_genere", "croquis_image", "signataires"
+    ]
+
+    # Parcours de l'intégralité des modules et formulaires
+    for cle, valeur in reponses.items():
+        if cle in cles_a_ignorer or str(cle).startswith("btn_") or str(cle).startswith("sb_"):
+            continue
+            
+        nom_section = str(cle).replace("_", " ").capitalize()
+        
+        # 1. Traitement des Dictionnaires (Formulaires / Étape)
+        if isinstance(valeur, dict) and valeur:
+            dessiner_tableau_etape(pdf, nom_section, valeur)
+            
+        # 2. Traitement des Listes de fiches (ex: Arbres, Équipements)
+        elif isinstance(valeur, list) and valeur:
+            if isinstance(valeur[0], dict):
+                for idx, elem in enumerate(valeur):
+                    dessiner_tableau_etape(pdf, f"{nom_section} #{idx+1}", elem)
+            else:
+                dict_liste = {f"Élément {i+1}": item for i, item in enumerate(valeur)}
+                dessiner_tableau_etape(pdf, nom_section, dict_liste)
 
     # --- INTÉGRATION DU CROQUIS ---
-    croquis_data = data.get("croquis_genere") or data.get("croquis_image") or (reponses.get("croquis_genere") if isinstance(reponses, dict) else None)
+    croquis_data = data.get("croquis_genere") or data.get("croquis_image") or reponses.get("croquis_genere")
     if croquis_data:
         path_croquis = traiter_image_pour_pdf(croquis_data)
         if path_croquis:
+            if pdf.get_y() > 180:
+                pdf.add_page()
             pdf.ln(3)
             pdf.set_font("Arial", "B", 10)
             pdf.cell(0, 6, nettoyer_texte_pdf("CROQUIS DE PARCELLE ET GÉOLOCALISATION"), ln=True)
             pdf.ln(2)
             try:
-                y_actuel = pdf.get_y()
-                if y_actuel > 200:
-                    pdf.add_page()
-                    y_actuel = pdf.get_y()
-                pdf.image(path_croquis, x=35, y=y_actuel, w=120)
+                pdf.image(path_croquis, x=35, y=pdf.get_y(), w=120)
                 pdf.ln(75)
             except Exception:
                 pass
-            finally:
-                if "tmp" in path_croquis and os.path.exists(path_croquis):
-                    try:
-                        os.remove(path_croquis)
-                    except Exception:
-                        pass
 
     # --- VALIDATION ET SIGNATURES TACTILES ---
-    signataires = {}
-    if isinstance(reponses, dict):
-        signataires = reponses.get("signataires", {})
+    signataires = reponses.get("signataires", {}) if isinstance(reponses, dict) else {}
     if not signataires and "signataires" in data:
         signataires = data.get("signataires", {})
-
-    # Récupération de secours dans st.session_state si disponible
-    sig_prod_img = signataires.get("producteur_signature")
-    if sig_prod_img in [None, "Validé par saisie"] and hasattr(st, "session_state"):
-        sig_prod_img = st.session_state.get("sig_prod_temp")
-
-    sig_tech_img = signataires.get("technicien_signature")
-    if sig_tech_img in [None, "Validé par saisie"] and hasattr(st, "session_state"):
-        sig_tech_img = st.session_state.get("sig_tech_temp")
 
     if pdf.get_y() > 230:
         pdf.add_page()
@@ -953,18 +925,16 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     prod_nom = signataires.get("producteur_nom", "Yao jean")
     pdf.cell(90, 5, nettoyer_texte_pdf(f"Producteur : {prod_nom}"), ln=True)
     
-    path_sig_prod = traiter_image_pour_pdf(sig_prod_img)
+    sig_p = signataires.get("producteur_signature")
+    if sig_p in [None, "Validé par saisie"] and hasattr(st, "session_state"):
+        sig_p = st.session_state.get("sig_prod_temp")
+    
+    path_sig_prod = traiter_image_pour_pdf(sig_p)
     if path_sig_prod:
         try:
             pdf.image(path_sig_prod, x=10, y=pdf.get_y() + 1, w=45)
         except Exception:
             pass
-        finally:
-            if "tmp" in path_sig_prod and os.path.exists(path_sig_prod):
-                try:
-                    os.remove(path_sig_prod)
-                except Exception:
-                    pass
     else:
         pdf.set_font("Arial", "I", 8)
         pdf.cell(90, 5, nettoyer_texte_pdf("[Validé par saisie / sans tracé]"), ln=True)
@@ -975,27 +945,25 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     tech_nom = signataires.get("technicien_nom", "Koné sylvain")
     pdf.cell(90, 5, nettoyer_texte_pdf(f"Technicien : {tech_nom}"), ln=True)
     
-    path_sig_tech = traiter_image_pour_pdf(sig_tech_img)
+    sig_t = signataires.get("technicien_signature")
+    if sig_t in [None, "Validé par saisie"] and hasattr(st, "session_state"):
+        sig_t = st.session_state.get("sig_tech_temp")
+
+    path_sig_tech = traiter_image_pour_pdf(sig_t)
     if path_sig_tech:
         try:
             pdf.image(path_sig_tech, x=110, y=pdf.get_y() + 1, w=45)
         except Exception:
             pass
-        finally:
-            if "tmp" in path_sig_tech and os.path.exists(path_sig_tech):
-                try:
-                    os.remove(path_sig_tech)
-                except Exception:
-                    pass
     else:
         pdf.set_font("Arial", "I", 8)
         pdf.cell(90, 5, nettoyer_texte_pdf("[Validé par saisie / sans tracé]"), ln=True)
 
-    # --- RETOUR DU BUFFER BINAIRE ---
     out = pdf.output(dest='S')
     if isinstance(out, str):
         return out.encode('latin-1', 'ignore')
     return bytes(out)
+
 
 
 
