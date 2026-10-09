@@ -697,7 +697,7 @@ def nettoyer_texte_pdf(chaine: str) -> str:
 
 
 # =========================================================================
-# 2. CONVERSION ET TRAITEMENT DES IMAGES
+# 2. CONVERSION ET TRAITEMENT DES IMAGES ET SIGNATURES
 # =========================================================================
 
 def traiter_image_pour_pdf(img_data):
@@ -751,11 +751,11 @@ def traiter_image_pour_pdf(img_data):
 
 
 # =========================================================================
-# 3. FORMATAGE SÉCURISÉ DES VALEURS
+# 3. FORMATAGE ET GESTION DES TABLEAUX COMPLETS
 # =========================================================================
 
 def est_vide(x):
-    """Vérifie si une valeur est vide de manière sécurisée."""
+    """Vérifie si une valeur est considérée comme vide."""
     if x is None:
         return True
     if isinstance(x, np.ndarray):
@@ -768,7 +768,7 @@ def est_vide(x):
 
 
 def formater_valeur_lisible(valeur) -> str:
-    """Transforme les structures complexes en texte propre."""
+    """Transforme les structures complexes en texte propre pour les cellules."""
     if est_vide(valeur):
         return "-"
     if isinstance(valeur, dict):
@@ -778,58 +778,98 @@ def formater_valeur_lisible(valeur) -> str:
         elems = [formater_valeur_lisible(x) for x in valeur if not est_vide(x)]
         return ", ".join(elems) if elems else "-"
     elif isinstance(valeur, bytes) or (isinstance(valeur, str) and valeur.startswith("data:image")):
-        return "[Image / Croquis Binaire]"
+        return "[Image / Fichier Binaire]"
     elif isinstance(valeur, np.ndarray):
-        return "[Matrice Données]"
+        return "[Données Table]"
     else:
         v_str = str(valeur).strip()
         return v_str if v_str not in ["", "{}"] else "-"
 
 
-def dessiner_section_pdf(pdf, titre_etape, valeur_contenu):
-    """Dessine un tableau ou un bloc récapitulatif pour les données réelles."""
-    if est_vide(valeur_contenu):
+def dessiner_tableau_dynamique(pdf, titre_section, contenu):
+    """Dessine un tableau structuré (clé / valeur ou tableau de lignes) pour correspondre au rapport complet."""
+    if est_vide(contenu):
         return
 
-    if isinstance(valeur_contenu, dict):
-        champs_valides = {k: v for k, v in valeur_contenu.items() if not est_vide(v) and k not in ["croquis_image", "croquis_genere", "signataires"]}
+    # Si le contenu est une liste de dictionnaires (ex: Tableau cultures, équipements, arbres)
+    if isinstance(contenu, list):
+        lignes_valides = [item for item in contenu if not est_vide(item)]
+        if not lignes_valides:
+            return
+
+        if pdf.get_y() > 230:
+            pdf.add_page()
+
+        # Titre de la section
+        pdf.set_font("Arial", "B", 10)
+        pdf.set_fill_color(220, 230, 242)
+        pdf.cell(190, 7, nettoyer_texte_pdf(f"  {titre_section.upper()}"), border=1, ln=True, fill=True)
+
+        # Extraction des en-têtes basés sur les clés du premier dictionnaire
+         premier_elem = lignes_valides[0]
+        if isinstance(premier_elem, dict):
+            cles = [k for k in premier_elem.keys() if k not in ["croquis_image", "croquis_genere", "signataires"]]
+            if cles:
+                largeur_col = 190 / len(cles)
+                pdf.set_font("Arial", "B", 8)
+                pdf.set_fill_color(240, 240, 240)
+                for c in cles:
+                    pdf.cell(largeur_col, 6, nettoyer_texte_pdf(str(c).replace("_", " ").capitalize()), border=1, fill=True, align="C")
+                pdf.ln()
+
+                pdf.set_font("Arial", "", 8)
+                for item in lignes_valides:
+                    if pdf.get_y() > 250:
+                        pdf.add_page()
+                    for c in cles:
+                        val_cell = formater_valeur_lisible(item.get(c, "-"))
+                        pdf.cell(largeur_col, 5, nettoyer_texte_pdf(val_cell), border=1, align="C")
+                    pdf.ln()
+        else:
+            pdf.set_font("Arial", "", 8)
+            for item in lignes_valides:
+                pdf.cell(190, 5, nettoyer_texte_pdf(str(item)), border=1, ln=True)
+        pdf.ln(3)
+
+    # Si le contenu est un dictionnaire de sous-champs
+    elif isinstance(contenu, dict):
+        champs_valides = {k: v for k, v in contenu.items() if not est_vide(v) and k not in ["croquis_image", "croquis_genere", "signataires"]}
         if not champs_valides:
             return
 
-        if pdf.get_y() > 240:
+        if pdf.get_y() > 230:
             pdf.add_page()
 
         pdf.set_font("Arial", "B", 10)
         pdf.set_fill_color(220, 230, 242)
-        titre_clean = nettoyer_texte_pdf(f"  {titre_etape.replace('_', ' ').upper()}")
-        pdf.cell(190, 7, titre_clean, border=1, ln=True, fill=True)
+        pdf.cell(190, 7, nettoyer_texte_pdf(f"  {titre_section.replace('_', ' ').upper()}"), border=1, ln=True, fill=True)
 
         pdf.set_font("Arial", "B", 9)
         pdf.set_fill_color(240, 240, 240)
-        pdf.cell(70, 6, nettoyer_texte_pdf(" Étape / Champ"), border=1, fill=True)
+        pdf.cell(70, 6, nettoyer_texte_pdf(" Champ / Indicateur"), border=1, fill=True)
         pdf.cell(120, 6, nettoyer_texte_pdf(" Valeur / Saisie Terrain"), border=1, ln=True, fill=True)
 
         for k, v in champs_valides.items():
-            if isinstance(v, dict):
-                dessiner_section_pdf(pdf, f"{titre_etape} - {k}", v)
+            if isinstance(v, (dict, list)):
+                dessiner_tableau_dynamique(pdf, f"{titre_section} - {k}", v)
                 continue
 
             if pdf.get_y() > 250:
                 pdf.add_page()
 
-            nom_champ_clean = nettoyer_texte_pdf(f" {str(k).replace('_', ' ').capitalize()}")
-            val_str_clean = nettoyer_texte_pdf(f" {formater_valeur_lisible(v)}")
+            nom_champ = nettoyer_texte_pdf(f" {str(k).replace('_', ' ').capitalize()}")
+            val_str = nettoyer_texte_pdf(f" {formater_valeur_lisible(v)}")
 
             x_start = pdf.get_x()
             y_initial = pdf.get_y()
 
             pdf.set_font("Arial", "B", 8)
-            pdf.multi_cell(70, 5, nom_champ_clean, border=1)
+            pdf.multi_cell(70, 5, nom_champ, border=1)
             h_left = pdf.get_y() - y_initial
 
             pdf.set_xy(x_start + 70, y_initial)
             pdf.set_font("Arial", "", 8)
-            pdf.multi_cell(120, 5, val_str_clean, border=1)
+            pdf.multi_cell(120, 5, val_str, border=1)
             h_right = pdf.get_y() - y_initial
 
             h_max = max(h_left, h_right)
@@ -837,22 +877,18 @@ def dessiner_section_pdf(pdf, titre_etape, valeur_contenu):
 
         pdf.ln(3)
 
-    elif isinstance(valeur_contenu, list):
-        for idx, elem in enumerate(valeur_contenu):
-            if isinstance(elem, dict):
-                dessiner_section_pdf(pdf, f"{titre_etape} #{idx + 1}", elem)
-
+    # Valeur simple
     else:
         if pdf.get_y() > 250:
             pdf.add_page()
         pdf.set_font("Arial", "B", 8)
-        pdf.cell(70, 5, nettoyer_texte_pdf(f" {titre_etape}"), border=1)
+        pdf.cell(70, 5, nettoyer_texte_pdf(f" {titre_section}"), border=1)
         pdf.set_font("Arial", "", 8)
-        pdf.cell(120, 5, nettoyer_texte_pdf(f" {formater_valeur_lisible(valeur_contenu)}"), border=1, ln=True)
+        pdf.cell(120, 5, nettoyer_texte_pdf(f" {formater_valeur_lisible(contenu)}"), border=1, ln=True)
 
 
 # =========================================================================
-# 4. GÉNÉRATEUR PRINCIPAL DU PDF
+# 4. GÉNÉRATEUR PRINCIPAL DU PDF (RAPPORT COMPLET)
 # =========================================================================
 
 def generer_pdf_pdc_fonction(data: dict) -> bytes:
@@ -862,14 +898,20 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     
     # --- EN-TÊTE PRINCIPAL ---
     pdf.set_font("Arial", "B", 13)
-    pdf.cell(0, 8, nettoyer_texte_pdf("RAPPORT DE DIAGNOSTIC & PLAN DE DÉVELOPPEMENT (PDC)"), ln=True, align="C")
-    pdf.ln(2)
+    pdf.cell(0, 8, nettoyer_texte_pdf("PLAN DE DÉVELOPPEMENT DE CONSEIL (PDC) - RAPPORT COMPLET"), ln=True, align="C")
+    pdf.set_font("Arial", "I", 9)
+    pdf.cell(0, 5, nettoyer_texte_pdf("Aperçu global récapitulatif pour impression PDF - Mode Terrain"), ln=True, align="C")
+    pdf.ln(3)
     
-    # --- FICHE PRODUCTEUR ---
+    # --- INFORMATIONS GLOBALES DE SESSION ---
     pdf.set_font("Arial", "B", 9)
-    nom_prod = data.get('nom_producteur') or data.get('producteur') or data.get('Nom prenoms producteur') or 'Inconnu'
-    code_ccc = data.get('code_ccc') or data.get('code_producteur') or 'N/A'
-    zone = data.get('zone') or data.get('section') or 'Section grand zatry'
+    reponses = data.get("reponses", {})
+    if est_vide(reponses) and isinstance(data, dict):
+        reponses = data
+
+    nom_prod = data.get('nom_producteur') or reponses.get('nom_producteur') or 'Yao jean'
+    code_ccc = data.get('code_ccc') or reponses.get('code_producteur') or 'CCC-000'
+    zone = data.get('zone') or reponses.get('section') or 'grand zatry'
     score = data.get('score_faisabilite', '65')
     
     pdf.cell(95, 5, nettoyer_texte_pdf(f"Producteur : {nom_prod}"), border=0)
@@ -880,13 +922,9 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     
     pdf.set_draw_color(180, 180, 180)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(4)
+    pdf.ln(5)
     
-    # --- PARCOURS EXHAUSTIF DES DONNÉES DE SESSION ---
-    reponses = data.get("reponses", {})
-    if est_vide(reponses) and isinstance(data, dict):
-        reponses = data
-
+    # --- PARCOURS EXHAUSTIF DES DONNÉES DE SESSION (SIMILAIRE À LA VUE WEB) ---
     cles_a_ignorer = [
         "appareil_deverrouille", "identifie", "code_agent_connecte", 
         "pdf_bytes_pdc", "etape_pdc", "historique_modules", 
@@ -897,9 +935,9 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
         if cle in cles_a_ignorer or str(cle).startswith("btn_") or str(cle).startswith("sb_") or str(cle).startswith("FormSubmitter"):
             continue
         
-        dessiner_section_pdf(pdf, str(cle), valeur)
+        dessiner_tableau_dynamique(pdf, str(cle), valeur)
 
-    # --- INTÉGRATION DU CROQUIS ---
+    # --- INTÉGRATION DU CROQUIS DE PARCELLE ---
     croquis_data = data.get("croquis_genere") or data.get("croquis_image") or (reponses.get("croquis_genere") if isinstance(reponses, dict) else None)
     if not est_vide(croquis_data):
         path_croquis = traiter_image_pour_pdf(croquis_data)
@@ -993,13 +1031,12 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                     pass
     else:
         pdf.set_font("Arial", "I", 8)
-        pdf.cell(90, 5, nettoyer_texte_pdf("[Validé sans tracé]"), ln=True)
+        pdf.cell(90, 5, nettoyer_newToken = "[Validé sans tracé]"), ln=True)
 
     out = pdf.output(dest='S')
     if isinstance(out, str):
         return out.encode('latin-1', 'ignore')
     return bytes(out)
-
 
 
 
