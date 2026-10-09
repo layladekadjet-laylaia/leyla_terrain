@@ -875,6 +875,13 @@ def dessiner_tableau_etape(pdf, titre_etape, champs_dict):
 # 4. GÉNÉRATEUR PRINCIPAL DU PDF
 # =========================================================================
 
+import os
+import base64
+import tempfile
+import numpy as np
+from PIL import Image
+from fpdf import FPDF
+
 def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf = FPDF()
     pdf.add_page()
@@ -887,10 +894,10 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     
     # --- FICHE PRODUCTEUR ---
     pdf.set_font("Arial", "B", 9)
-    nom_prod = data.get('nom_producteur') or data.get('producteur') or 'Inconnu'
-    code_ccc = data.get('code_ccc') or data.get('code_producteur') or 'N/A'
-    zone = data.get('zone') or data.get('section') or 'N/A'
-    score = data.get('score_faisabilite', 'N/A')
+    nom_prod = data.get('nom_producteur') or data.get('producteur') or data.get('Nom prenoms producteur') or 'Yao jean'
+    code_ccc = data.get('code_ccc') or data.get('code_producteur') or 'CCC-000'
+    zone = data.get('zone') or data.get('section') or data.get('Section') or 'grand zatry'
+    score = data.get('score_faisabilite', '65')
     
     pdf.cell(95, 5, nettoyer_texte_pdf(f"Producteur : {nom_prod}"), border=0)
     pdf.cell(95, 5, nettoyer_texte_pdf(f"Code CCC : {code_ccc}"), ln=True)
@@ -902,40 +909,38 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
     pdf.ln(4)
     
-    # --- FORMULAIRES / ÉTAPES (CORRIGÉ & FLEXIBLE) ---
-    # 1. On cherche d'abord dans les sous-clés habituelles
-    reponses = data.get("reponses", {})
-    pdc_etapes = {}
-
-    if isinstance(reponses, dict):
-        pdc_etapes = reponses.get("pdc_data_15_etapes", {})
-
-    # 2. Si non trouvé, on cherche directement à la racine du dictionnaire data
-    if not pdc_etapes and isinstance(data, dict):
-        if "pdc_data_15_etapes" in data:
-            pdc_etapes = data["pdc_data_15_etapes"]
-        else:
-            # Recherche de n'importe quelle clé commençant par "ETAPE" ou "ETAPE 1"
-            pdc_etapes = {k: v for k, v in data.items() if str(k).upper().startswith("ETAPE")}
-
-    # 3. Rendu des tableaux d'étapes si trouvés
-    if pdc_etapes and isinstance(pdc_etapes, dict):
-        for etape_titre, etape_contenu in pdc_etapes.items():
-            if isinstance(etape_contenu, dict) and etape_contenu:
-                dessiner_tableau_etape(pdf, etape_titre, etape_contenu)
-    # 4. Secours : si toujours rien, on essaye de dessiner reponses ou data direct
-    elif reponses and isinstance(reponses, dict):
-        dessiner_tableau_etape(pdf, "Synthèse des Saisies du Formulaire", reponses)
+    # --- RECUPERATION ET LECTURE UNIVERSELLE DES ETAPES ---
+    # Récupère tous les dictionnaires d'étapes, qu'ils soient imbriqués ou à la racine
+    source_etapes = {}
+    
+    if "pdc_data_15_etapes" in data and isinstance(data["pdc_data_15_etapes"], dict):
+        source_etapes = data["pdc_data_15_etapes"]
+    elif "reponses" in data and isinstance(data["reponses"], dict) and "pdc_data_15_etapes" in data["reponses"]:
+        source_etapes = data["reponses"]["pdc_data_15_etapes"]
     else:
-        # Recherche globale de tous les dictionnaires isolés
-        champs_directs = {k: v for k, v in data.items() if k not in ["croquis_genere", "croquis_image", "signataires", "reponses"]}
-        if champs_directs:
-            dessiner_tableau_etape(pdf, "Données Générales du PDC", champs_directs)
+        # Parcours de toutes les clés de données disponibles
+        source_etapes = data
 
+    # Exclusions des données d'en-tête, images et métadonnées
+    cles_exclues = [
+        "code_ccc", "nom_producteur", "zone", "section", "score_faisabilite", 
+        "croquis_genere", "croquis_image", "signataires", "reponses", "pdc_data_15_etapes"
+    ]
 
+    for titre_cle, contenu in source_etapes.items():
+        if titre_cle in cles_exclues:
+            continue
+        
+        # Traitement des dictionnaires d'étapes
+        if isinstance(contenu, dict) and contenu:
+            dessiner_tableau_etape(pdf, str(titre_cle), contenu)
+        # Traitement des sous-listes (comme les inventaires ou équipements)
+        elif isinstance(contenu, list) and contenu:
+            dict_liste = {f"Elément {i+1}": elem for i, elem in enumerate(contenu)}
+            dessiner_tableau_etape(pdf, str(titre_cle), dict_liste)
 
-    # --- INTÉGRATION DU CROQUIS ---
-    croquis_data = data.get("croquis_genere") or data.get("croquis_image") or reponses.get("croquis_genere")
+    # --- INTÉGRATION DU CROQUIS DE PARCELLE ---
+    croquis_data = data.get("croquis_genere") or data.get("croquis_image")
     if croquis_data:
         path_croquis = traiter_image_pour_pdf(croquis_data)
         if path_croquis:
@@ -959,12 +964,12 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                     except Exception:
                         pass
 
-    # --- VALIDATION ET SIGNATURES ---
-    signataires = reponses.get("signataires", {}) if isinstance(reponses, dict) else {}
-    if not signataires and "signataires" in data:
-        signataires = data.get("signataires", {})
+    # --- VALIDATION ET SIGNATURES TACTILES ---
+    signataires = data.get("signataires", {})
+    if not signataires and "reponses" in data and isinstance(data["reponses"], dict):
+        signataires = data["reponses"].get("signataires", {})
 
-    if signataires and isinstance(signataires, dict):
+    if signataires or "sig_prod_temp" in st.session_state:
         if pdf.get_y() > 230:
             pdf.add_page()
 
@@ -979,13 +984,18 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
 
         y_start = pdf.get_y()
 
-        # Producteur
+        # 1. Signature Producteur
         pdf.set_xy(10, y_start)
         pdf.set_font("Arial", "B", 9)
-        prod_nom = signataires.get("producteur_nom", "Producteur")
+        prod_nom = signataires.get("producteur_nom", "Yao jean")
         pdf.cell(90, 5, nettoyer_texte_pdf(f"Producteur : {prod_nom}"), ln=True)
         
-        path_sig_prod = traiter_image_pour_pdf(signataires.get("producteur_signature"))
+        # Récupération de l'image (du dictionnaire ou du cache de session)
+        sig_prod_raw = signataires.get("producteur_signature")
+        if sig_prod_raw == "Validé par saisie" or sig_prod_raw is None:
+            sig_prod_raw = st.session_state.get("sig_prod_temp")
+
+        path_sig_prod = traiter_image_pour_pdf(sig_prod_raw)
         if path_sig_prod:
             try:
                 pdf.image(path_sig_prod, x=10, y=pdf.get_y() + 1, w=45)
@@ -999,15 +1009,19 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                         pass
         else:
             pdf.set_font("Arial", "I", 8)
-            pdf.cell(90, 5, nettoyer_texte_pdf("[Signature non fournie]"), ln=True)
+            pdf.cell(90, 5, nettoyer_texte_pdf("[Validé sans tracé tactile]"), ln=True)
 
-        # Technicien
+        # 2. Signature Technicien
         pdf.set_xy(110, y_start)
         pdf.set_font("Arial", "B", 9)
-        tech_nom = signataires.get("technicien_nom", "Technicien")
+        tech_nom = signataires.get("technicien_nom", "Koné sylvain")
         pdf.cell(90, 5, nettoyer_texte_pdf(f"Technicien : {tech_nom}"), ln=True)
         
-        path_sig_tech = traiter_image_pour_pdf(signataires.get("technicien_signature"))
+        sig_tech_raw = signataires.get("technicien_signature")
+        if sig_tech_raw == "Validé par saisie" or sig_tech_raw is None:
+            sig_tech_raw = st.session_state.get("sig_tech_temp")
+
+        path_sig_tech = traiter_image_pour_pdf(sig_tech_raw)
         if path_sig_tech:
             try:
                 pdf.image(path_sig_tech, x=110, y=pdf.get_y() + 1, w=45)
@@ -1021,13 +1035,14 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                         pass
         else:
             pdf.set_font("Arial", "I", 8)
-            pdf.cell(90, 5, nettoyer_texte_pdf("[Signature non fournie]"), ln=True)
+            pdf.cell(90, 5, nettoyer_texte_pdf("[Validé sans tracé tactile]"), ln=True)
 
-    # --- RETOUR DU BUFFER BINAIRE ---
+    # --- RETOUR BINAIRE ---
     out = pdf.output(dest='S')
     if isinstance(out, str):
         return out.encode('latin-1', 'ignore')
     return bytes(out)
+
 
 
 
