@@ -4588,7 +4588,7 @@ def afficher():
                 if "criteres" in locals():
                     st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
 
-                                st.session_state.reponses_pdc["signataires"] = {
+                st.session_state.reponses_pdc["signataires"] = {
                     "producteur_nom": nom_producteur,
                     "producteur_signature": (
                         "Validé par signature tactile"
@@ -4606,11 +4606,9 @@ def afficher():
                     ),
                 }
 
-
                 st.session_state["pdc_finalise"] = True
                 
                 # Déclenchement des ballons de succès globaux de l'application
                 st.session_state["afficher_ballons_flag"] = True
                 st.success("✅ PDC finalisé avec succès ! Signatures et validité enregistrées.")
                 st.rerun()
-
