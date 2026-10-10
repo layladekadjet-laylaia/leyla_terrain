@@ -709,11 +709,16 @@ def traiter_image_pour_pdf(img_data):
         if isinstance(img_data, np.ndarray):
             if img_data.size == 0:
                 return None
-            if img_data.ndim == 3 and img_data.shape[2] == 4:
-                if not np.any(img_data[:, :, 3] > 0):
-                    return None
             
-            img_pil = Image.fromarray(img_data.astype('uint8'))
+            # S'assure que le tableau numpy est au format uint8 valide pour PIL
+            arr = img_data
+            if arr.dtype != np.uint8:
+                if arr.max() <= 1.0:
+                    arr = (arr * 255).astype(np.uint8)
+                else:
+                    arr = arr.astype(np.uint8)
+
+            img_pil = Image.fromarray(arr)
             if img_pil.mode in ("RGBA", "P"):
                 background = Image.new('RGB', img_pil.size, (255, 255, 255))
                 if img_pil.mode == "RGBA":
@@ -791,7 +796,11 @@ def dessiner_tableau_dynamique(pdf, titre_section, contenu):
     if est_vide(contenu):
         return
 
-    # Si le contenu est une liste de dictionnaires (ex: cultures, équipements, arbres)
+    # Ignore les clés de dataframes techniques
+    if str(titre_section).startswith("df_") or str(titre_section).startswith("TEMP_"):
+        return
+
+    # Si le contenu est une liste de dictionnaires
     if isinstance(contenu, list):
         lignes_valides = [item for item in contenu if not est_vide(item)]
         if not lignes_valides:
@@ -831,7 +840,7 @@ def dessiner_tableau_dynamique(pdf, titre_section, contenu):
 
     # Si le contenu est un dictionnaire de sous-champs
     elif isinstance(contenu, dict):
-        champs_valides = {k: v for k, v in contenu.items() if not est_vide(v) and k not in ["croquis_image", "croquis_genere", "signataires"]}
+        champs_valides = {k: v for k, v in contenu.items() if not est_vide(v) and k not in ["croquis_image", "croquis_genere", "signataires"] and not str(k).startswith("df_")}
         if not champs_valides:
             return
 
@@ -929,7 +938,7 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     ]
 
     for cle, valeur in reponses.items():
-        if cle in cles_a_ignorer or str(cle).startswith("btn_") or str(cle).startswith("sb_") or str(cle).startswith("FormSubmitter"):
+        if cle in cles_a_ignorer or str(cle).startswith("btn_") or str(cle).startswith("sb_") or str(cle).startswith("FormSubmitter") or str(cle).startswith("df_") or str(cle).startswith("TEMP_"):
             continue
         
         dessiner_tableau_dynamique(pdf, str(cle), valeur)
@@ -995,9 +1004,10 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     path_sig_prod = traiter_image_pour_pdf(sig_p_img)
     if path_sig_prod:
         try:
-            pdf.image(path_sig_prod, x=10, y=pdf.get_y() + 1, w=45)
+            pdf.image(path_sig_prod, x=10, y=pdf.get_y() + 1, w=45, h=22)
+            pdf.ln(24)
         except Exception:
-            pass
+            pdf.ln(5)
         finally:
             if "tmp" in path_sig_prod and os.path.exists(path_sig_prod):
                 try:
@@ -1017,9 +1027,10 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     path_sig_tech = traiter_image_pour_pdf(sig_t_img)
     if path_sig_tech:
         try:
-            pdf.image(path_sig_tech, x=110, y=pdf.get_y() + 1, w=45)
+            pdf.image(path_sig_tech, x=110, y=y_start + 5, w=45, h=22)
+            pdf.ln(24)
         except Exception:
-            pass
+            pdf.ln(5)
         finally:
             if "tmp" in path_sig_tech and os.path.exists(path_sig_tech):
                 try:
