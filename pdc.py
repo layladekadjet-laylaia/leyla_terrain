@@ -4588,13 +4588,24 @@ def afficher():
                 if "criteres" in locals():
                     st.session_state.reponses_pdc["criteres_faisabilite"] = criteres
 
-                st.session_state.reponses_pdc["signataires"] = {
+                                st.session_state.reponses_pdc["signataires"] = {
                     "producteur_nom": nom_producteur,
-                    "producteur_signature": sig_producteur_finale if sig_producteur_finale is not None else "Validé par saisie",
+                    "producteur_signature": (
+                        "Validé par signature tactile"
+                        if sig_producteur_finale is not None
+                        else "Validé par saisie"
+                    ),
                     "technicien_nom": nom_technicien,
-                    "technicien_signature": sig_technicien_finale if sig_technicien_finale is not None else "Validé par saisie",
-                    "date_validation": pd.Timestamp.now().strftime("%d/%m/%Y à %H:%M")
+                    "technicien_signature": (
+                        "Validé par signature tactile"
+                        if sig_technicien_finale is not None
+                        else "Validé par saisie"
+                    ),
+                    "date_validation": pd.Timestamp.now().strftime(
+                        "%d/%m/%Y à %H:%M"
+                    ),
                 }
+
 
                 st.session_state["pdc_finalise"] = True
                 
