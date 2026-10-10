@@ -108,7 +108,7 @@ class NpEncoder(json.JSONEncoder):
 
 
 def nettoyer_pour_json(d):
-  """Nettoie et convertit récursivement toutes les données pour la sérialisation JSON en éliminant les NaN/inf."""
+  """Nettoie et convertit récursivement toutes les données pour la sérialisation JSON en éliminant les tableaux complexes et NaN/inf."""
   if isinstance(d, dict):
     return {
         str(k): nettoyer_pour_json(v)
@@ -122,14 +122,8 @@ def nettoyer_pour_json(d):
   elif isinstance(d, pd.DataFrame):
     return d.to_dict(orient="records")
   elif isinstance(d, np.ndarray):
-    # Convertit un tableau NumPy (comme une signature) en chaîne base64 ou l'ignore dans le JSON textuel
-    try:
-      _, buffer = cv2.imencode('.png', d) if 'cv2' in globals() else (None, None)
-      if buffer is not None:
-        return f"data:image/png;base64,{base64.b64encode(buffer).decode('utf-8')}"
-    except Exception:
-      pass
-    return "[Tableau Image]"
+    # Les signatures ou croquis sous forme de tableaux numpy ne vont pas dans le JSON brut
+    return "[Signature/Image Tactile]"
   elif isinstance(d, (np.integer, int)):
     return int(d)
   elif isinstance(d, (np.floating, float)):
@@ -144,11 +138,12 @@ def nettoyer_pour_json(d):
     return None
   else:
     try:
-      if pd.isna(d):
+      # Évite d'appeler pd.isna sur des objets non scalaires
+      if not isinstance(d, (list, dict, np.ndarray)) and pd.isna(d):
         return None
     except Exception:
       pass
-    return d
+    return str(d)
 
 
 
