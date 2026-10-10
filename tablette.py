@@ -121,6 +121,15 @@ def nettoyer_pour_json(d):
     return [nettoyer_pour_json(v) for v in d]
   elif isinstance(d, pd.DataFrame):
     return d.to_dict(orient="records")
+  elif isinstance(d, np.ndarray):
+    # Convertit un tableau NumPy (comme une signature) en chaîne base64 ou l'ignore dans le JSON textuel
+    try:
+      _, buffer = cv2.imencode('.png', d) if 'cv2' in globals() else (None, None)
+      if buffer is not None:
+        return f"data:image/png;base64,{base64.b64encode(buffer).decode('utf-8')}"
+    except Exception:
+      pass
+    return "[Tableau Image]"
   elif isinstance(d, (np.integer, int)):
     return int(d)
   elif isinstance(d, (np.floating, float)):
@@ -129,15 +138,18 @@ def nettoyer_pour_json(d):
     return float(d)
   elif isinstance(d, bytes):
     return f"data:image/png;base64,{base64.b64encode(d).decode('utf-8')}"
-  elif pd.isna(d):
+  elif isinstance(d, (str, bool)):
+    return d
+  elif d is None:
     return None
   else:
     try:
-      if isinstance(d, float) and (math.isnan(d) or math.isinf(d)):
+      if pd.isna(d):
         return None
     except Exception:
       pass
     return d
+
 
 
 # --- UPLOAD SUPABASE STORAGE ---
