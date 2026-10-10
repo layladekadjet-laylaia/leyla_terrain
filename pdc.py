@@ -4522,44 +4522,33 @@ def afficher():
         st.markdown("---")
 
         # =========================================================
-        # CAPTURE CONTINUE DES SIGNATURES (EN TEMPS RÉEL)
+        # CAPTURE ET PERSISTANCE SIMPLIFIÉE DES SIGNATURES
         # =========================================================
-        def extraire_et_sauvegarder_signature(canvas_obj, cle_session):
-            if canvas_obj is not None:
-                try:
-                    has_drawn = False
-                    if hasattr(canvas_obj, "json_data") and canvas_obj.json_data is not None:
-                        if len(canvas_obj.json_data.get("objects", [])) > 0:
-                            has_drawn = True
+        def enregistrer_signature_directe(canvas_obj, cle_session):
+            if canvas_obj is not None and hasattr(canvas_obj, "image_data"):
+                img_data = canvas_obj.image_data
+                if isinstance(img_data, np.ndarray) and img_data.size > 0:
+                    # Si l'image n'est pas complètement transparente/blanche
+                    if np.any(img_data[:, :, 3] > 0) or np.any(img_data < 255):
+                        st.session_state[cle_session] = img_data
 
-                    if hasattr(canvas_obj, "image_data") and canvas_obj.image_data is not None:
-                        img_array = canvas_obj.image_data
-                        if isinstance(img_array, np.ndarray) and img_array.size > 0:
-                            if has_drawn:
-                                st.session_state[cle_session] = img_array
-                            elif img_array.shape[-1] == 4 and np.any(img_array[:, :, 3] > 10):
-                                st.session_state[cle_session] = img_array
-                            elif np.any(img_array < 240):
-                                st.session_state[cle_session] = img_array
-                except Exception:
-                    pass
+        # Enregistrement direct des tracés
+        enregistrer_signature_directe(canvas_producteur, "sig_prod_temp")
+        enregistrer_signature_directe(canvas_technicien, "sig_tech_temp")
 
-        # Sauvegarde immédiate dans la session dès qu'un trait est tracé
-        extraire_et_sauvegarder_signature(canvas_producteur, "sig_prod_temp")
-        extraire_et_sauvegarder_signature(canvas_technicien, "sig_tech_temp")
-
-        # Indicateur visuel pour rassurer l'agent sur le terrain
+        # Indicateurs visuels
         col_ind1, col_ind2 = st.columns(2)
         with col_ind1:
             if st.session_state.get("sig_prod_temp") is not None:
-                st.success("✓ Signature producteur enregistrée")
+                st.success("✓ Signature producteur capturée")
             else:
                 st.info("En attente de la signature producteur")
         with col_ind2:
             if st.session_state.get("sig_tech_temp") is not None:
-                st.success("✓ Signature technicien enregistrée")
+                st.success("✓ Signature technicien capturée")
             else:
                 st.info("En attente de la signature technicien")
+
 
         st.markdown("---")
 
