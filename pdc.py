@@ -4451,7 +4451,7 @@ def afficher():
 
         st.markdown("---")
 
-        # =========================================================
+         # =========================================================
         # 15.4 SIGNATURES TACTILES DES PARTIES
         # =========================================================
         st.markdown("### ✍️ 4. Validation & Signatures")
@@ -4489,6 +4489,7 @@ def afficher():
                     height=140,
                     width=260,
                     drawing_mode="freedraw",
+                    return_image_data=True,  # INDispensable pour récupérer image_data
                     key="canvas_prod",
                 )
             else:
@@ -4514,6 +4515,7 @@ def afficher():
                     height=140,
                     width=260,
                     drawing_mode="freedraw",
+                    return_image_data=True,  # INDISPENSABLE pour récupérer image_data
                     key="canvas_cons",
                 )
             else:
@@ -4548,7 +4550,6 @@ def afficher():
                 st.success("✓ Signature technicien capturée")
             else:
                 st.info("En attente de la signature technicien")
-
 
         st.markdown("---")
 
@@ -4601,3 +4602,4 @@ def afficher():
                 st.session_state["afficher_ballons_flag"] = True
                 st.success("✅ PDC finalisé avec succès ! Signatures et validité enregistrées.")
                 st.rerun()
+
