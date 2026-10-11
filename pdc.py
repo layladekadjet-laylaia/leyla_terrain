@@ -948,15 +948,21 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     if not est_vide(croquis_data):
         path_croquis = traiter_image_pour_pdf(croquis_data)
         if path_croquis:
-            if pdf.get_y() > 180:
+            # S'il ne reste plus assez de place, on bascule sur une nouvelle page propre
+            if pdf.get_y() > 160:
                 pdf.add_page()
-            pdf.ln(3)
+            else:
+                pdf.ln(5)
+
             pdf.set_font("Arial", "B", 10)
             pdf.cell(0, 6, nettoyer_texte_pdf("CROQUIS DE PARCELLE ET GÉOLOCALISATION"), ln=True)
-            pdf.ln(2)
+            pdf.ln(3)
+            
             try:
-                pdf.image(path_croquis, x=35, y=pdf.get_y(), w=120)
-                pdf.ln(75)
+                # Affichage propre du croquis avec dimensions maîtrisées
+                y_img_debut = pdf.get_y()
+                pdf.image(path_croquis, x=35, y=y_img_debut, w=120)
+                pdf.set_y(y_img_debut + 75)  # Espace réservé pour l'image
             except Exception:
                 pass
             finally:
@@ -981,22 +987,24 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     if (est_vide(sig_t_img) or sig_t_img == "Validé par saisie") and hasattr(st, "session_state"):
         sig_t_img = st.session_state.get("sig_tech_temp")
 
-    if pdf.get_y() > 230:
+    # Forcer une nouvelle page si on approche du bas pour les signatures
+    if pdf.get_y() > 210:
         pdf.add_page()
+    else:
+        pdf.ln(8)
 
-    pdf.ln(3)
     pdf.set_draw_color(180, 180, 180)
     pdf.line(10, pdf.get_y(), 200, pdf.get_y())
-    pdf.ln(4)
+    pdf.ln(5)
 
     pdf.set_font("Arial", "B", 10)
     pdf.cell(0, 6, nettoyer_texte_pdf("VALIDATION ET SIGNATURES"), ln=True)
-    pdf.ln(2)
+    pdf.ln(4)
 
-    y_start = pdf.get_y()
+    y_signatures_start = pdf.get_y()
 
-    # Signature Producteur
-    pdf.set_xy(10, y_start)
+    # 1. Bloc Signature Producteur (Colonne de gauche)
+    pdf.set_xy(10, y_signatures_start)
     pdf.set_font("Arial", "B", 9)
     prod_nom = signataires.get("producteur_nom", nom_prod)
     pdf.cell(90, 5, nettoyer_texte_pdf(f"Producteur : {prod_nom}"), ln=True)
@@ -1004,10 +1012,11 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     path_sig_prod = traiter_image_pour_pdf(sig_p_img)
     if path_sig_prod:
         try:
-            pdf.image(path_sig_prod, x=10, y=pdf.get_y() + 1, w=45, h=22)
-            pdf.ln(24)
+            pdf.set_x(10)
+            pdf.image(path_sig_prod, x=10, y=pdf.get_y() + 2, w=50, h=25)
+            pdf.set_y(y_signatures_start + 35)
         except Exception:
-            pdf.ln(5)
+            pdf.set_y(y_signatures_start + 35)
         finally:
             if "tmp" in path_sig_prod and os.path.exists(path_sig_prod):
                 try:
@@ -1015,11 +1024,13 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                 except Exception:
                     pass
     else:
+        pdf.set_x(10)
         pdf.set_font("Arial", "I", 8)
-        pdf.cell(90, 5, nettoyer_texte_pdf("[Validé par saisie]"), ln=True)
+        pdf.cell(90, 5, nettoyer_texte_pdf("[Validé par saisie tactile]"), ln=True)
+        pdf.set_y(y_signatures_start + 35)
 
-    # Signature Technicien
-    pdf.set_xy(110, y_start)
+    # 2. Bloc Signature Technicien (Colonne de droite)
+    pdf.set_xy(110, y_signatures_start)
     pdf.set_font("Arial", "B", 9)
     tech_nom = signataires.get("technicien_nom", "Koné sylvain")
     pdf.cell(90, 5, nettoyer_texte_pdf(f"Technicien : {tech_nom}"), ln=True)
@@ -1027,10 +1038,11 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
     path_sig_tech = traiter_image_pour_pdf(sig_t_img)
     if path_sig_tech:
         try:
-            pdf.image(path_sig_tech, x=110, y=y_start + 5, w=45, h=22)
-            pdf.ln(24)
+            pdf.set_x(110)
+            pdf.image(path_sig_tech, x=110, y=y_signatures_start + 5, w=50, h=25)
+            pdf.set_y(y_signatures_start + 35)
         except Exception:
-            pdf.ln(5)
+            pdf.set_y(y_signatures_start + 35)
         finally:
             if "tmp" in path_sig_tech and os.path.exists(path_sig_tech):
                 try:
@@ -1038,9 +1050,12 @@ def generer_pdf_pdc_fonction(data: dict) -> bytes:
                 except Exception:
                     pass
     else:
+        pdf.set_xy(110, y_signatures_start + 5)
         pdf.set_font("Arial", "I", 8)
         pdf.cell(90, 5, nettoyer_texte_pdf("[Validé sans tracé]"), ln=True)
+        pdf.set_y(y_signatures_start + 35)
 
+    # Sortie finale du PDF propre
     out = pdf.output(dest='S')
     if isinstance(out, str):
         return out.encode('latin-1', 'ignore')
